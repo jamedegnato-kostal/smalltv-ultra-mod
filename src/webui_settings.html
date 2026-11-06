@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmallTV Settings</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjJjNTVlIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iNyIgeT0iMTMiIHdpZHRoPSI1MCIgaGVpZ2h0PSIzOCIgcng9IjYiLz48cG9seWxpbmUgcG9pbnRzPSIxNSwzOCAyMywzMCAzMCwzNCAzNywyMiA0NCwyOCA1MCwyMCIvPjxwYXRoIGQ9Ik0yNCA1MXY2TTQwIDUxdjZNMjAgNTdoOE0zNiA1N2g4Ii8+PC9nPjwvc3ZnPg==">
+<style>
+:root{--bg:#101611;--card:#19221a;--mut:#9aa99b;--fg:#edf4ed;--acc:#72c77c;--acc2:#a0d9a5;--red:#ed7373;--bd:#2c3a2e}
+*{box-sizing:border-box}
+body{margin:0;padding-bottom:76px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg);font-size:15px}
+header{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;max-width:1040px;margin:0 auto}
+header h1{font-size:17px;margin:0;font-weight:600}
+header .logo{width:26px;height:26px;flex:0 0 auto}
+header .dot{width:9px;height:9px;border-radius:50%;background:var(--mut)}
+header .dot.ok{background:var(--acc)}
+header .spacer{flex:1}
+header .help-toggle{background:#222b36;border:1px solid var(--bd);color:var(--mut);padding:7px 11px;border-radius:9px;font-size:13px;cursor:pointer}
+nav{display:flex;gap:5px;padding:9px 16px;overflow-x:auto;border-bottom:1px solid var(--bd);position:sticky;top:0;background:rgba(14,17,22,.96);backdrop-filter:blur(12px);z-index:5;scrollbar-width:thin}
+nav button{background:none;border:0;color:var(--mut);padding:9px 13px;border-radius:9px;font-size:14px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+nav button.active{background:var(--card);color:var(--fg)}
+nav button:hover{color:var(--fg)}
+main{padding:24px 16px 32px;max-width:900px;margin:0 auto}
+.tab{display:none}.tab.active{display:block}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:0 0 12px}
+.welcome{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:2px 0 20px}
+.welcome .eyebrow{margin:0 0 7px;color:var(--acc);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.welcome h2{font-size:24px;letter-spacing:-.03em;text-transform:none;color:var(--fg);margin:0 0 5px}
+.welcome p{margin:0;color:var(--mut);font-size:14px}
+.status-pill{flex:0 0 auto;border:1px solid var(--bd);border-radius:999px;padding:7px 11px;font-size:12px;color:var(--mut);background:var(--card)}
+.status-pill.ok{color:var(--acc);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
+.status-pill.warn{color:#e3b341;border-color:rgba(227,179,65,.35);background:rgba(227,179,65,.08)}
+.quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.stat-card{min-width:0;background:linear-gradient(145deg,#1d281f,#182119);border:1px solid var(--bd);border-radius:14px;padding:16px}
+.stat-card .label{color:var(--mut);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
+.stat-card strong{display:block;margin-top:10px;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-card a{display:inline-block;margin-top:5px;color:var(--acc2);font-size:13px;text-decoration:none}
+.home-actions{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0 22px}
+.details{border-top:1px solid var(--bd);padding-top:14px}
+.details summary{color:var(--mut);cursor:pointer;font-size:13px;user-select:none}
+.details[open] summary{margin-bottom:12px}
+.details .card{box-shadow:none;margin:0;padding:0;border:0}
+label{display:block;margin:10px 0 4px;font-size:13px;color:var(--mut)}
+input[type=text],input[type=password],input[type=number],input[type=url],input[type=search],input[type=time],select{
+ width:100%;padding:9px 10px;background:#0b0e13;border:1px solid var(--bd);border-radius:8px;color:var(--fg);font-size:15px}
+input[type=range]{width:100%}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.chk{display:flex;align-items:center;gap:8px;margin:8px 0}
+.chk input{width:18px;height:18px}
+.chk label{margin:0;color:var(--fg);font-size:14px}
+.req{border:1px solid var(--bd);background:#0b0e13;border-radius:8px;padding:10px 12px;margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--mut)}
+.req b{color:var(--fg);font-weight:600}
+button.btn{background:var(--acc);color:#04130a;border:0;padding:10px 16px;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer}
+button.btn.sec{background:#222b36;color:var(--fg)}
+button.btn.danger{background:var(--red);color:#1a0606}
+button.btn:disabled{opacity:.5}
+.muted{color:var(--mut);font-size:13px}
+table{width:100%;border-collapse:collapse}
+td{padding:6px 4px}
+.symrow input{margin:0}
+.kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd)}
+.kv:last-child{border:0}.kv b{font-weight:600}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0b0e13;border:1px solid var(--bd);padding:10px 16px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+.net{padding:8px;border:1px solid var(--bd);border-radius:8px;margin:4px 0;cursor:pointer;display:flex;justify-content:space-between}
+.net:hover{border-color:var(--acc2)}
+.bar{height:8px;background:#0b0e13;border-radius:6px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;width:0;background:var(--acc2);transition:.2s}
+small.hint{display:block;color:var(--mut);margin-top:4px;font-size:12px}
+small.hint:not([id]){display:none;line-height:1.55}
+body.show-help small.hint:not([id]){display:block}
+.chip{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;letter-spacing:.03em;background:var(--acc2);color:#fff;vertical-align:middle}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:14px}
+.photo-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}.photo-stats>span{padding:10px;border:1px solid var(--bd);border-radius:9px;background:rgba(0,0,0,.08);font-size:12px;color:var(--mut)}.photo-stats b{display:block;color:var(--fg);font-size:15px;margin-top:3px}.photo-upload-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}.photo-card{min-width:0;border:1px solid var(--bd);border-radius:10px;padding:8px;background:rgba(0,0,0,.08)}.photo-card img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;background:#080b0f}.photo-card .photo-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:var(--mut);font-size:12px}.photo-card .btn{padding:5px 9px;font-size:12px}
+.theme-subnav{display:flex;gap:7px;overflow-x:auto;margin:0 0 14px;padding:3px}.theme-subnav button{background:var(--card);border:1px solid var(--bd);color:var(--mut);padding:9px 13px;border-radius:999px;white-space:nowrap;cursor:pointer}.theme-subnav button.active{color:var(--fg);border-color:var(--acc);background:rgba(114,199,124,.12)}.themePane{display:none}.themePane.active{display:block}
+.theme-tile{border:1px solid var(--bd);border-radius:13px;padding:14px;background:linear-gradient(145deg,#202b21,#172019);min-width:0}
+.theme-tile.selected{border-color:var(--acc);box-shadow:0 0 0 1px rgba(63,185,80,.2)}
+.theme-art{width:100%;height:132px;object-fit:contain;border-radius:9px;margin-bottom:12px;background:radial-gradient(circle at 75% 25%,rgba(114,199,124,.28),transparent 38%),linear-gradient(135deg,#27352a,#141c15);display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px}
+.theme-tile strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.theme-tile .muted{margin-top:5px;min-height:34px}
+.theme-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.theme-actions .btn{flex:1 1 120px}
+.theme-manage{margin-top:9px;border-top:1px solid var(--bd);padding-top:8px}.theme-manage summary{color:var(--acc2);cursor:pointer;font-size:13px}
+.savebar{position:fixed;z-index:20;left:0;right:0;bottom:0;padding:10px 16px;background:rgba(14,17,22,.96);border-top:1px solid var(--bd)}body.light .savebar{background:rgba(244,249,244,.97)}
+.savebar-inner{max-width:900px;margin:auto;display:flex;align-items:center;justify-content:flex-end;gap:12px}.save-status{margin-right:auto;color:var(--mut);font-size:13px}.save-status.dirty{color:#e3b341}.savebar button{min-width:176px}
+dialog{width:min(560px,calc(100vw - 28px));max-height:85vh;overflow:auto;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+dialog::backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}dialog h2{color:var(--fg);text-transform:none;font-size:19px;letter-spacing:0}
+dialog textarea{width:100%;min-height:86px;resize:vertical;padding:9px 10px;background:#0b0e13;border:1px solid var(--bd);border-radius:8px;color:var(--fg);font:inherit}
+.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.layer-row{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--bd);border-radius:9px;margin:7px 0}.layer-row .layer-name{flex:1;min-width:0;overflow-wrap:anywhere}.layer-row .layer-type{color:var(--mut);font-size:12px}
+body.light dialog textarea{background:#f8fbf8;color:var(--fg)}
+body.light{--bg:#f2f7f1;--card:#fff;--mut:#59695d;--fg:#1b2b20;--bd:#d6e3d7;--acc:#338b4f;--acc2:#347b50;--red:#bd3f43}
+body.light nav{background:rgba(242,247,241,.96)}body.light .stat-card,body.light .theme-tile{background:linear-gradient(145deg,#fff,#f5f9f4)}
+body.light .stat-card{box-shadow:0 5px 18px rgba(28,66,36,.06)}
+body.light .photo-stats>span,body.light .photo-card{background:rgba(38,104,52,.035)}
+body.light input[type=text],body.light input[type=password],body.light input[type=number],body.light input[type=url],body.light input[type=search],body.light input[type=time],body.light select,body.light .req{background:#f8fbf8;color:var(--fg)}
+body.light button.btn.sec{background:#e7f0e7;color:#25432c}body.light header .help-toggle{background:#edf4ec;color:var(--mut)}
+body.light .theme-art{background:radial-gradient(circle at 75% 25%,rgba(75,159,92,.22),transparent 38%),linear-gradient(135deg,#eff7ef,#e7f0e7)}
+body.light .theme-subnav button.active{background:#e8f3e8}
+@media(max-width:600px){header{padding:12px}nav{padding:8px 10px}main{padding:18px 12px 28px}.quick-grid{grid-template-columns:1fr 1fr;gap:9px}.stat-card{padding:13px}.stat-card strong{font-size:15px}.welcome h2{font-size:21px}.card{padding:15px}.savebar{padding:9px 12px}.savebar-inner{gap:8px}.save-status{font-size:11px}.savebar button{min-width:0;white-space:nowrap}.row{flex-wrap:wrap}.row>*{min-width:min(100%,220px)}}
+</style></head>
+<body class="light">
+<header><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="6"/><polyline points="15,38 23,30 30,34 37,22 44,28 50,20"/><path d="M24 51v6M40 51v6M20 57h8M36 57h8"/></g></svg><span id="dot" class="dot"></span><h1>SmallTV · Arbeitsplatz</h1><span id="chip" class="chip" style="display:none"></span><span id="hi" class="muted"></span><span class="spacer"></span><button id="themeMode" class="help-toggle" type="button">Dunkles Design</button><button id="helpToggle" class="help-toggle" type="button" aria-expanded="false">Tipps</button></header>
+<nav>
+ <button data-t="status" class="active">Übersicht</button>
+ <button data-t="settingsDisplay">Anzeige</button>
+ <button data-t="settingsClock">Uhr &amp; Zeit</button>
+ <button data-t="settingsThemes">Themes</button>
+ <button data-t="photos">Fotos</button>
+ <button data-t="wifi">Netzwerk</button>
+ <button data-t="update">System</button>
+ <button data-t="settingsAdvanced">Erweitert</button>
+</nav>
+<main>
+ <section id="settingsDisplay" class="tab"></section>
+ <section id="settingsClock" class="tab"></section>
+ <section id="settingsThemes" class="tab">
+  <div class="theme-subnav" role="tablist" aria-label="Theme-Bereiche">
+   <button type="button" class="active" data-theme-pane-button="themeLibrary">Bibliothek</button>
+   <button type="button" data-theme-pane-button="themeAutomation">Automatik</button>
+  </div>
+  <div id="themeLibrary" class="themePane active"></div>
+  <div id="themeAutomation" class="themePane"></div>
+ </section>
+ <section id="photos" class="tab">
+  <div class="card"><h2>Foto-Wiedergabe</h2>
+   <div class="chk"><input id="photoPlaybackEnabled" type="checkbox"><label for="photoPlaybackEnabled">Fotos nach jedem Theme anzeigen</label></div>
+   <label for="photosPerTheme">Fotos nach jedem Theme</label><select id="photosPerTheme"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select>
+   <label for="photoDwellSeconds">Anzeigedauer pro Foto</label><select id="photoDwellSeconds"><option value="5">5 Sekunden</option><option value="10" selected>10 Sekunden</option><option value="15">15 Sekunden</option><option value="20">20 Sekunden</option><option value="30">30 Sekunden</option><option value="60">60 Sekunden</option><option value="0">Zufällig (5–60 Sekunden)</option></select>
+   <small class="hint">Fotos werden nur zwischen den Themes der aktiven Playlist gezeigt. Die Theme-Reihenfolge bleibt bestehen. Änderungen mit „Einstellungen speichern“ übernehmen.</small>
+  </div>
+  <div class="card"><h2>Foto-Bibliothek</h2>
+   <p>Bilder werden im Browser mittig auf 240 × 240 Pixel zugeschnitten und als JPEG übertragen. Die Firmware speichert sie getrennt von den .stheme-Dateien.</p>
+   <div class="photo-stats"><span><b id="photoCount">0</b> / 240 Fotos</span><span>Fotodaten: <b id="photoBytes">0 B</b></span><span>Für Fotos frei: <b id="photoFree">wird geladen …</b></span><span>LittleFS gesamt: <b id="photoStorageTotal">—</b></span></div>
+   <label for="photoFiles">Bilder auswählen (mehrere möglich)</label><input id="photoFiles" type="file" accept="image/*" multiple>
+   <div class="photo-upload-actions"><button class="btn" id="photoUploadButton" type="button" onclick="uploadPhotos()">Fotos hochladen</button><button class="btn sec" id="photoCancelButton" type="button" onclick="cancelPhotoUpload()" disabled>Upload abbrechen</button><button class="btn danger" id="photoDeleteAllButton" type="button" onclick="deleteAllPhotos()">Alle Fotos löschen</button></div>
+   <progress id="photoProgress" max="100" value="0" style="display:none;width:100%;margin-top:10px"></progress><div id="photoMessage" class="muted" role="status" style="margin-top:8px"></div>
+   <div id="photoGrid" class="photo-grid"></div>
+  </div>
+ </section>
+ <section id="settingsAdvanced" class="tab"></section>
+ <!-- STATUS -->
+ <section id="status" class="tab active">
+  <div class="welcome"><div><p class="eyebrow">SMALLTV · GERÄTEÜBERSICHT</p><h2>Gerätestatus</h2><p>Verbindung, Anzeige und Uhr auf einen Blick.</p></div><span id="statusPill" class="status-pill">Status wird geprüft</span></div>
+  <div class="quick-grid">
+   <div class="stat-card"><span class="label">WLAN</span><strong id="statusNetwork">Wird geladen …</strong></div>
+   <div class="stat-card"><span class="label">Geräteadresse</span><a id="statusAddress" href="#">Adresse öffnen</a></div>
+   <div class="stat-card"><span class="label">Laufzeit</span><strong id="statusUptime">—</strong></div>
+   <div class="stat-card"><span class="label">Aktives Theme</span><strong id="statusTheme">—</strong></div>
+   <div class="stat-card"><span class="label">Helligkeit</span><strong id="statusBrightness">—</strong><a href="#" data-go="settingsDisplay">Display öffnen</a></div>
+   <div class="stat-card"><span class="label">Uhr / NTP</span><strong id="statusClock">—</strong><a href="#" data-go="settingsClock">Uhr einstellen</a></div>
+  </div>
+  <div class="home-actions"><button class="btn sec" type="button" data-go="wifi">WLAN einrichten</button><button class="btn sec" type="button" data-go="settingsThemes">Themes öffnen</button><button class="btn sec" type="button" data-go="update">System &amp; Firmware</button></div>
+  <details class="details"><summary>Technische Details</summary><div class="card"><div id="statusBox" class="muted">Wird geladen …</div></div></details>
+ </section>
+
+ <!-- WIFI -->
+ <section id="wifi" class="tab">
+  <div class="card"><h2>Gespeicherte WLAN-Netzwerke</h2>
+   <button class="btn sec" onclick="scan()">Netzwerke suchen</button>
+   <div id="scanList"></div>
+   <table id="wifiTable"></table>
+   <button class="btn sec" style="margin-top:10px" onclick="addWifi()">+ Netzwerk hinzufügen</button>
+   <div style="margin-top:14px"><button class="btn" onclick="saveWifi()">WLAN speichern und verbinden (Neustart)</button></div>
+   <small class="hint">Nur 2,4&nbsp;GHz. Bis zu vier Netzwerke; beim Start verbindet sich das Gerät mit dem stärksten erreichbaren. Tippe ein Suchergebnis an, um es zu übernehmen. Ein leeres Passwortfeld behält das gespeicherte Passwort.</small>
+  </div>
+  <div class="card"><h2>Gerätename</h2>
+   <label>Hostname</label><input id="hostname" type="text" placeholder="smalltv">
+   <small class="hint">Im Netzwerk unter <code>http://&lt;hostname&gt;.local</code> erreichbar. Verwende bei mehreren SmallTVs eindeutige Namen, zum Beispiel <code>smalltv-schreibtisch</code>. Ein neuer Name wird nach einem Neustart aktiv.</small>
+  </div>
+  <div class="card"><h2>Einrichtungs-Hotspot</h2>
+   <label>Hotspot-Name</label><input id="apSsid" type="text">
+   <label>Hotspot-Passwort <span class="muted">(mind. 8 Zeichen)</span></label>
+   <input id="apPass" type="text" placeholder="(unchanged)">
+   <div class="chk"><input id="apOpen" type="checkbox" onchange="apOpenChanged()"><label>Hotspot ohne Passwort öffnen</label></div>
+   <small class="hint">Der Hotspot startet, wenn kein WLAN eingerichtet ist oder die Verbindung fehlschlägt. Ein leeres Passwortfeld behält das gespeicherte Passwort. Aktiviere das Kästchen, um es zu löschen und den Hotspot zu öffnen.</small>
+  </div>
+ </section>
+
+ <!-- DISPLAY (shared) -->
+ <section id="display" class="tab">
+  <input id="mode" type="hidden" value="theme">
+  <div class="card" id="themeCard"><h2>Installierte Themes</h2>
+   <div class="row"><div><label for="themeSearch">Themes suchen</label><input id="themeSearch" type="search" placeholder="Name, Autor oder Kennung" oninput="renderThemeCards()"></div><div><label for="themeCategory">Kategorie</label><select id="themeCategory" onchange="renderThemeCards()"><option value="">Alle allgemeinen Themes</option><option value="weather">Wetter</option><option value="dashboard">Dashboard</option><option value="animation">Animation</option><option value="other">Sonstige</option></select></div></div>
+   <div id="themeGrid" class="theme-grid"></div>
+   <label>Einzelnes Theme (Rückfallanzeige)</label><select id="themeSelect" onchange="themeChoiceChanged()"></select>
+   <div style="margin-top:12px"><button class="btn" id="themeUseBtn" onclick="selectTheme()">Theme anzeigen</button>
+    <button class="btn" onclick="deleteTheme()">Entfernen</button></div>
+   <small class="hint" id="themeDetails"></small>
+   <label>Theme-Datei installieren</label><input id="themeFile" type="file" accept=".stheme">
+   <button class="btn" id="themeUploadBtn" onclick="installTheme()">.stheme installieren</button>
+   <small class="hint" id="themeStatus">Themes werden geladen …</small>
+   <small class="hint">Installiere ein .stheme-Paket und wähle es hier aus oder füge es der Playlist hinzu.</small>
+  </div>
+  <div class="card" id="themePlaylistCard" style="display:none"><h2>Theme-Playlist</h2>
+   <div class="chk"><input id="themePlaylistEnabled" type="checkbox" onchange="themePlaylistToggle()"><label>Themes automatisch nacheinander anzeigen</label></div>
+   <div class="chk"><input id="themePlaylistRandom" type="checkbox"><label>Zufällige Reihenfolge (ohne direkte Wiederholung)</label></div>
+   <label>Standard-Anzeigedauer für neu hinzugefügte Uhr-Themes: <span id="clockThemeDwellVal"></span> Sekunden</label>
+   <input id="clockThemeDwell" type="range" min="30" max="3600" step="30" oninput="clockThemeDwellVal.textContent=this.value">
+   <button class="btn sec" type="button" onclick="applyClockThemeDwell()">Standarddauer auf alle Uhr-Themes anwenden</button>
+   <div class="row" style="align-items:end;margin-top:12px">
+    <div><label>Installiertes Theme hinzufügen</label><select id="themePlaylistAdd"></select></div>
+    <button class="btn sec" type="button" onclick="themePlaylistAddItem()">Hinzufügen</button>
+   </div>
+   <div id="themePlaylistList" style="margin-top:12px"></div>
+   <small class="hint">Mit den Pfeilen sortieren und die Anzeigedauer je Theme (5 bis 3600 Sekunden) festlegen. Zeitfenster verwenden die konfigurierte Zeitzone und benötigen NTP-Sync; bei überlappenden Fenstern gewinnt der erste Playlist-Eintrag. Außerhalb aller Fenster erscheint das Rückfall-Theme. Änderungen werden mit „Einstellungen speichern“ gesichert.</small>
+  </div>
+  <div class="card"><h2>Bildschirm</h2>
+   <label>Helligkeit: <span id="brVal"></span>%</label>
+   <input id="brightness" type="range" min="0" max="100" oninput="brVal.textContent=this.value">
+   <label>Ausrichtung</label>
+   <select id="rotation"><option value="0">0&deg;</option><option value="1">90&deg;</option>
+    <option value="2">180&deg;</option><option value="3">270&deg;</option></select>
+   <div class="chk"><input id="backlightInverted" type="checkbox"><label>Hintergrundbeleuchtung ist invertiert (bei dunklem Bildschirm testen)</label></div>
+  </div>
+  <div class="card"><h2>Farben</h2>
+   <label>Farbreihenfolge</label>
+   <select id="colorOrder">
+    <option value="auto">Display-Standard</option>
+    <option value="rgb">RGB</option>
+    <option value="bgr">BGR (Rot und Blau tauschen)</option>
+   </select>
+   <div class="chk" style="margin-top:10px"><input id="colorInvert" type="checkbox"><label>Farben invertieren</label></div>
+   <label>Rot: <span id="rgVal"></span>%</label>
+   <input id="rGain" type="range" min="50" max="150" oninput="rgVal.textContent=this.value">
+   <label>Grün: <span id="ggVal"></span>%</label>
+   <input id="gGain" type="range" min="50" max="150" oninput="ggVal.textContent=this.value">
+   <label>Blau: <span id="bgVal"></span>%</label>
+   <input id="bGain" type="range" min="50" max="150" oninput="bgVal.textContent=this.value">
+   <label>Kontrast: <span id="contrastVal"></span>%</label><input id="contrast" type="range" min="0" max="200" oninput="contrastVal.textContent=this.value">
+   <label>Sättigung: <span id="saturationVal"></span>%</label><input id="saturation" type="range" min="0" max="200" oninput="saturationVal.textContent=this.value">
+   <label>Theme-Ebenen-Transparenz: <span id="themeOpacityVal"></span>%</label><input id="themeOpacityPct" type="range" min="0" max="100" oninput="themeOpacityVal.textContent=this.value">
+   <label>Theme-Hintergrund</label><input id="backgroundColor" type="color" value="#000000">
+   <div class="chk"><input id="backgroundEnabled" type="checkbox"><label>Eigene Hintergrundfarbe statt Theme-Farbe</label></div>
+   <div style="margin-top:10px"><button class="btn sec" onclick="resetColors()">Farbkorrektur zurücksetzen</button></div>
+   <small class="hint">Displays können Farben unterschiedlich wiedergeben. Passe die Farbkanäle bei einem Farbstich an. Wenn Rot und Blau vertauscht sind, ändere die Farbreihenfolge. Bei einem Negativbild aktiviere die Invertierung. Änderungen werden nach dem Speichern übernommen.</small>
+  </div>
+  <div class="card" id="buttonCard" data-page="settingsAdvanced" style="display:none"><h2>Gerätetaste</h2>
+   <label>Kurzer Tastendruck</label>
+   <select id="btnShort">
+    <option value="0">Keine Aktion</option>
+    <option value="1">Display ausschalten (ca. 1 s)</option>
+    <option value="2">Startseite anzeigen</option>
+    <option value="3">Nächste Seite (Karussell pausieren)</option>
+    <option value="4">Netzwerk / IP anzeigen</option>
+    <option value="5">Display einschalten</option>
+    <option value="6">Meldung bestätigen</option>
+   </select>
+   <label>Langer Tastendruck</label>
+   <select id="btnLong">
+    <option value="0">Keine Aktion</option>
+    <option value="1">Display ausschalten (ca. 1 s)</option>
+    <option value="2">Startseite anzeigen</option>
+    <option value="3">Nächste Seite (Karussell pausieren)</option>
+    <option value="4">Netzwerk / IP anzeigen</option>
+    <option value="5">Display einschalten</option>
+    <option value="6">Meldung bestätigen</option>
+   </select>
+   <label>Tastenempfindlichkeit: <span id="btnSensVal"></span>%</label>
+   <input id="btnSens" type="range" min="50" max="99" oninput="btnSensVal.textContent=this.value">
+   <small class="hint">Die Taste gilt als gedrückt, wenn der Messwert unter diesen Anteil des Ruhewerts fällt. Ein kleinerer Wert erfordert eine festere Berührung. „Nächste Seite“ pausiert das Karussell; „Startseite“ setzt es fort.</small>
+  </div>
+  <div class="card"><h2>Bildrate &amp; Energiesparen</h2>
+   <label>Display-Frequenz: <span id="panelRefreshHzVal"></span> Hz</label>
+   <select id="panelRefreshHz" onchange="panelRefreshHzVal.textContent=this.value">
+    <option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option><option>48</option><option>49</option><option>50</option><option>52</option><option>53</option><option>55</option><option>57</option><option>58</option><option>60</option>
+   </select>
+   <label>Theme-Aktualisierungslimit: <span id="refreshFpsVal"></span> FPS</label><input id="refreshFps" type="range" min="1" max="15" oninput="refreshFpsVal.textContent=this.value">
+   <div class="chk"><input id="animationsEnabled" type="checkbox"><label>Theme-Animationen aktivieren</label></div>
+   <label>Animationsgeschwindigkeit: <span id="animationSpeedVal"></span>%</label><input id="animationSpeedPct" type="range" min="25" max="200" oninput="animationSpeedVal.textContent=this.value">
+   <div class="chk"><input id="themeFadeTransition" type="checkbox"><label>Theme-Wechsel weich ein- und ausblenden</label></div>
+   <label>Übergangsdauer: <span id="themeTransitionVal"></span> ms</label><input id="themeTransitionMs" type="range" min="100" max="1000" step="50" oninput="themeTransitionVal.textContent=this.value">
+   <small class="hint">Die Display-Frequenz stellt die Bildwiederholrate des ST7789-Panels ein. Das Theme-Limit begrenzt separat, wie oft neue Inhalte gerendert werden. Für längere Standbilder kann die niedrigere Frequenz Strom sparen; bei Bewegung sind höhere Werte flüssiger.</small>
+  </div>
+  <div class="card" data-page="settingsClock"><h2>Uhr &amp; Nachtmodus</h2>
+   <div class="row"><div class="chk"><input id="use24Hour" type="checkbox"><label>24-Stunden-Format</label></div><div class="chk"><input id="showSeconds" type="checkbox"><label>Sekunden anzeigen</label></div></div>
+   <div class="chk"><input id="showDate" type="checkbox"><label>Datum und Wochentag anzeigen</label></div>
+   <label>Eigenes Datumsformat für das Theme-Token <code>{DATE}</code></label><input id="dateFormat" type="text" maxlength="48" placeholder="{WD}, {DD} {MON} {YYYY}">
+   <small class="hint">Das aktive Uhr-Theme muss <code>{DATE}</code> enthalten, damit dieses Format verwendet wird. Die übrigen Zeit-Tokens und das Layout bleiben vom Theme bestimmt.</small>
+   <label>Zeitzone</label>
+   <select id="tz"></select>
+   <div class="muted" id="clockNow" style="margin:8px 0">Uhr: –</div>
+   <div class="chk"><input id="nightEnabled" type="checkbox"><label>Display nachts dimmen oder ausschalten</label></div>
+   <div class="row">
+    <div><label>Von</label><input id="nightStart" type="time"></div>
+    <div><label>Bis</label><input id="nightEnd" type="time"></div>
+   </div>
+   <label>Nacht-Helligkeit: <span id="nlVal"></span>% <span class="muted">(0 = Display aus)</span></label>
+   <input id="nightLevel" type="range" min="0" max="100" oninput="nlVal.textContent=this.value">
+   <small class="hint">Für die erste NTP-Zeitsynchronisierung wird eine Internetverbindung benötigt. NTP liefert keine Zeitzone; wähle sie oben aus. Die Nachtregel gilt in dieser Zeitzone und überschreibt während des Zeitfensters die normale Helligkeit. Nach einem Neustart wird sie nach der Zeitsynchronisierung wieder aktiv.</small>
+  </div>
+  <div class="card" id="clockThemeCard" data-page="settingsClock"><h2>Uhr-Designs (.stheme)</h2>
+   <p>Diese Uhr-Themes verwenden die Uhr-Einstellungen oben: 12/24-Stunden-Format, Sekunden, Datum, Datumsformat und Zeitzone.</p>
+   <label for="clockThemeSearch">Uhr-Themes suchen</label><input id="clockThemeSearch" type="search" placeholder="Name, Autor oder Kennung" oninput="renderThemeCards('clock')">
+   <div id="clockThemeGrid" class="theme-grid"></div>
+   <label for="clockThemeFile">Uhr-Theme installieren</label><input id="clockThemeFile" type="file" accept=".stheme">
+   <button class="btn" id="clockThemeUploadBtn" type="button" onclick="installTheme('clockThemeFile')">Uhr-Theme installieren</button>
+   <small class="hint">Uhr-Pakete müssen in den Metadaten die Kategorie „Uhr“ (clock) tragen. Die Pakete liegen im gemeinsamen Theme-Speicher. Für automatische Wechsel füge sie unter Themes → Automatik zur Playlist hinzu; dort stellst du die jeweilige Anzeigedauer ein.</small>
+  </div>
+ </section>
+
+ <!-- UPDATE -->
+ <section id="update" class="tab">
+  <div class="card"><h2>Online-Update</h2>
+   <div class="muted">Installiert: <b id="fwVer">-</b></div>
+   <div style="margin-top:10px">
+    <button class="btn sec" onclick="checkUpdate()" id="chkBtn">Nach Update suchen</button>
+    <button class="btn" style="margin-left:8px" onclick="selfUpdate()" id="ghUpBtn" disabled>Jetzt aktualisieren</button>
+   </div>
+   <div id="ghMsg" class="muted" style="margin-top:8px"></div>
+   <small class="hint">Sucht nach einer neueren Version im Online-Repository. Das HTTPS-Update kann auf dem ESP8266 am knappen Arbeitsspeicher scheitern; nutze dann den manuellen Upload.</small>
+  </div>
+  <div class="card"><h2>Manuelles Firmware-Update (OTA)</h2>
+   <input id="fw" type="file" accept=".bin">
+   <div style="margin-top:12px"><button class="btn" onclick="upload()" id="upBtn">Firmware installieren</button></div>
+   <div class="bar"><div id="upBar"></div></div>
+   <div id="upMsg" class="muted" style="margin-top:8px"></div>
+   <small class="hint">Wähle eine passende SmallTV-Ultra-Datei mit der Endung <code>.bin</code>. Nach dem Upload startet das Gerät neu.</small>
+  </div>
+  <div class="card"><h2>Einstellungen sichern</h2>
+   <button class="btn sec" onclick="location.href='/api/export'">Einstellungen sichern</button>
+   <input id="cfgFile" type="file" accept=".json,application/json" style="margin-top:10px">
+   <div style="margin-top:10px"><button class="btn" onclick="importCfg()">Sicherung importieren und neu starten</button></div>
+   <small class="hint">Die Sicherung enthält die Gerätekonfiguration einschließlich WLAN-Passwörtern. Bewahre sie entsprechend geschützt auf. Beim Import wird das Gerät neu gestartet.</small>
+  </div>
+  <div class="card"><h2>Passwortschutz</h2>
+   <div class="chk"><input id="authEnabled" type="checkbox"><label>Diese Einstellungsseite mit Passwort schützen</label></div>
+   <label>Benutzername</label><input id="authUser" type="text" autocomplete="off" placeholder="admin">
+   <label>Passwort</label><input id="authPass" type="password" autocomplete="new-password" placeholder="(unverändert lassen)">
+   <small class="hint">Standardmäßig ist der Zugriff im lokalen Netzwerk ungeschützt. Mit Passwort werden Einstellungsseite, API und Firmware-Upload geschützt. Es gibt keine Passwort-Wiederherstellung; bei Verlust muss die Firmware neu geflasht werden.</small>
+  </div>
+  <div class="card"><h2>Wartung</h2>
+   <button class="btn sec" onclick="reboot()">Neu starten</button>
+   <button class="btn danger" style="margin-left:8px" onclick="factory()">Werkseinstellungen</button>
+  </div>
+ </section>
+</main>
+
+<div class="savebar"><div class="savebar-inner"><span id="saveStatus" class="save-status">Änderungen werden erst beim Speichern übernommen.</span><button class="btn" id="saveSettingsBtn" type="button" onclick="saveAll()">Änderungen speichern</button></div></div>
+<div style="text-align:center;padding:0 0 24px;font-size:12px">
+ <a id="footRepo" href="https://github.com/jamedegnato-kostal/smalltv-ultra-mod" target="_blank" rel="noopener" style="color:var(--acc2);text-decoration:none">Projektseite: SmallTV Settings Firmware</a>
+ <span id="footVer" class="muted"></span>
+</div>
+<div id="toast" class="toast"></div>
+<dialog id="themeInfoDialog" aria-labelledby="themeInfoTitle">
+ <h2 id="themeInfoTitle">Theme-Informationen bearbeiten</h2>
+ <input id="themeEditId" type="hidden">
+ <label for="themeEditName">Anzeigename</label><input id="themeEditName" type="text" maxlength="96">
+ <div class="row"><div><label for="themeEditAuthor">Autor</label><input id="themeEditAuthor" type="text" maxlength="96"></div><div><label for="themeEditVersion">Version</label><input id="themeEditVersion" type="text" maxlength="32"></div></div>
+ <label for="themeEditCategory">Kategorie</label><select id="themeEditCategory"><option value="clock">Uhr</option><option value="weather">Wetter</option><option value="dashboard">Dashboard</option><option value="animation">Animation</option><option value="other">Sonstiges</option></select>
+ <label for="themeEditDescription">Beschreibung</label><textarea id="themeEditDescription" maxlength="160"></textarea>
+ <label for="themeEditPreview">Vorschaubild-Pfad im Paket</label><input id="themeEditPreview" type="text" maxlength="120" placeholder="Leer lassen, um die Vorschau zu entfernen">
+ <small class="hint">Der Anzeigename ändert weder die stabile Theme-Kennung noch den Dateinamen. Der Vorschaubild-Pfad muss bereits als Bild im Paket enthalten sein.</small>
+ <div id="themeEditError" class="muted" role="status"></div>
+ <div class="dialog-actions"><button class="btn sec" type="button" onclick="closeThemeInfo()">Abbrechen</button><button class="btn" id="themeInfoSave" type="button" onclick="saveThemeInfo()">Speichern</button></div>
+</dialog>
+<dialog id="themeLayersDialog" aria-labelledby="themeLayersTitle">
+ <h2 id="themeLayersTitle">Ebenen-Reihenfolge</h2><p class="muted">Die Liste wird von hinten nach vorne gezeichnet. Verschiebe Ebenen mit den Pfeilen.</p>
+ <div id="themeLayerList"></div><div id="themeLayersError" class="muted" role="status"></div>
+ <div class="dialog-actions"><button class="btn sec" type="button" onclick="closeThemeLayers()">Abbrechen</button><button class="btn" id="themeLayersSave" type="button" onclick="saveThemeLayers()">Reihenfolge speichern</button></div>
+</dialog>
+
+<script>
+var C={};
+function $(id){return document.getElementById(id)}
+function markSettingsDirty(){var status=$('saveStatus');if(status){status.textContent='Ungespeicherte Konfigurationsänderungen';status.classList.add('dirty')}}
+function isPersistedSetting(target){
+ if(target.closest('dialog')||target.type==='file'||target.type==='search')return false;
+ return !['themeSearch','clockThemeSearch','themeCategory','themeSelect','themePlaylistAdd'].includes(target.id);
+}
+document.addEventListener('input',function(e){if(isPersistedSetting(e.target))markSettingsDirty()});
+document.addEventListener('change',function(e){if(isPersistedSetting(e.target))markSettingsDirty()});
+// Build this firmware's navigation from the existing settings cards. The
+// controls retain their original IDs and continue using the same config API.
+function arrangeSettingsPages(){
+ var display=$('display');if(!display)return;
+ var cards=Array.prototype.slice.call(display.querySelectorAll(':scope > .card'));
+ cards.forEach(function(card){
+  if(card.id==='themeCard'){$('themeLibrary').appendChild(card);return}
+  if(card.id==='themePlaylistCard'){$('themeAutomation').appendChild(card);return}
+  var page=$(card.dataset.page||'settingsDisplay');if(page)page.appendChild(card);
+ });
+ display.classList.remove('active');
+}
+arrangeSettingsPages();
+function showThemePane(id){document.querySelectorAll('.themePane').forEach(function(p){p.classList.toggle('active',p.id===id)});document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.classList.toggle('active',b.dataset.themePaneButton===id)});}
+document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.onclick=function(){showThemePane(b.dataset.themePaneButton)}});
+var themeModeButton=$('themeMode');
+if(themeModeButton){var savedThemeMode=localStorage.getItem('smalltv-ui-theme');if(savedThemeMode==='dark')document.body.classList.remove('light');themeModeButton.textContent=document.body.classList.contains('light')?'Dunkles Design':'Helles Design';themeModeButton.onclick=function(){document.body.classList.toggle('light');var light=document.body.classList.contains('light');localStorage.setItem('smalltv-ui-theme',light?'light':'dark');themeModeButton.textContent=light?'Dunkles Design':'Helles Design'};}
+// null-safe field helpers: a lean build removes some feature tabs entirely
+function sv(id,v){var e=$(id);if(e)e.value=(v!=null?v:'')}
+function sc(id,v){var e=$(id);if(e)e.checked=!!v}
+function gv(id){var e=$(id);return e?e.value:''}
+function gc(id){var e=$(id);return e?e.checked:false}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2200)}
+function j(url,opt){return fetch(url,opt).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Request failed');return d})})}
+var photoUploadXhr=null,photoUploadCancel=false;
+function fmtBytes(n){n=Number(n)||0;if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KiB';return (n/1048576).toFixed(2)+' MiB'}
+function loadPhotoLibrary(){var grid=$('photoGrid');if(!grid)return Promise.resolve();grid.innerHTML='<div class="muted">Fotobibliothek wird geladen …</div>';
+ return j('/api/photos').then(function(d){$('photoCount').textContent=d.count||0;$('photoBytes').textContent=fmtBytes(d.photoBytes);$('photoFree').textContent=fmtBytes(d.availableForPhotos);$('photoStorageTotal').textContent=fmtBytes(d.totalBytes);
+  if(!d.photos||!d.photos.length){grid.innerHTML='<div class="muted">Noch keine Fotos gespeichert.</div>';return}
+  grid.innerHTML=d.photos.map(function(p){return '<div class="photo-card"><img loading="lazy" src="/api/photos/file?id='+encodeURIComponent(p.id)+'" alt="Foto '+p.id+'"><div class="photo-meta"><span>#'+p.id+' · '+fmtBytes(p.bytes)+'</span><button class="btn danger" type="button" onclick="deletePhoto('+p.id+')" aria-label="Foto '+p.id+' löschen">Löschen</button></div></div>'}).join('');
+ }).catch(function(e){grid.innerHTML='<div class="muted">Fotobibliothek nicht erreichbar: '+esc(e.message)+'</div>'})}
+function photoToJpeg(file){return new Promise(function(resolve,reject){var src=URL.createObjectURL(file);var done=function(){URL.revokeObjectURL(src)};
+ var draw=function(img){try{var c=document.createElement('canvas');c.width=240;c.height=240;var side=Math.min(img.width,img.height),x=(img.width-side)/2,y=(img.height-side)/2;var ctx=c.getContext('2d',{alpha:false});ctx.drawImage(img,x,y,side,side,0,0,240,240);c.toBlob(function(blob){done();if(blob)resolve(blob);else reject(new Error('JPEG konnte nicht erzeugt werden'))},'image/jpeg',0.86)}catch(e){done();reject(e)}};
+ if(window.createImageBitmap){createImageBitmap(file).then(function(img){draw(img);if(img.close)img.close()}).catch(function(e){done();reject(new Error('Bild kann nicht gelesen werden: '+e.message))})}
+ else{var img=new Image();img.onload=function(){draw(img)};img.onerror=function(){done();reject(new Error('Bildformat kann im Browser nicht geöffnet werden'))};img.src=src}
+ })}
+function photoUploadOne(blob,index,total){return new Promise(function(resolve,reject){var fd=new FormData();fd.append('photo',blob,'photo.jpg');var xhr=new XMLHttpRequest();photoUploadXhr=xhr;
+ xhr.open('POST','/api/photos/upload');xhr.upload.onprogress=function(e){if(e.lengthComputable){var pct=(index+e.loaded/e.total)*100/total;$('photoProgress').value=Math.round(pct)}};
+ xhr.onload=function(){photoUploadXhr=null;var d={};try{d=JSON.parse(xhr.responseText||'{}')}catch(e){}if(xhr.status>=200&&xhr.status<300)resolve(d);else reject(new Error(d.error||('Upload fehlgeschlagen ('+xhr.status+')')))};
+ xhr.onerror=function(){photoUploadXhr=null;reject(new Error('Netzwerkfehler beim Upload'))};xhr.onabort=function(){photoUploadXhr=null;reject(new Error('Upload abgebrochen'))};xhr.send(fd)})}
+function uploadPhotos(){var input=$('photoFiles'),files=input&&input.files;if(!files||!files.length){toast('Wähle zuerst Bilder aus');return}
+ var btn=$('photoUploadButton'),cancel=$('photoCancelButton'),prog=$('photoProgress'),msg=$('photoMessage'),picked=Array.prototype.slice.call(files);photoUploadCancel=false;btn.disabled=true;cancel.disabled=false;prog.style.display='block';prog.value=0;msg.textContent='Bilder werden für das 240×240-Display vorbereitet …';
+ (async function(){var ok=0,errors=[];for(var i=0;i<picked.length;i++){if(photoUploadCancel)break;try{msg.textContent='Bild '+(i+1)+' von '+picked.length+' wird vorbereitet …';var blob=await photoToJpeg(picked[i]);if(photoUploadCancel)break;await photoUploadOne(blob,i,picked.length);ok++}catch(e){if(photoUploadCancel)break;errors.push(picked[i].name+': '+e.message)}}
+ btn.disabled=false;cancel.disabled=true;photoUploadXhr=null;input.value='';prog.style.display='none';await loadPhotoLibrary();
+ if(photoUploadCancel)msg.textContent='Upload abgebrochen. '+ok+' Foto(s) gespeichert.';else if(errors.length)msg.textContent=ok+' Foto(s) gespeichert; '+errors.length+' fehlgeschlagen: '+errors.slice(0,3).join(' · ');else msg.textContent=ok+' Foto(s) gespeichert.';
+ })()}
+function cancelPhotoUpload(){photoUploadCancel=true;if(photoUploadXhr)photoUploadXhr.abort()}
+function deletePhoto(id){if(!confirm('Dieses Foto löschen?'))return;j('/api/photos/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(loadPhotoLibrary).catch(function(e){toast('Löschen fehlgeschlagen: '+e.message)})}
+function deleteAllPhotos(){if(!confirm('Wirklich alle Fotos löschen? Diese Aktion kann nicht rückgängig gemacht werden.'))return;j('/api/photos/delete-all',{method:'POST'}).then(function(){toast('Alle Fotos gelöscht');loadPhotoLibrary()}).catch(function(e){toast('Löschen fehlgeschlagen: '+e.message)})}
+
+// tabs
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){
+ showTab(b.dataset.t);
+}});
+function showTab(id){
+ document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.t===id)});
+ document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('active',x.id===id)});
+}
+document.querySelectorAll('[data-go]').forEach(function(b){b.onclick=function(){showTab(b.dataset.go)}});
+var helpToggle=$('helpToggle'); if(helpToggle)helpToggle.onclick=function(){
+ var open=document.body.classList.toggle('show-help');helpToggle.textContent=open?'Tipps ausblenden':'Tipps einblenden';helpToggle.setAttribute('aria-expanded',open?'true':'false');
+};
+
+// field groups by their location in the nested config
+var T_TEXT=['webhookUrl','range'];                   // ticker strings
+var T_NUM=['rotateSec','pollSec','points'];          // ticker numbers
+var T_BOOL=['showName','showPrice','showChange','showChart','showRangeLabel','showUpdatedAgo','showPageDots','showPortfolio'];
+
+// IANA -> POSIX TZ. The device stores/uses the POSIX rule; this map lives in the
+// browser so the firmware carries no tz database (same idea as the cash finder).
+var TZMAP={
+ '':'UTC0','UTC':'UTC0',
+ 'Europe/London':'GMT0BST,M3.5.0/1,M10.5.0','Europe/Dublin':'GMT0IST,M3.5.0/1,M10.5.0',
+ 'Europe/Lisbon':'WET0WEST,M3.5.0/1,M10.5.0',
+ 'Europe/Rome':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Paris':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Berlin':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Madrid':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Amsterdam':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Brussels':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Zurich':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Vienna':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Warsaw':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Prague':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Stockholm':'CET-1CEST,M3.5.0,M10.5.0/3','Europe/Oslo':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Copenhagen':'CET-1CEST,M3.5.0,M10.5.0/3',
+ 'Europe/Athens':'EET-2EEST,M3.5.0/3,M10.5.0/4','Europe/Helsinki':'EET-2EEST,M3.5.0/3,M10.5.0/4',
+ 'Europe/Bucharest':'EET-2EEST,M3.5.0/3,M10.5.0/4','Europe/Kyiv':'EET-2EEST,M3.5.0/3,M10.5.0/4',
+ 'Europe/Istanbul':'<+03>-3','Europe/Moscow':'MSK-3',
+ 'America/New_York':'EST5EDT,M3.2.0,M11.1.0','America/Toronto':'EST5EDT,M3.2.0,M11.1.0',
+ 'America/Chicago':'CST6CDT,M3.2.0,M11.1.0','America/Denver':'MST7MDT,M3.2.0,M11.1.0',
+ 'America/Phoenix':'MST7','America/Los_Angeles':'PST8PDT,M3.2.0,M11.1.0',
+ 'America/Anchorage':'AKST9AKDT,M3.2.0,M11.1.0','America/Sao_Paulo':'<-03>3',
+ 'America/Mexico_City':'CST6','America/Bogota':'<-05>5','America/Argentina/Buenos_Aires':'<-03>3',
+ 'Asia/Dubai':'<+04>-4','Asia/Karachi':'PKT-5','Asia/Kolkata':'IST-5:30',
+ 'Asia/Dhaka':'<+06>-6','Asia/Bangkok':'<+07>-7','Asia/Jakarta':'WIB-7',
+ 'Asia/Shanghai':'CST-8','Asia/Hong_Kong':'HKT-8','Asia/Singapore':'<+08>-8',
+ 'Asia/Taipei':'CST-8','Asia/Tokyo':'JST-9','Asia/Seoul':'KST-9',
+ 'Australia/Perth':'AWST-8','Australia/Sydney':'AEST-10AEDT,M10.1.0,M4.1.0/3',
+ 'Australia/Adelaide':'ACST-9:30ACDT,M10.1.0,M4.1.0/3','Australia/Brisbane':'AEST-10',
+ 'Pacific/Auckland':'NZST-12NZDT,M9.5.0,M4.1.0/3','Pacific/Honolulu':'HST10'};
+function fillTz(){var s=$('tz');if(!s)return;var keys=Object.keys(TZMAP).filter(function(k){return k!==''});
+ keys.sort();s.innerHTML='<option value="">UTC</option>'+keys.map(function(k){return '<option value="'+k+'">'+k+'</option>'}).join('');}
+
+// The AP password is never read back into the form, so a blank field cannot be
+// told apart from "the user cleared it". Blank therefore keeps the stored one,
+// as the WiFi rows do, and the checkbox is the explicit way to clear it.
+function apOpenChanged(){var o=$('apOpen'),p=$('apPass');if(!o||!p)return;
+ p.disabled=o.checked; if(o.checked)p.value='';}
+
+// panel colour gains: slider + its live percentage label
+function setGain(id,lab,v){var n=(v!=null?v:100);sv(id,n);var e=$(lab);if(e)e.textContent=n}
+// Reset the numeric colour correction while preserving panel wiring options.
+function resetColors(){setGain('rGain','rgVal',100);setGain('gGain','ggVal',100);setGain('bGain','bgVal',100);
+ sv('contrast',100);if($('contrastVal'))$('contrastVal').textContent='100';sv('saturation',100);if($('saturationVal'))$('saturationVal').textContent='100';
+ toast('Farbkorrektur neutral gesetzt – Einstellungen speichern')}
+function loadConfig(){return j('/api/config').then(function(c){C=c;
+ var f=c.features||{};
+ if(f.theme!==true){['themeCard','themePlaylistCard','clockThemeCard'].forEach(function(id){var card=$(id);if(card)card.remove()})}else{loadThemes()}
+ if(f.themePlaylist===true){var pc=$('themePlaylistCard');if(pc)pc.style.display='block'}
+ if(f.photos===true){var ph=c.photoPlayback||{};sc('photoPlaybackEnabled',ph.enabled!==false);sv('photosPerTheme',ph.perTheme||3);sv('photoDwellSeconds',ph.dwellSeconds!=null?ph.dwellSeconds:10);loadPhotoLibrary()}
+ else{var pn=document.querySelector('nav button[data-t="photos"]'),ps=$('photos');if(pn)pn.remove();if(ps)ps.remove()}
+ // Physical button card: only on boards that wire one
+ if(f.button===true){var bc=$('buttonCard'); if(bc)bc.style.display='block';
+  var b=c.button||{};
+  sv('btnShort',b.shortAction!=null?b.shortAction:3);
+  sv('btnLong',b.longAction!=null?b.longAction:4);
+  sv('btnSens',b.sensitivity!=null?b.sensitivity:85);
+  $('btnSensVal')&&($('btnSensVal').textContent=(b.sensitivity!=null?b.sensitivity:85));
+ }
+ var t=c.ticker||{}, u=c.usage||{};
+ // shared
+ ['apSsid','hostname'].forEach(function(k){$(k).value=c[k]!=null?c[k]:''});
+ renderWifi(c.wifi||(c.staSsid?[{ssid:c.staSsid,passSet:c.staPassSet}]:[]));
+ $('brightness').value=c.brightness; $('brVal').textContent=c.brightness;
+ $('rotation').value=c.rotation;
+ $('backlightInverted').checked=!!c.backlightInverted;
+ // panel colour slice
+ var dp=c.display||{};
+ sv('colorOrder',dp.colorOrder||'auto'); sc('colorInvert',!!dp.invert);
+ setGain('rGain','rgVal',dp.rGain); setGain('gGain','ggVal',dp.gGain); setGain('bGain','bgVal',dp.bGain);
+ sv('contrast',dp.contrast==null?100:dp.contrast); if($('contrastVal'))$('contrastVal').textContent=gv('contrast');
+ sv('saturation',dp.saturation==null?100:dp.saturation); if($('saturationVal'))$('saturationVal').textContent=gv('saturation');
+ sv('themeOpacityPct',dp.themeOpacityPct==null?100:dp.themeOpacityPct);if($('themeOpacityVal'))$('themeOpacityVal').textContent=gv('themeOpacityPct');
+ sv('backgroundColor',dp.backgroundColor||'#000000'); sc('backgroundEnabled',!!dp.backgroundEnabled);
+ sv('refreshFps',dp.refreshFps||15); if($('refreshFpsVal'))$('refreshFpsVal').textContent=gv('refreshFps');
+ sv('panelRefreshHz',dp.panelRefreshHz||60); if($('panelRefreshHzVal'))$('panelRefreshHzVal').textContent=gv('panelRefreshHz');
+ sc('animationsEnabled',dp.animationsEnabled!==false);sv('animationSpeedPct',dp.animationSpeedPct||100);if($('animationSpeedVal'))$('animationSpeedVal').textContent=gv('animationSpeedPct');
+ sc('themeFadeTransition',!!dp.themeFadeTransition);sv('themeTransitionMs',dp.themeTransitionMs||300);if($('themeTransitionVal'))$('themeTransitionVal').textContent=gv('themeTransitionMs');
+ // header chip = which chip this firmware was built for
+ var chipName={esp8266:'ESP8266',esp32c2:'ESP32-C2',esp32:'ESP32'}[c.chip]||'';
+ var chE=$('chip'); if(chE&&chipName){chE.textContent=chipName;chE.style.display='inline-block';}
+ // clock slice
+ fillTz(); var ck=c.clock||{};
+ sc('use24Hour',ck.use24Hour!==false);sc('showSeconds',ck.showSeconds!==false);sc('showDate',ck.showDate!==false);sv('dateFormat',ck.dateFormat||'{WD}, {DD} {MON} {YYYY}');
+ if(ck.tz && !(ck.tz in TZMAP)){var _ts=$('tz'); if(_ts){var _o=document.createElement('option');_o.value=ck.tz;_o.textContent=ck.tz;_ts.appendChild(_o);}}
+ sv('tz',ck.tz||''); sc('nightEnabled',!!ck.nightEnabled);
+ sv('nightStart',ck.nightStart||'22:00'); sv('nightEnd',ck.nightEnd||'07:00');
+ sv('nightLevel',ck.nightLevel!=null?ck.nightLevel:0); $('nlVal')&&($('nlVal').textContent=(ck.nightLevel!=null?ck.nightLevel:0));
+ $('mode').value=f.theme===true?'theme':'';
+ C.mode=f.theme===true?'theme':'';
+ var tp=c.themePlaylist||{};sc('themePlaylistEnabled',!!tp.enabled);
+ sc('themePlaylistRandom',!!tp.random);
+ sv('clockThemeDwell',tp.clockDefaultSeconds||300);if($('clockThemeDwellVal'))$('clockThemeDwellVal').textContent=gv('clockThemeDwell');
+ themePlaylistItems=Array.isArray(tp.items)?tp.items.map(function(x){return {id:String(x.id||''),seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||30)),scheduled:!!x.scheduled,startMinute:Math.max(0,Math.min(1439,parseInt(x.startMinute,10)||0)),endMinute:Math.max(0,Math.min(1439,parseInt(x.endMinute,10)||0))}}):[];
+ renderThemePlaylist();
+ // HA / MQTT slice
+ var h=c.ha||{};
+ sv('haBrokerHost',h.brokerHost); sv('haBrokerPort',h.brokerPort||1883);
+ sv('haBrokerUser',h.brokerUser); sv('haDwellSec',h.dwellSec!=null?h.dwellSec:15);
+ var hp=$('haBrokerPass'); if(hp){hp.value='';hp.placeholder=h.passSet?'(unchanged)':'(optional)';}
+ // ticker slice
+ T_TEXT.forEach(function(k){sv(k,t[k])});
+ T_NUM.forEach(function(k){sv(k,t[k])});
+ T_BOOL.forEach(function(k){sc(k,t[k])});
+ sv('colorInverted',t.colorInverted?'true':'false');
+ sv('changeOnRange',t.changeOnRange===false?'false':'true');
+ renderSyms(t.symbols||[]); symHintFor('yahoo');
+ // usage slice
+ sv('usageUrl',u.usageUrl);
+ sv('usagePollSec',u.pollSec);
+ sc('usageHide5h',u.hide5h);
+ // radar slice
+ var r=c.radar||{};
+ sv('radarLat',r.lat); sv('radarLon',r.lon);
+ // An imported config can carry any range from 1 to 500, and a value the list
+ // does not offer would leave the select blank. Add it rather than lose it.
+ var _rk=r.rangeKm||20, _rs=$('rangeKm');
+ if(_rs&&!_rs.querySelector('option[value="'+_rk+'"]')){var _ro=document.createElement('option');
+  _ro.value=_rk;_ro.textContent=_rk;_rs.appendChild(_ro);}
+ sv('rangeKm',_rk);
+ sv('unitsMi',r.unitsMi?'true':'false');
+ sv('radarPollSec',r.pollSec);
+ sv('radarSource',r.source||'adsblol'); radarSrcChanged();
+ sv('radarWebhookUrl',r.webhookUrl);
+ sc('showLabels',r.showLabels); sc('showVectors',r.showVectors); sc('showRimDots',r.showRimDots);
+ sv('radarUiScale',r.uiScale!=null?r.uiScale:1);
+ sv('radarMinAlt',r.minAltFt!=null?r.minAltFt:0);
+ renderAps(r.airports||[]);
+ var au=c.auth||{};
+ sc('authEnabled',!!au.enabled); sv('authUser',au.user||'admin');
+ var apw=$('authPass'); if(apw){apw.value='';apw.placeholder=au.passSet?'(unchanged)':'set a password';}
+ var ap=$('apPass'); if(ap){ap.value='';ap.placeholder=c.apPassSet?'(unchanged)':'(open)';}
+ sc('apOpen',!c.apPassSet); apOpenChanged();
+})}
+
+function esc(s){return (''+(s==null?'':s)).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function symHintFor(v){var h=$('symHint');if(!h)return;
+ h.innerHTML=(v==='cash'
+  ?'<b>cash.ch</b>: fetched directly by the device. The symbol is a listing key like <code>123456789-246-333</code>; the finder below turns a cash.ch link, ISIN, or name into one.'
+   +(C.chip==='esp8266'?' <b>On this ESP8266</b>, cash.ch\'s TLS is tight on this chip &mdash; if it proves unstable, use the <b>GitHub</b> source for the same listing key instead. The ESP32 boards fetch cash.ch directly.':'')
+  :v==='github'
+  ?'<b>GitHub</b>: reads a listing key\'s quote from a small static JSON published to a repo\'s <code>data</code> branch (a proxy for cash.ch on chips that can\'t reach it directly). The symbol is the cash.ch listing key. You publish the files yourself from a fork &mdash; the repo ships the example fetcher (<code>fetch-quotes.mjs</code> + <code>quotes-config.json</code>); see the docs.'
+  :v==='webhook'
+  ?'<b>Webhook</b>: the device asks the webhook URL above and passes the symbol through as-is, so use whatever your endpoint understands.'
+  :'<b>Yahoo Finance</b>: fetched directly by the device. Use Yahoo symbols: <code>AAPL</code>, <code>NESN.SW</code> (Swiss stocks end in <code>.SW</code>), <code>BTC-USD</code>, <code>EURUSD=X</code>.')
+  +' Name is optional; if set it overrides the source\'s name. Qty and per-unit cost are optional too: set both and the ticker shows your P/L plus a portfolio summary page.';}
+
+// cash.ch symbol finder: runs in YOUR browser (cash.ch answers cross-origin),
+// the device itself is not involved in the search.
+function cashFind(){var q=gv('cashQ').trim();if(!q){toast('Paste a link, ISIN, or name first');return}
+ var m=q.match(/^https?:\/\/\S*?(\d{5,12})/); if(m)q=m[1];   // a cash.ch link carries the valor in its slug
+ $('cashRes').innerHTML='<div class="muted">Searching cash.ch...</div>';
+ var gq='query{textSearch(publication:CASH,search:"'+q.replace(/["\\]/g,'')+'",sort:Relevance,sortOrder:Descending,limit:10,offset:0){'+
+  'equity{items{...on Equity{listingId mName market mCur mIsin}}} fund{items{...on Fund{listingId mName market mCur mIsin}}} '+
+  'derivative{items{...on Derivative{listingId mName market mCur mIsin}}} bond{items{...on Bond{listingId mName market mCur mIsin}}} '+
+  'index{items{...on Index{listingId mName market mCur}}} diverse{items{...on Diverse{listingId mName market mCur mIsin}}} '+
+  'cryptoCurrency{items{...on CryptoCurrency{listingId mName market mCur}}}}}';
+ fetch('https://www.cash.ch/_/api/graphql/prod?query='+encodeURIComponent(gq))
+ .then(function(r){return r.json()})
+ .then(function(d){var out=[];var b=(d.data&&d.data.textSearch)||{};
+  ['equity','derivative','fund','bond','index','diverse','cryptoCurrency'].forEach(function(k){
+   ((b[k]&&b[k].items)||[]).forEach(function(it){if(it&&it.listingId)out.push(it)});});
+  if(!out.length){$('cashRes').innerHTML='<div class="muted">Nothing found on cash.ch</div>';return}
+  var h='';out.slice(0,10).forEach(function(it){
+   h+='<div class="net" onclick="cashPick(this.dataset.k)" data-k="'+esc(it.listingId)+'"><span>'+esc(it.mName||'?')+
+    ' <span class="muted">'+esc(it.mIsin||'')+'</span></span><span class="muted">'+esc(it.market||'')+' '+esc(it.mCur||'')+'</span></div>';});
+  $('cashRes').innerHTML=h;
+ }).catch(function(){$('cashRes').innerHTML='<div class="muted">cash.ch not reachable from this browser</div>'});}
+function cashPick(k){var rows=document.querySelectorAll('#symTable tr');var tr=null;
+ for(var i=0;i<rows.length;i++){if(!rows[i].querySelector('.s').value.trim()){tr=rows[i];break}}
+ if(!tr){if(rows.length>=8){toast('Max 8');return}addRow({});tr=$('symTable').lastChild}
+ tr.querySelector('.s').value=k;tr.querySelector('.src').value='cash';symHintFor('cash');
+ toast('Added '+k+'. Set a name, then Save.');}
+function radarSrcChanged(){if(!$('radarSource'))return;var v=$('radarSource').value;
+ $('radarWebhookRow').style.display=(v==='webhook')?'block':'none';
+ $('radarSrcHint').innerHTML=
+  (v==='adsblol')?'The device fetches <b>adsb.lol</b> directly over HTTPS (no key, ~1 req/s). Recommended on the ESP8266: adsb.lol negotiates a small TLS record size, so the handshake fits in RAM.'
+ :(v==='adsbfi') ?'The device fetches <b>adsb.fi</b> directly over HTTPS (no key, ~1 req/s). Fine on the ESP32, but adsb.fi now sits behind Cloudflare and sends TLS records too large for the ESP8266 — pick adsb.lol or the webhook there.'
+ :'The device requests <code>?lat=..&amp;lon=..&amp;dist=..</code> from your LAN proxy, which pre-filters the feed to a small JSON. Most reliable on the ESP8266.';}
+
+function collect(){
+ var o={mode:gv('mode'),
+  brightness:parseInt(gv('brightness'))||0,
+  rotation:parseInt(gv('rotation')),
+  backlightInverted:gc('backlightInverted'),
+  hostname:gv('hostname'), apSsid:gv('apSsid'),
+  display:{colorOrder:gv('colorOrder')||'auto', invert:gc('colorInvert'),
+   rGain:parseInt(gv('rGain'))||100, gGain:parseInt(gv('gGain'))||100, bGain:parseInt(gv('bGain'))||100,
+   contrast:parseInt(gv('contrast'))||0,saturation:parseInt(gv('saturation'))||0,themeOpacityPct:parseInt(gv('themeOpacityPct')),backgroundColor:gv('backgroundColor'),backgroundEnabled:gc('backgroundEnabled'),
+   refreshFps:parseInt(gv('refreshFps'))||15,panelRefreshHz:parseInt(gv('panelRefreshHz'))||60,animationsEnabled:gc('animationsEnabled'),animationSpeedPct:parseInt(gv('animationSpeedPct'))||100,themeFadeTransition:gc('themeFadeTransition'),themeTransitionMs:parseInt(gv('themeTransitionMs'))||300},
+  wifi:collectWifi()};
+ if($('photoPlaybackEnabled'))o.photoPlayback={enabled:gc('photoPlaybackEnabled'),perTheme:parseInt(gv('photosPerTheme'))||3,dwellSeconds:parseInt(gv('photoDwellSeconds'))||0};
+ if($('themePlaylistCard')&&$('themePlaylistCard').style.display!=='none'){
+  o.themePlaylist={enabled:gc('themePlaylistEnabled'),random:gc('themePlaylistRandom'),clockDefaultSeconds:parseInt(gv('clockThemeDwell'))||300,items:themePlaylistItems.map(function(x){return {id:x.id,seconds:x.seconds,scheduled:x.scheduled,startMinute:x.startMinute,endMinute:x.endMinute}})};
+ }
+ // Web UI password: same blank-keeps-stored rule as everywhere else. The
+ // firmware refuses to enable it without a stored password to check against.
+ if($('authEnabled')){var _a={enabled:gc('authEnabled'), user:gv('authUser')||'admin'};
+  var _ap2=gv('authPass'); if(_ap2)_a.pass=_ap2; o.auth=_a;}
+ // Only send apPass when there is something to say: the typed value, or an
+ // explicit empty string when the user asked for an open hotspot. Sending the
+ // blank field unconditionally used to wipe the stored password on every save.
+ if(gc('apOpen')) o.apPass='';
+ else { var _ap=gv('apPass'); if(_ap) o.apPass=_ap; }
+ // Physical button: only send when the board exposes one (card visible).
+ if($('buttonCard') && $('buttonCard').style.display!=='none'){
+  o.button={shortAction:parseInt(gv('btnShort')), longAction:parseInt(gv('btnLong')),
+   sensitivity:parseInt(gv('btnSens'))||85};
+ }
+ // ticker slice (only if compiled in)
+ if($('ticker')){
+  var t={colorInverted:gv('colorInverted')==='true',changeOnRange:gv('changeOnRange')==='true'};
+  T_TEXT.forEach(function(k){t[k]=gv(k)});
+  T_NUM.forEach(function(k){t[k]=parseInt(gv(k))||0});
+  T_BOOL.forEach(function(k){t[k]=gc(k)});
+  t.symbols=[];
+  document.querySelectorAll('#symTable tr').forEach(function(tr){
+   var s=tr.querySelector('.s').value.trim();
+   if(s)t.symbols.push({symbol:s,name:tr.querySelector('.n').value.trim(),source:tr.querySelector('.src').value,
+    qty:parseFloat(tr.querySelector('.q').value)||0,cost:parseFloat(tr.querySelector('.c').value)||0});
+  });
+  o.ticker=t;
+ }
+ // usage slice
+ if($('usage')) o.usage={usageUrl:gv('usageUrl'), pollSec:parseInt(gv('usagePollSec'))||0, hide5h:gc('usageHide5h')};
+ // HA / MQTT slice (blank password keeps the stored one, so only send what was typed)
+ if($('ha')){var _h={brokerHost:gv('haBrokerHost'),brokerPort:parseInt(gv('haBrokerPort'))||1883,
+  brokerUser:gv('haBrokerUser'),dwellSec:parseInt(gv('haDwellSec'))||15};
+  var _hp=gv('haBrokerPass'); if(_hp)_h.brokerPass=_hp; o.ha=_h;}
+ // clock slice
+ if($('tz')){var _tzn=gv('tz'); var _tzp=(_tzn in TZMAP)?TZMAP[_tzn]:((C.clock&&C.clock.tz===_tzn&&C.clock.tzPosix)?C.clock.tzPosix:'UTC0');
+  o.clock={tz:_tzn,tzPosix:_tzp,use24Hour:gc('use24Hour'),showSeconds:gc('showSeconds'),showDate:gc('showDate'),dateFormat:gv('dateFormat'),
+  nightEnabled:gc('nightEnabled'),nightStart:gv('nightStart')||'22:00',
+  nightEnd:gv('nightEnd')||'07:00',nightLevel:parseInt(gv('nightLevel'))||0};}
+ // radar slice
+ if($('radar')){
+  var r={lat:parseFloat(gv('radarLat'))||0, lon:parseFloat(gv('radarLon'))||0,
+   rangeKm:parseInt(gv('rangeKm'))||20, unitsMi:gv('unitsMi')==='true',
+   pollSec:parseInt(gv('radarPollSec'))||0, source:gv('radarSource'),
+   webhookUrl:gv('radarWebhookUrl'),
+   showLabels:gc('showLabels'), showVectors:gc('showVectors'), showRimDots:gc('showRimDots'),
+   uiScale:parseInt(gv('radarUiScale'))||0, minAltFt:parseInt(gv('radarMinAlt'))||0};
+  r.airports=[];
+  document.querySelectorAll('#apTable tr').forEach(function(tr){
+   var ic=tr.querySelector('.ai').value.trim();
+   if(ic)r.airports.push({icao:ic,lat:parseFloat(tr.querySelector('.ala').value)||0,lon:parseFloat(tr.querySelector('.alo').value)||0});
+  });
+  o.radar=r;
+ }
+ return o;
+}
+function saveAll(){var btn=$('saveSettingsBtn'),status=$('saveStatus');if(btn)btn.disabled=true;if(status){status.textContent='Speichert …';status.classList.remove('dirty')}
+ j('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())})
+ .then(function(r){if(status)status.textContent=r.reboot?'Gespeichert · Neustart läuft':'Alle Änderungen gespeichert';toast(r.reboot?'Gespeichert — Neustart läuft …':'Einstellungen gespeichert');if(r.reboot)setTimeout(function(){location.reload()},6000);loadStatus()})
+ .catch(function(e){if(status){status.textContent='Speichern fehlgeschlagen';status.classList.add('dirty')}toast('Speichern fehlgeschlagen: '+e.message)})
+ .finally(function(){if(btn)btn.disabled=false})}
+
+function saveWifi(){
+ var o={wifi:collectWifi()};
+ j('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){
+  if(!r.ok){toast(r.error||'Speichern fehlgeschlagen');return}
+  toast('Gespeichert, Neustart zum Verbinden …');j('/api/reboot',{method:'POST'});
+ }).catch(function(e){toast('Speichern fehlgeschlagen: '+e.message)});
+}
+
+// wifi networks (up to 4)
+function renderWifi(arr){var t=$('wifiTable');if(!t)return;t.innerHTML='';arr.forEach(addWifiRow);if(!arr.length)addWifiRow({})}
+function addWifiRow(o){var t=$('wifiTable');var tr=document.createElement('tr');tr.className='symrow';
+ tr.innerHTML='<td style="width:44%"><input class="ws" type="text" autocomplete="off" placeholder="SSID" value="'+esc(o.ssid||'')+'"></td>'+
+  '<td><input class="wp" type="password" autocomplete="off" placeholder="'+(o.passSet?'(unchanged)':'password')+'"></td>'+
+  '<td style="width:34px"><button class="btn sec" style="padding:6px 10px" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
+ t.appendChild(tr);}
+function addWifi(){if(document.querySelectorAll('#wifiTable tr').length>=4){toast('Max 4');return}addWifiRow({})}
+function collectWifi(){var w=[];document.querySelectorAll('#wifiTable tr').forEach(function(tr){
+ var s=tr.querySelector('.ws').value;if(!s.trim())return; // SSIDs may end in spaces: keep them as typed
+ var e={ssid:s};var p=tr.querySelector('.wp').value;if(p)e.pass=p;w.push(e);});return w}
+function scanPick(ssid){var rows=document.querySelectorAll('#wifiTable tr');var tr=null;
+ for(var i=0;i<rows.length;i++){if(!rows[i].querySelector('.ws').value.trim()){tr=rows[i];break}}
+ if(!tr){if(rows.length>=4){toast('Max 4');return}addWifiRow({});tr=$('wifiTable').lastChild}
+ tr.querySelector('.ws').value=ssid;tr.querySelector('.wp').focus();}
+
+// symbols
+function renderSyms(arr){var t=$('symTable');if(!t)return;t.innerHTML='';arr.forEach(addRow);if(!arr.length)addRow({})}
+function addRow(o){var t=$('symTable');var tr=document.createElement('tr');tr.className='symrow';
+ tr.innerHTML='<td style="width:24%"><input class="s" type="text" placeholder="AAPL" value="'+esc(o.symbol||'')+'"></td>'+
+  '<td><input class="n" type="text" placeholder="name" value="'+esc(o.name||'')+'"></td>'+
+  '<td style="width:118px"><select class="src" onchange="symHintFor(this.value)">'+
+   '<option value="yahoo">Yahoo Finance</option><option value="cash">cash.ch</option><option value="github">GitHub</option><option value="webhook">Webhook</option></select></td>'+
+  '<td style="width:58px"><input class="q" type="number" step="any" min="0" placeholder="qty" value="'+(o.qty>0?o.qty:'')+'"></td>'+
+  '<td style="width:70px"><input class="c" type="number" step="any" min="0" placeholder="cost" value="'+(o.cost>0?o.cost:'')+'"></td>'+
+  '<td style="width:34px"><button class="btn sec" style="padding:6px 10px" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
+ tr.querySelector('.src').value=o.source||'yahoo';
+ t.appendChild(tr);}
+function addSym(){if(document.querySelectorAll('#symTable tr').length>=8){toast('Max 8');return}addRow({})}
+
+// airports
+function renderAps(arr){var t=$('apTable');if(!t)return;t.innerHTML='';arr.forEach(addApRow);if(!arr.length)addApRow({})}
+function addApRow(o){var t=$('apTable');var tr=document.createElement('tr');tr.className='symrow';
+ tr.innerHTML='<td style="width:30%"><input class="ai" type="text" placeholder="LSZH" value="'+(o.icao||'')+'"></td>'+
+  '<td><input class="ala" type="number" step="0.0001" placeholder="lat" value="'+(o.lat!=null?o.lat:'')+'"></td>'+
+  '<td><input class="alo" type="number" step="0.0001" placeholder="lon" value="'+(o.lon!=null?o.lon:'')+'"></td>'+
+  '<td style="width:34px"><button class="btn sec" style="padding:6px 10px" onclick="this.closest(\'tr\').remove()">&times;</button></td>';
+ t.appendChild(tr);}
+function addAp(){if(document.querySelectorAll('#apTable tr').length>=6){toast('Max 6');return}addApRow({})}
+
+// wifi scan
+function scan(){$('scanList').innerHTML='<div class="muted">Suche läuft …</div>';
+ j('/api/scan').then(function(l){var h='';l.sort(function(a,b){return b.rssi-a.rssi});
+  l.forEach(function(n){h+='<div class="net" onclick="scanPick(this.dataset.s)" data-s="'+
+   esc(n.ssid)+'"><span>'+(n.enc?'🔒 ':'')+esc(n.ssid)+'</span><span class="muted">'+n.rssi+' dBm</span></div>'});
+  $('scanList').innerHTML=h||'<div class="muted">Keine Netzwerke gefunden</div>';})}
+
+// status
+// The device answers one request at a time and keeps the others waiting in
+// its small memory, so the status is read politely: the next read is timed
+// from the end of the last one (a slow device is not asked again while it is
+// still answering), a lost reply is given up after STATUS_TIMEOUT_MS, and a
+// hidden tab stops asking until it is shown again.
+var STATUS_MS=5000,STATUS_TIMEOUT_MS=8000,statusTimer=0,statusRead=null;
+function loadStatus(){
+ clearTimeout(statusTimer);statusTimer=0;
+ if(statusRead)return statusRead;   // one is under way; it schedules the next
+ var ac=new AbortController(),kill=setTimeout(function(){ac.abort()},STATUS_TIMEOUT_MS);
+ statusRead=j('/api/status',{signal:ac.signal}).then(showStatus).catch(function(){}).then(function(){
+  clearTimeout(kill);statusRead=null;statusNext()});
+ return statusRead;
+}
+function statusNext(){clearTimeout(statusTimer);statusTimer=0;if(!document.hidden)statusTimer=setTimeout(loadStatus,STATUS_MS)}
+document.addEventListener('visibilitychange',function(){
+ if(document.hidden){clearTimeout(statusTimer);statusTimer=0}else loadStatus()});
+function showStatus(s){
+ $('dot').className='dot'+(s.connected?' ok':'');
+ $('hi').textContent=s.mode==='ap'?'Einrichtungsmodus':(s.ip||'');
+ var pill=$('statusPill'); if(pill){pill.textContent=s.mode==='ap'?'Einrichtungsmodus':(s.connected?'Verbunden':'Offline');pill.className='status-pill'+(s.mode==='ap'?' warn':(s.connected?' ok':''));}
+ var network=$('statusNetwork');if(network)network.textContent=s.mode==='ap'?'Einrichtungs-Hotspot':(s.connected?(s.ssid||'Verbunden'):'Nicht verbunden');
+ var address=$('statusAddress');if(address){address.href=location.origin;address.textContent=location.host||s.ip||'Gerät öffnen';}
+ var uptime=$('statusUptime');if(uptime)uptime.textContent=fmtUp(s.uptime);
+ var activeId=s.activeTheme||C.themeId||'';var activeTheme=$('statusTheme');if(activeTheme)activeTheme.textContent=(themeEntries.find(function(t){return t.id===activeId})||{}).name||activeId||'Kein Theme';
+ var bright=$('statusBrightness');if(bright)bright.textContent=(s.brightness!=null?s.brightness:0)+'%'+(s.night?' · Nacht':'');
+ var clockStatus=$('statusClock');if(clockStatus)clockStatus.textContent=s.synced?(s.time||'Synchronisiert'):'NTP wartet';
+ var cn=$('clockNow'); if(cn){var ne=!!(C.clock&&C.clock.nightEnabled)||C.mode==='theme';var ns=s.night?'  · Nachtmodus aktiv':(s.nightHeld?'  · Nachtmodus wartet auf NTP':'');cn.textContent=!ne?'Uhr: Nachtmodus oder Uhr-Theme aktivieren, um NTP zu starten':('Uhr: '+(s.synced?(s.time||'synchronisiert')+(s.tz?' ('+s.tz+')':''):'warte auf NTP …')+ns);}
+ var fw=$('fwVer'); if(fw)fw.textContent=s.fw+' '+s.version;
+ // Surface the result of a boot-time GitHub update (ESP8266) once on first load,
+ // so a failure that happened across the reboot is visible even if the original
+ // System tab was closed. Don't clobber an in-progress check/update message.
+ if(!window._otaShown){window._otaShown=1;var gm=$('ghMsg');if(gm&&!gm.textContent&&s.updateMsg&&s.updateMsg!=='updating...')gm.textContent='Last update: '+s.updateMsg}
+ var fv=$('footVer'); if(fv)fv.textContent=' v'+s.version;
+ if(s.repo){var rl=$('repoLink'); if(rl)rl.href=s.repo+'/releases'; var fr=$('footRepo'); if(fr)fr.href=s.repo;}
+ $('statusBox').innerHTML=
+  kv('Firmware',s.fw+' '+s.version+(s.variant?' ('+s.variant+')':''))+kv('Mode',s.mode.toUpperCase())+
+  kv('Network',s.ssid||'-')+kv('IP',s.ip||'-')+kv('mDNS','http://'+(C.hostname||'smalltv')+'.local')+
+  kv('Signal',s.rssi?s.rssi+' dBm':'-')+
+  (s.wifiFail?kv('Last join failure',s.wifiFail):'')+
+  kv('Free heap',s.heap+' B'+(s.maxblk?' ('+s.maxblk+' B largest block)':''))+
+  kv('Uptime',fmtUp(s.uptime))+kv('Last reset',s.reset||'-')+
+  (s.radar?kv('Radar',radarLine(s.radar)):'');
+ var tb=$('tickBox');
+ if(tb){var h='';(s.tickers||[]).forEach(function(t){
+  var c=t.error?'var(--red)':(t.valid?'var(--acc)':'var(--mut)');
+  var pc=t.changePct!=null?(t.changePct>=0?'+':'')+t.changePct.toFixed(2)+'%':'';
+  var st=t.valid?(t.price+'  '+pc):(t.error?'error':'...');
+  // A failed ticker keeps its last good price on screen, so say when the next
+  // attempt is due rather than leaving the row looking simply broken.
+  if(t.error&&t.retryIn!=null)st+=' <span class="muted">(retry '+t.retryIn+'s)</span>';
+  h+='<div class="kv"><b style="color:'+c+'">'+t.symbol+'</b><span>'+st+'</span></div>';});
+ tb.innerHTML=h||'<span class="muted">No tickers configured</span>';}
+}
+function kv(k,v){return '<div class="kv"><span class="muted">'+k+'</span><b>'+v+'</b></div>'}
+// The handshake age is measured against the browser's clock, which is the one
+// we can trust to be right.
+// One line saying what the last radar poll actually did. An empty scope looks
+// the same whether the device was refused, got no answer, or filtered every
+// aircraft out, so name the stage and carry the numbers that separate them.
+function radarLine(r){
+ if(!r)return '';
+ var t=r.stage||'idle';
+ if(r.count)t=r.count+' aircraft';
+ else if(r.stage==='ok'||r.stage==='all filtered out')t=r.stage+' ('+(r.seenAc||0)+' in feed)';
+ if(r.http)t+=', HTTP '+r.http;
+ if(r.tlsRx)t+=', TLS rx '+r.tlsRx+' B';
+ if(r.triedAgo!=null)t+=', tried '+r.triedAgo+'s ago';
+ if(r.okAgo!=null)t+=', last ok '+r.okAgo+'s ago';
+ else if(r.stage!=='idle')t+=', never succeeded';
+ return t;
+}
+
+function fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+ return (d?d+'d ':'')+(h?h+'h ':'')+m+'m'}
+function refreshNow(){j('/api/refresh',{method:'POST'}).then(function(){toast('Aktualisiere …');setTimeout(loadStatus,1500)}).catch(function(e){toast('Aktualisierung fehlgeschlagen: '+e.message)})}
+
+// HA screens purge: wipes the device store and the broker's retained copies.
+function haClearScreens(){if(!confirm('Clear all HA screens on the device and on the broker?'))return;
+ j('/api/ha/clear',{method:'POST'}).then(function(r){
+  toast('Cleared '+r.cleared+' screen(s)'+(r.broker?'':' — device only, broker not connected'));})}
+
+// GitHub self-update
+function checkUpdate(){$('ghMsg').textContent='Suche nach Updates …';$('chkBtn').disabled=true;
+ j('/api/checkupdate').then(function(u){$('chkBtn').disabled=false;
+  if(!u.ok){$('ghMsg').textContent='Suche fehlgeschlagen: '+(u.error||'unbekannter Fehler');return}
+  if(u.newer){$('ghMsg').innerHTML='Version <b>'+u.latest+'</b> ist verfügbar (installiert: '+u.current+').';$('ghUpBtn').disabled=false}
+  else{$('ghMsg').textContent='Firmware ist aktuell ('+u.current+').';$('ghUpBtn').disabled=true}
+ }).catch(function(){$('chkBtn').disabled=false;$('ghMsg').textContent='Suche fehlgeschlagen'})}
+function selfUpdate(){if(!confirm('Neueste Firmware herunterladen und installieren? Das Gerät startet bei Erfolg neu.'))return;
+ $('ghUpBtn').disabled=true;$('chkBtn').disabled=true;
+ $('ghMsg').textContent='Download und Installation laufen … Das kann einige Minuten dauern; das Gerät startet eventuell zweimal neu.';
+ // Installed version, read synchronously from the already-loaded status so the
+ // poller below can recognise success (new version) without racing a fetch.
+ var cur=(($('fwVer').textContent||'').trim().split(' ').pop())||'';
+ j('/api/selfupdate',{method:'POST'}).then(function(){
+  var n=0;var t=setInterval(function(){n++;
+   j('/api/status').then(function(s){
+    if(cur&&s.version&&s.version!==cur){clearInterval(t);$('ghMsg').textContent='Auf Version '+s.version+' aktualisiert.';$('chkBtn').disabled=false;return}
+    var m=s.updateMsg||'';
+    if(m&&m!=='starting...'&&m!=='updating...'){clearInterval(t);$('ghMsg').textContent='Update fehlgeschlagen: '+m;$('chkBtn').disabled=false}
+   }).catch(function(){});
+   if(n>100)clearInterval(t);
+  },3000);
+ }).catch(function(){$('ghMsg').textContent='Update konnte nicht gestartet werden';$('chkBtn').disabled=false})}
+
+// settings backup
+function importCfg(){var f=$('cfgFile').files[0];if(!f){toast('Pick a config .json first');return}
+ var r=new FileReader();
+ r.onload=function(){var txt=r.result;
+  try{JSON.parse(txt)}catch(e){toast('Not valid JSON');return}
+  if(!confirm('Apply this configuration and reboot?'))return;
+  j('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:txt})
+   .then(function(){toast('Imported, rebooting...');setTimeout(function(){location.reload()},8000)})
+   .catch(function(){toast('Import failed')});
+ };
+ r.readAsText(f);}
+
+// maintenance
+function reboot(){if(confirm('Reboot device?'))j('/api/reboot',{method:'POST'}).then(function(){toast('Rebooting...')})}
+function factory(){if(confirm('Erase ALL settings and reboot?'))j('/api/factory',{method:'POST'}).then(function(){toast('Reset, rebooting...')})}
+
+// OTA
+function themeRequest(path,body){return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Theme request failed');return d})})}
+var themeEntries=[];
+function renderThemeCards(category){
+ var grid=$(category==='clock'?'clockThemeGrid':'themeGrid');if(!grid)return;grid.textContent='';
+ var query=(gv(category==='clock'?'clockThemeSearch':'themeSearch')||'').trim().toLowerCase();
+ var filter=category==='clock'?'clock':(gv('themeCategory')||'');
+ var rendered=0;
+ themeEntries.forEach(function(t){
+  if(category!=='clock'&&t.category==='clock')return;
+  var hay=(t.name+' '+t.author+' '+t.id+' '+(t.description||'')).toLowerCase();if(query&&hay.indexOf(query)<0)return;if(filter&&t.category!==filter)return;
+  var tile=document.createElement('article');tile.className='theme-tile'+(C.themeId===t.id?' selected':'');
+  var art=t.preview?document.createElement('img'):document.createElement('div');art.className='theme-art';
+  if(t.preview){art.src='/api/themes/preview?id='+encodeURIComponent(t.id);art.alt='Vorschau '+(t.name||t.id);art.onerror=function(){art.remove()}}
+  else art.textContent='Keine Vorschau';tile.appendChild(art);
+  var name=document.createElement('strong');name.textContent=t.name||t.id;tile.appendChild(name);
+  var categoryNames={clock:'Uhr',weather:'Wetter',dashboard:'Dashboard',animation:'Animation',other:'Sonstiges'};
+  var meta=document.createElement('div');meta.className='muted';meta.textContent=(t.author||'Unbekannter Autor')+' · '+(t.version||'ohne Version')+' · '+(categoryNames[t.category]||'Sonstiges')+' · '+Math.ceil((t.bytes||0)/1024)+' KiB · '+t.id+'.stheme';tile.appendChild(meta);
+  if(t.description){var desc=document.createElement('p');desc.className='muted';desc.textContent=t.description;tile.appendChild(desc)}
+  var duplicates=themeEntries.filter(function(x){return x.id!==t.id&&(x.name||x.id).trim().toLowerCase()===(t.name||t.id).trim().toLowerCase()}).length;
+  var state=document.createElement('div');state.className='muted';state.textContent=t.valid===false?'Ungültig':(C.themeId===t.id?'Aktiv':'Installiert');if(duplicates)state.textContent+=' · Anzeigename doppelt';tile.appendChild(state);
+  var actions=document.createElement('div');actions.className='theme-actions';
+  var choose=document.createElement('button');choose.className='btn';choose.type='button';choose.textContent='Aktivieren';choose.disabled=t.valid===false;choose.onclick=function(){activateTheme(t.id)};actions.appendChild(choose);tile.appendChild(actions);
+  var manage=document.createElement('details');manage.className='theme-manage';var summary=document.createElement('summary');summary.textContent='Theme verwalten';manage.appendChild(summary);
+  var tools=document.createElement('div');tools.className='theme-actions';
+  [['Informationen bearbeiten',function(){editThemeInfo(t.id)}],['Ebenen sortieren',function(){sortThemeLayers(t.id)}],['Theme löschen',function(){deleteTheme(t.id)}]].forEach(function(action){var b=document.createElement('button');b.type='button';b.className='btn sec';b.textContent=action[0];b.onclick=action[1];tools.appendChild(b)});
+  manage.appendChild(tools);tile.appendChild(manage);grid.appendChild(tile);rendered++;
+ });
+ if(!rendered){var empty=document.createElement('p');empty.className='muted';empty.textContent=category==='clock'?'Noch keine passenden Uhr-Themes installiert.':'Keine passenden Themes installiert.';grid.appendChild(empty)}
+}
+function activateTheme(id){var select=$('themeSelect');if(select)select.value=id;selectTheme()}
+function editThemeInfo(id){
+ var t=themeEntries.find(function(x){return x.id===id});if(!t)return;
+ $('themeEditId').value=id;$('themeEditName').value=t.name||t.id;$('themeEditAuthor').value=t.author||'';$('themeEditVersion').value=t.version||'';
+ $('themeEditCategory').value=t.category||'other';$('themeEditDescription').value=t.description||'';$('themeEditPreview').value=t.preview||'';
+ $('themeEditError').textContent='';$('themeInfoDialog').showModal();
+}
+function closeThemeInfo(){$('themeInfoDialog').close()}
+function saveThemeInfo(){
+ var id=gv('themeEditId'),button=$('themeInfoSave'),error=$('themeEditError');
+ var metadata={name:gv('themeEditName').trim(),author:gv('themeEditAuthor').trim(),version:gv('themeEditVersion').trim(),category:gv('themeEditCategory'),description:gv('themeEditDescription').trim(),preview:gv('themeEditPreview').trim()};
+ button.disabled=true;error.textContent='Speichert Theme-Datei …';
+ themeRequest('/api/themes/metadata',{id:id,metadata:metadata}).then(function(){closeThemeInfo();toast('Theme-Informationen gespeichert');loadThemes()}).catch(function(e){error.textContent=e.message}).finally(function(){button.disabled=false});
+}
+var editingLayersId='',editingLayers=[];
+function renderLayerOrder(){
+ var list=$('themeLayerList');list.textContent='';
+ editingLayers.forEach(function(layer,index){var row=document.createElement('div');row.className='layer-row';
+  var label=document.createElement('span');label.className='layer-name';label.textContent=(index+1)+'. '+layer.id;row.appendChild(label);
+  var type=document.createElement('span');type.className='layer-type';type.textContent=layer.type;row.appendChild(type);
+  [['↑',-1,'Nach hinten'],['↓',1,'Nach vorne']].forEach(function(spec){var button=document.createElement('button');button.type='button';button.className='btn sec';button.textContent=spec[0];button.title=spec[2];button.setAttribute('aria-label',spec[2]);button.disabled=(spec[1]<0&&index===0)||(spec[1]>0&&index===editingLayers.length-1);button.onclick=function(){var next=index+spec[1],swap=editingLayers[next];editingLayers[next]=editingLayers[index];editingLayers[index]=swap;renderLayerOrder()};row.appendChild(button)});
+  list.appendChild(row);
+ });
+}
+function sortThemeLayers(id){
+ var error=$('themeLayersError');error.textContent='Lädt Ebenen …';$('themeLayersSave').disabled=true;
+ fetch('/api/themes/layers?id='+encodeURIComponent(id)).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Ebenen konnten nicht geladen werden');return d})})
+ .then(function(d){editingLayersId=id;editingLayers=d.layers||[];error.textContent=editingLayers.length?'':'Dieses Theme enthält keine sortierbaren Ebenen.';renderLayerOrder();$('themeLayersDialog').showModal()})
+ .catch(function(e){error.textContent=e.message}).finally(function(){$('themeLayersSave').disabled=false});
+}
+function closeThemeLayers(){$('themeLayersDialog').close()}
+function saveThemeLayers(){var button=$('themeLayersSave'),error=$('themeLayersError');button.disabled=true;error.textContent='Speichert Reihenfolge …';
+ themeRequest('/api/themes/layers/order',{id:editingLayersId,order:editingLayers.map(function(x){return x.id})})
+ .then(function(){closeThemeLayers();toast('Ebenenreihenfolge gespeichert');loadThemes()}).catch(function(e){error.textContent=e.message}).finally(function(){button.disabled=false})
+}
+var themePlaylistItems=[];
+function renderThemePlaylist(){
+ var add=$('themePlaylistAdd'),list=$('themePlaylistList');if(!add||!list)return;
+ add.textContent='';
+ var used={};themePlaylistItems.forEach(function(x){used[x.id]=true});
+ var blank=document.createElement('option');blank.value='';blank.textContent='Theme auswählen …';add.appendChild(blank);
+ themeEntries.forEach(function(t){if(t.valid===false||used[t.id])return;
+  var o=document.createElement('option');o.value=t.id;o.textContent=t.name+(t.version?' — '+t.version:'');add.appendChild(o)});
+ list.textContent='';
+ if(!themePlaylistItems.length){var empty=document.createElement('div');empty.className='muted';empty.textContent='Noch keine Themes in der Playlist.';list.appendChild(empty);return}
+ themePlaylistItems.forEach(function(item,index){
+  var row=document.createElement('div');row.className='net';row.style.cursor='default';row.style.alignItems='center';row.style.gap='8px';row.style.flexWrap='wrap';
+  var name=document.createElement('span');name.style.flex='1';name.style.minWidth='100px';
+  var found=themeEntries.find(function(t){return t.id===item.id});
+  name.textContent=(index+1)+'. '+(found?(found.name+(found.valid===false?' — fehlerhaft':'')):item.id);
+  var duration=document.createElement('input');duration.type='number';duration.min='5';duration.max='3600';duration.step='1';duration.value=item.seconds;duration.setAttribute('aria-label','Anzeigedauer in Sekunden');duration.style.width='88px';duration.style.flex='0 0 88px';
+  duration.onchange=function(){item.seconds=Math.max(5,Math.min(3600,parseInt(duration.value,10)||30));duration.value=item.seconds};
+  var schedule=document.createElement('input');schedule.type='checkbox';schedule.checked=!!item.scheduled;schedule.title='Zu einer Tageszeit aktivieren';schedule.setAttribute('aria-label','Zeitplan aktivieren');schedule.onchange=function(){item.scheduled=schedule.checked;renderThemePlaylist()};
+  var from=document.createElement('input');from.type='time';from.value=minutesTime(item.startMinute);from.disabled=!item.scheduled;from.setAttribute('aria-label','Aktiv ab');from.onchange=function(){item.startMinute=timeMinutes(from.value)};
+  var to=document.createElement('input');to.type='time';to.value=minutesTime(item.endMinute);to.disabled=!item.scheduled;to.setAttribute('aria-label','Aktiv bis');to.onchange=function(){item.endMinute=timeMinutes(to.value)};
+  row.appendChild(name);row.appendChild(duration);row.appendChild(schedule);row.appendChild(from);row.appendChild(to);
+  [['↑',-1,'Theme nach oben'],['↓',1,'Theme nach unten'],['×',0,'Theme entfernen']].forEach(function(spec){
+   var b=document.createElement('button');b.type='button';b.className='btn sec';b.textContent=spec[0];b.title=spec[2];b.style.padding='7px 10px';
+   if(spec[1]===-1&&index===0||spec[1]===1&&index===themePlaylistItems.length-1)b.disabled=true;
+   b.onclick=function(){if(spec[1]===0)themePlaylistItems.splice(index,1);else{var target=index+spec[1],swap=themePlaylistItems[target];themePlaylistItems[target]=themePlaylistItems[index];themePlaylistItems[index]=swap}renderThemePlaylist();markSettingsDirty()};
+   row.appendChild(b);
+  });
+  list.appendChild(row);
+ });
+ var enabled=$('themePlaylistEnabled');if(enabled&&!themePlaylistItems.length)enabled.checked=false;
+}
+function minutesTime(value){value=Math.max(0,Math.min(1439,parseInt(value,10)||0));return ('0'+Math.floor(value/60)).slice(-2)+':'+('0'+(value%60)).slice(-2)}
+function timeMinutes(value){var p=(value||'00:00').split(':');return Math.max(0,Math.min(1439,(parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0)))}
+function themePlaylistToggle(){var enabled=$('themePlaylistEnabled');if(!enabled)return;
+ if(enabled.checked&&!themePlaylistItems.length){enabled.checked=false;toast('Füge zuerst mindestens ein gültiges Theme hinzu');return}
+ if(enabled.checked){sv('mode','theme')}
+}
+function themePlaylistAddItem(){var id=gv('themePlaylistAdd');if(!id)return;
+ if(themePlaylistItems.length>=8){toast('Die Playlist kann höchstens 8 Themes enthalten');return}
+ if(themePlaylistItems.some(function(x){return x.id===id})){toast('Dieses Theme ist bereits in der Playlist');return}
+ var selected=themeEntries.find(function(t){return t.id===id});var defaultSeconds=selected&&selected.category==='clock'?(parseInt(gv('clockThemeDwell'),10)||300):30;
+ themePlaylistItems.push({id:id,seconds:defaultSeconds,scheduled:false,startMinute:0,endMinute:0});renderThemePlaylist();markSettingsDirty();
+}
+function applyClockThemeDwell(){var seconds=parseInt(gv('clockThemeDwell'),10)||300;themePlaylistItems.forEach(function(item){var found=themeEntries.find(function(t){return t.id===item.id});if(found&&found.category==='clock')item.seconds=seconds});renderThemePlaylist();markSettingsDirty();toast('Standarddauer für Uhr-Themes übernommen')}
+function themeChoiceChanged(){var select=$('themeSelect');if(!select)return;
+ var theme=themeEntries.find(function(t){return t.id===select.value});
+ $('themeUseBtn').disabled=!theme||theme.valid===false;
+ $('themeDetails').textContent=!theme?'Kein Theme ausgewählt':(theme.valid===false?'Ungültiges Paket: '+(theme.error||'Theme konnte nicht gelesen werden')+' — entferne es und installiere eine korrigierte Datei.':theme.name+(theme.version?' · '+theme.version:'')+' · '+Math.ceil(theme.bytes/1024)+' KiB');
+}
+function loadThemes(){return j('/api/themes').then(function(d){
+ var select=$('themeSelect');if(!select)return;select.textContent='';themeEntries=d.themes||[];
+ themeEntries.forEach(function(t){var o=document.createElement('option');o.value=t.id;o.textContent=t.valid===false?t.id+' — ungültiges Paket':t.name+' — '+t.version;select.appendChild(o)});
+ if(d.selected)select.value=d.selected;
+ $('themeStatus').textContent=themeEntries.length+' installiert · '+Math.floor(d.freeBytes/1024)+' KiB frei'+(d.error?' · '+d.error:'');
+ themeChoiceChanged();renderThemeCards();renderThemeCards('clock');
+ renderThemePlaylist();
+ }).catch(function(e){toast(e.message)})}
+function selectTheme(){var id=$('themeSelect').value;var theme=themeEntries.find(function(t){return t.id===id});
+ if(!theme||theme.valid===false){toast('Wähle zuerst ein gültiges installiertes Theme');return}
+ themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');sc('themePlaylistEnabled',false);toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
+function deleteTheme(requestedId){var id=requestedId||gv('themeSelect');if(!id)return;var theme=themeEntries.find(function(t){return t.id===id});var displayName=theme?(theme.name||theme.id):id;
+ if(!confirm('„'+displayName+'“ endgültig löschen?'))return;
+ themeRequest('/api/themes/delete',{id:id}).then(function(){themePlaylistItems=themePlaylistItems.filter(function(x){return x.id!==id});renderThemePlaylist();markSettingsDirty();toast('Theme gelöscht');loadThemes()}).catch(function(e){toast(e.message)})}
+function installTheme(inputId){inputId=inputId||'themeFile';var f=$(inputId).files[0];if(!f){toast('Wähle ein .stheme-Paket aus');return}
+ var data=new FormData();data.append('theme',f);$('themeStatus').textContent='Installation läuft …';
+ var uploadBtn=$(inputId==='themeFile'?'themeUploadBtn':'clockThemeUploadBtn');if(uploadBtn)uploadBtn.disabled=true;
+ var category=inputId==='clockThemeFile'?'?category=clock':'';
+ fetch('/api/themes/install'+category,{method:'POST',body:data}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Installation fehlgeschlagen');return d})}).then(function(d){toast('Theme installiert');return loadThemes().then(function(){$('themeSelect').value=d.id;themeChoiceChanged();if(inputId==='clockThemeFile')showTab('settingsClock')})}).catch(function(e){$('themeStatus').textContent=e.message;toast(e.message)}).finally(function(){if(uploadBtn)uploadBtn.disabled=false})}
+
+function upload(){var f=$('fw').files[0];if(!f){toast('Wähle zuerst eine .bin-Datei aus');return}
+ var fd=new FormData();fd.append('firmware',f,f.name);
+ var x=new XMLHttpRequest();x.open('POST','/update');
+ $('upBtn').disabled=true;
+ x.upload.onprogress=function(e){if(e.lengthComputable){var p=Math.round(e.loaded/e.total*100);$('upBar').style.width=p+'%';$('upMsg').textContent='Upload läuft: '+p+' %'}};
+ x.onload=function(){$('upBtn').disabled=false;if(x.status==200){$('upMsg').textContent='Fertig. Gerät startet neu …';$('upBar').style.width='100%';setTimeout(function(){location.reload()},9000)}else{$('upMsg').textContent='Fehlgeschlagen: '+x.responseText}};
+ x.onerror=function(){$('upBtn').disabled=false;$('upMsg').textContent='Upload fehlgeschlagen'};
+ x.send(fd);
+}
+
+loadConfig().then(loadStatus,loadStatus);   // the status polls on, whatever the config did
+</script>
+</body></html>

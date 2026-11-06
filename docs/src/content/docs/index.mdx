@@ -1,0 +1,55 @@
+---
+title: SmallTV Settings Firmware
+description: Bedienung, Themes, Fotos und Entwicklung für die ESP8266-Firmware.
+template: splash
+hero:
+  tagline: Geräteeinstellungen im Browser verwalten und eigene .stheme-Layouts auf dem 240×240-Display nutzen.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Schnellstart
+      link: /manual/quick-start/
+      icon: right-arrow
+    - text: Theme-Formate
+      link: /features/themes/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Diese Firmware richtet sich an SmallTV- und SmallTV-Ultra-Geräte mit ESP8266 und 240 × 240 Pixel großem ST7789-Display. WLAN, Uhr, Anzeige, Themes und Fotos lassen sich über eine lokale Weboberfläche konfigurieren.
+
+## Bereiche
+
+<CardGrid>
+  <Card title="Display und Uhr" icon="seti:config">
+    Helligkeit, Farben, Panel-Rate, Zeitzone, Zeitformat und zeitgesteuerte Nachtabsenkung.
+  </Card>
+  <Card title="Themes und Wiedergabe" icon="list-ordered">
+    `.stheme`-Pakete verwalten, Uhr-Designs auswählen und bis zu acht Themes als Playlist abspielen.
+  </Card>
+  <Card title="Foto-Bibliothek" icon="seti:image">
+    JPEGs hochladen, organisieren und nach jedem Playlist-Theme in einer zufälligen Folge zeigen.
+  </Card>
+  <Card title="Geräteverwaltung" icon="seti:shield">
+    WLAN einrichten, Einstellungen sichern, Firmware manuell aktualisieren und Recovery nutzen.
+  </Card>
+</CardGrid>
+
+## Für welches Gerät?
+
+Der PlatformIO-Build `smalltv_settings` ist für SmallTV und SmallTV Ultra mit ESP8266 vorgesehen. Er ist nicht für ESP32 oder ESP32-C2. Vor einer Erstinstallation auf dem Ultra muss geprüft werden, ob das vorhandene Updateverfahren genügend Platz für das Image bietet; das kann je nach Ausgangsfirmware abweichen.
+
+## Dokumentation
+
+<CardGrid>
+  <LinkCard title="Einrichtung" href="./getting-started/setup/" description="Hotspot nutzen und das Gerät mit einem lokalen WLAN verbinden." />
+  <LinkCard title="Bedienung" href="./manual/settings/" description="Einstellungen, Themes, Uhr und Fotos in der Weboberfläche finden." />
+  <LinkCard title="Theme-Entwicklung" href="./features/themes/" description="Paketgrenzen, Assets, Schriften und Renderer kennenlernen." />
+  <LinkCard title="Firmware bauen" href="./reference/building/" description="Das Settings-Image und die lokalen Prüfungen ausführen." />
+</CardGrid>
+
+## Was dieses Image nicht tut
+
+Die Firmware enthält in diesem Profil keine Helligkeitsregelung über einen Lichtsensor. Eine Zeitsteuerung für die Nacht-Helligkeit ist vorhanden. Die Settings-Firmware emuliert außerdem kein komplettes ESP8266-Gerät: QEMU ist kein unterstützter Weg, die Firmware samt Displayoberfläche zu testen.

@@ -1,0 +1,70 @@
+---
+title: HTTP-API
+description: Lokale Endpunkte der SmallTV Settings Firmware.
+---
+
+Die Firmware stellt die Weboberfläche und ihre API unter derselben lokalen
+Geräteadresse bereit. Schreibzugriffe durchlaufen den Request-Guard. Wenn
+Digest-Authentifizierung aktiviert ist, gilt sie auch für Lesezugriffe.
+
+## Gerät und Konfiguration
+
+| Methode | Pfad | Zweck |
+| --- | --- | --- |
+| `GET` | `/api/status` | Firmware-, Netzwerk-, Speicher- und Zeitstatus |
+| `GET` / `POST` | `/api/config` | Einstellungen lesen und validiert speichern |
+| `GET` | `/api/scan` | WLANs suchen |
+| `POST` | `/api/refresh` | Anzeigeaktualisierung anfordern |
+| `GET` / `POST` | `/api/export`, `/api/import` | Konfiguration sichern und einspielen |
+| `POST` | `/api/factory` | gespeicherte Geräteeinstellungen zurücksetzen |
+| `POST` | `/api/reboot` | Gerät neu starten |
+
+Ein exportiertes Backup kann WLAN-Zugangsdaten enthalten. Teile es nicht
+öffentlich.
+
+## Themes
+
+| Methode | Pfad | Zweck |
+| --- | --- | --- |
+| `GET` | `/api/themes` | installierte Themes auflisten; optional nach Kategorie |
+| `POST` | `/api/themes/install` | `.stheme` installieren und validieren |
+| `POST` | `/api/themes/delete` | Theme anhand seiner stabilen ID löschen |
+| `POST` | `/api/themes/select` | Einzel-/Rückfall-Theme auswählen |
+| `GET` | `/api/themes/preview` | Theme-Vorschau abrufen |
+| `GET` | `/api/themes/layers` | Theme-Ebenen auslesen |
+| `POST` | `/api/themes/layers/order` | Ebenenreihenfolge ändern |
+| `POST` | `/api/themes/metadata` | unterstützte Metadaten bearbeiten |
+| `POST` | `/api/themes/rename` | Anzeigenamen unabhängig von der Theme-ID ändern |
+
+Uhr-Themes nutzen denselben Speicher und werden mit der Kategorie `clock`
+gefiltert.
+
+## Fotos
+
+Diese Endpunkte sind im Profil `smalltv_settings` aktiv.
+
+| Methode | Pfad | Zweck |
+| --- | --- | --- |
+| `GET` | `/api/photos` | Fotoliste, Größen und Speicherstatus |
+| `GET` | `/api/photos/file?id=…` | Vorschaubild laden |
+| `POST` | `/api/photos/upload` | JPEG hochladen und prüfen |
+| `POST` | `/api/photos/delete` | ein Foto löschen |
+| `POST` | `/api/photos/delete-all` | alle Fotos entfernen |
+
+Mehrere Bilder werden als einzelne Anfragen gesendet. Pro JPEG gilt ein
+Maximum von 128 KiB.
+
+## System und Updates
+
+| Methode | Pfad | Zweck |
+| --- | --- | --- |
+| `POST` | `/update` | Firmware manuell per OTA übertragen |
+| `GET` | `/api/checkupdate` | konfiguriertes Release und Firmware-Asset prüfen |
+| `POST` | `/api/selfupdate` | passendes Update vormerken |
+
+Repository und Binärname stammen aus `src/config.h`. Das Image muss zum
+Gerätemodell und verfügbaren OTA-Bereich passen.
+
+Die genaue JSON-Struktur der Themes und Konfiguration kann sich mit der
+Firmwareversion ändern. Für Implementierungen sollten die aktuelle UI und die
+Handler in `src/` als maßgeblich gelten.

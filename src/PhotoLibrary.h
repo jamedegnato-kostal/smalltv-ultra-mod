@@ -1,0 +1,28 @@
+#pragma once
+#include "config.h"
+#if WITH_PHOTOS
+#include <Arduino.h>
+#include <LittleFS.h>
+
+namespace smalltv_photo {
+#ifndef SMALLTV_PHOTO_MAX_COUNT
+#define SMALLTV_PHOTO_MAX_COUNT
+constexpr uint8_t MaxPhotos = 240;
+#endif
+
+void begin();
+void refresh();
+uint8_t count();
+const uint8_t* slots();
+uint16_t generation();
+bool contains(uint8_t id);
+String path(uint8_t id);
+uint32_t bytes(uint8_t id);
+int nextFreeSlot();
+bool remove(uint8_t id);
+uint16_t removeAll();
+uint32_t totalPhotoBytes();
+uint32_t filesystemTotalBytes();
+uint32_t filesystemFreeBytes();
+} // namespace smalltv_photo
+#endif

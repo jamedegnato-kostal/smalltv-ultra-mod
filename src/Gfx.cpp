@@ -1,0 +1,267 @@
+#include "Gfx.h"
+#include "Platform.h"
+#include <Arduino_GFX_Library.h>
+#include <SPI.h>
+
+// The SmallTV's ST7789 has its CS line tied to GND and only latches SPI in
+// **mode 3**. Arduino_GFX's stock Arduino_ST7789 forces SPI_MODE2 on the ESP8266
+// (wrong clock edge for this panel), so the controller never initializes and the
+// screen stays black even with the backlight on. Subclass begin() to force mode 3
+// — matching the known-good GeekMagic community firmwares. (On ESP32 the base
+// class already selects mode 3, so the override is harmless there.)
+
+// Runtime panel colour order, read by the setRotation override below. The board
+// header's TFT_BGR is the factory default for that variant; the Display tab can
+// override it, because units of the same model do turn up with red and blue
+// swapped in the controller.
+static bool g_bgr = (TFT_BGR != 0);
+
+class Arduino_ST7789_SmallTV : public Arduino_ST7789 {
+ public:
+  using Arduino_ST7789::Arduino_ST7789;   // inherit constructors
+  bool begin(int32_t speed = GFX_NOT_DEFINED) override {
+    _override_datamode = SPI_MODE3;
+    return Arduino_TFT::begin(speed);
+  }
+
+  void setFrameRate(uint8_t hz) {
+    // ST7789V frame-rate control (C6h). These are the documented normal-mode
+    // divider settings; unsupported values are rounded to the nearest entry.
+    static const uint8_t rates[][2] = {
+      {39,31},{40,30},{41,29},{42,28},{43,27},{44,26},{45,25},{46,24},
+      {48,23},{49,22},{50,21},{52,20},{53,19},{55,18},{57,17},{58,16},{60,15}
+    };
+    uint8_t value = 15, bestDiff = 255;
+    for (const auto& rate : rates) {
+      const uint8_t diff = (rate[0] > hz) ? rate[0] - hz : hz - rate[0];
+      if (diff < bestDiff) { bestDiff = diff; value = rate[1]; }
+    }
+    _bus->beginWrite();
+    _bus->writeC8D8(0xC6, value);
+    _bus->endWrite();
+  }
+
+  // Arduino_ST7789 hardcodes the MADCTL RGB order, so re-issue MADCTL with the
+  // BGR bit (0x08) tracking g_bgr on every rotation change. The MX/MY/MV values
+  // below are the base class's own mapping (ST7789_MADCTL_RGB is 0x00), so with
+  // g_bgr false this writes exactly what the library would have written. Only
+  // rotations 0-3 are used by the SmallTV (setRotation(r & 3)).
+  void setRotation(uint8_t r) override {
+    Arduino_TFT::setRotation(r);           // updates _rotation + width/height
+    uint8_t madctl;
+    switch (_rotation) {
+      case 1:  madctl = ST7789_MADCTL_MX | ST7789_MADCTL_MV; break;
+      case 2:  madctl = ST7789_MADCTL_MX | ST7789_MADCTL_MY; break;
+      case 3:  madctl = ST7789_MADCTL_MY | ST7789_MADCTL_MV; break;
+      default: madctl = 0; break;          // case 0
+    }
+    if (g_bgr) madctl |= 0x08;              // BGR
+    _bus->beginWrite();
+    _bus->writeC8D8(ST7789_MADCTL, madctl);
+    _bus->endWrite();
+  }
+};
+
+// ---- colour correction ----------------------------------------------------
+// Per-channel gain in percent, 100 = untouched. Kept as plain bytes so the
+// all-default case is a single comparison on the hot drawing path.
+static uint8_t g_rGain = 100, g_gGain = 100, g_bGain = 100;
+static uint8_t g_contrast = 100, g_saturation = 100;
+
+uint16_t gfxTint(uint16_t c) {
+  if (g_rGain == 100 && g_gGain == 100 && g_bGain == 100 && g_contrast == 100 && g_saturation == 100) return c;
+  int32_t r = ((c >> 11) & 0x1F) * 255 / 31, g = ((c >> 5) & 0x3F) * 255 / 63, b = (c & 0x1F) * 255 / 31;
+  int32_t gray = (r * 77 + g * 150 + b * 29) >> 8;
+  r = gray + (r - gray) * g_saturation / 100;
+  g = gray + (g - gray) * g_saturation / 100;
+  b = gray + (b - gray) * g_saturation / 100;
+  r = 128 + (r - 128) * g_contrast / 100;
+  g = 128 + (g - 128) * g_contrast / 100;
+  b = 128 + (b - 128) * g_contrast / 100;
+  r = constrain(r, 0, 255); g = constrain(g, 0, 255); b = constrain(b, 0, 255);
+  r = constrain(r * g_rGain / 100, 0, 255);
+  g = constrain(g * g_gGain / 100, 0, 255);
+  b = constrain(b * g_bGain / 100, 0, 255);
+  return (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+}
+
+static Arduino_DataBus* bus = nullptr;
+static Arduino_GFX*     gfx = nullptr;
+static Arduino_ST7789_SmallTV* smallTvPanel = nullptr;
+
+Arduino_GFX* gfxDev() { return gfx; }
+
+// ---------------------------------------------------------------------------
+void gfxBegin(const Settings& s) {
+#ifdef TFT_PWR_PIN
+  // Boards with a switched panel power rail (NM-TV-154): energize the display
+  // before anything else or the panel never comes up.
+  pinMode(TFT_PWR_PIN, OUTPUT);
+  digitalWrite(TFT_PWR_PIN, TFT_PWR_ON);
+#endif
+  // Backlight FIRST: do it before the panel/SPI init so the screen lights up even
+  // if panel init has trouble. A dark backlight then means the sketch didn't get
+  // this far (early crash / bad flash) — a useful boot indicator.
+  pinMode(TFT_BL, OUTPUT);
+  platformAnalogWriteInit(TFT_BL);
+  gfxSetBrightness(s.brightness, s.backlightInverted);
+
+#if defined(SMALLTV_FAMILY_ESP32)
+  // Hardware SPI via the Arduino SPI library (IDF spi_master driver) on explicit
+  // GPIOs. The register-level Arduino_ESP32SPI hangs in begin() on the C2, and
+  // Arduino_SWSPI's fast-IO path doesn't cover the C2 — Arduino_HWSPI uses the
+  // stock driver (what the working ESPHome config used) and honors SPI mode 3
+  // (see the subclass). Pins come from the board header; a TFT_CS of -1 means
+  // the panel's CS is tied to GND and is never toggled.
+  bus = new Arduino_HWSPI(TFT_DC, TFT_CS, TFT_SCLK, TFT_MOSI, GFX_NOT_DEFINED, &SPI);
+#else
+  bus = new Arduino_HWSPI(TFT_DC, TFT_CS);   // ESP8266 HW-SPI (fixed SCLK/MOSI)
+#endif
+  // IPS=true so the panel colors are not inverted. The ST7789(V) has 240x320
+  // RAM against 240x240 glass, so the rotation 2/3 row offset (TFT_ROW_OFFSET2,
+  // 80) matters: without it a 180°-rotated image slides into the dead band.
+  // Use the SmallTV variant so the SPI bus comes up in mode 3 (see class above).
+  smallTvPanel = new Arduino_ST7789_SmallTV(bus, TFT_RST, 0 /*rotation*/, true /*IPS*/,
+                                   TFT_WIDTH, TFT_HEIGHT,
+                                   TFT_COL_OFFSET1, TFT_ROW_OFFSET1,
+                                   TFT_COL_OFFSET2, TFT_ROW_OFFSET2);
+  gfx = smallTvPanel;
+  gfx->begin();
+  // Colour order/inversion/gain before the first pixel, so the panel comes up
+  // already corrected instead of flashing an uncorrected boot screen. This also
+  // writes MADCTL for the configured rotation.
+  gfxApplyColors(s);
+  // Nothing in this UI ever wants wrapped text: overflowing labels used to
+  // wrap around to x=0 on the next line (stray characters at the left edge).
+  gfx->setTextWrap(false);
+  gfx->fillScreen(C_BLACK);
+}
+
+void gfxSetBrightness(uint8_t pct, bool inverted) {
+  if (pct > 100) pct = 100;
+  int duty = (int)pct * 255 / 100;
+  if (inverted) duty = 255 - duty;
+  analogWrite(TFT_BL, duty);
+}
+
+void gfxSetRotation(uint8_t r) {
+  if (gfx) gfx->setRotation(r & 3);
+}
+
+void gfxSetPanelRefreshRate(uint8_t hz) {
+  if (smallTvPanel) smallTvPanel->setFrameRate(hz);
+}
+
+void gfxApplyColors(const Settings& s) {
+  g_rGain = s.display.rGain;
+  g_gGain = s.display.gGain;
+  g_bGain = s.display.bGain;
+  g_contrast = s.display.contrast;
+  g_saturation = s.display.saturation;
+  gfxSetPanelRefreshRate(s.display.panelRefreshHz);
+  g_bgr = (s.display.colorOrder == COLOR_ORDER_BGR) ? true
+        : (s.display.colorOrder == COLOR_ORDER_RGB) ? false
+                                                    : (TFT_BGR != 0);
+  if (!gfx) return;
+  gfx->setRotation(s.rotation & 3);   // re-issues MADCTL with the new order
+  gfx->invertDisplay(s.display.invert);
+}
+
+// ---- text helpers (built-in 6x8 font, integer scaled) ---------------------
+int gfxTextW(const char* s, uint8_t size) { return (int)strlen(s) * GFX_FONT_W * size; }
+
+void gfxDrawCentered(const char* s, int y, uint8_t size, uint16_t color) {
+  if (!gfx) return;
+  int x = (TFT_WIDTH - gfxTextW(s, size)) / 2;
+  if (x < 0) x = 0;
+  gfx->setTextSize(size);
+  gfx->setTextColor(color);
+  gfx->setCursor(x, y);
+  gfx->print(s);
+}
+
+// Largest size (<= maxSize) whose rendered width fits within maxW.
+uint8_t gfxFitSize(const char* s, int maxW, uint8_t maxSize) {
+  for (uint8_t sz = maxSize; sz > 1; sz--) {
+    if (gfxTextW(s, sz) <= maxW) return sz;
+  }
+  return 1;
+}
+
+// ---------------------------------------------------------------------------
+void gfxBoot(const char* line1, const char* line2) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered(line1, 95, 3, C_WHITE);
+  if (line2 && line2[0]) gfxDrawCentered(line2, 130, 2, C_GRAY);
+}
+
+void gfxApInfo(const char* ssid, const char* pass, const char* ip, const char* why) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered("SETUP MODE", 18, 3, C_YELLOW);
+  if (why && why[0]) gfxDrawCentered(why, 44, gfxFitSize(why, 232, 2), C_RED);
+  gfxDrawCentered("Join WiFi:", 64, 2, C_GRAY);
+  gfxDrawCentered(ssid, 88, gfxFitSize(ssid, 232, 3), C_WHITE);
+  if (pass && pass[0]) {
+    gfxDrawCentered("Password:", 124, 2, C_GRAY);
+    gfxDrawCentered(pass, 146, gfxFitSize(pass, 232, 2), C_WHITE);
+  } else {
+    gfxDrawCentered("(open network)", 124, 2, C_GRAY);
+  }
+  gfxDrawCentered("Then open:", 182, 2, C_GRAY);
+  String url = String("http://") + ip;
+  gfxDrawCentered(url.c_str(), 206, gfxFitSize(url.c_str(), 232, 2), C_GREEN);
+}
+
+void gfxStaInfo(const char* ssid, const char* ip, const char* host) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered("CONNECTED", 18, 3, C_GREEN);
+  gfxDrawCentered("Network:", 62, 2, C_GRAY);
+  gfxDrawCentered(ssid && ssid[0] ? ssid : "-", 84, gfxFitSize(ssid, 232, 3), C_WHITE);
+  gfxDrawCentered("Open in browser:", 126, 2, C_GRAY);
+  // IP shown big (always fits at size 2); mDNS name below as a friendlier option.
+  gfxDrawCentered(ip && ip[0] ? ip : "-", 150, gfxFitSize(ip, 232, 3), C_GREEN);
+  if (host && host[0]) {
+    String url = String("http://") + host + ".local";
+    gfxDrawCentered(url.c_str(), 188, gfxFitSize(url.c_str(), 232, 2), C_GRAY);
+  }
+}
+
+void gfxMessage(const char* title, const char* msg, uint16_t titleColor) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered(title, 90, 3, titleColor);
+  if (msg && msg[0]) gfxDrawCentered(msg, 130, 2, C_GRAY);
+}
+
+// Persistent crash screen shown in safe mode (after an exception reset). Holds the
+// crash PC + fault address still so they can be read, and the IP for OTA recovery.
+void gfxCrash(const char* epc, const char* addr, const char* ip) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered("CRASH", 12, 4, C_RED);
+  gfxDrawCentered("epc", 60, 2, C_GRAY);
+  gfxDrawCentered(epc && epc[0] ? epc : "-", 80, 3, C_WHITE);
+  gfxDrawCentered("addr", 124, 2, C_GRAY);
+  gfxDrawCentered(addr && addr[0] ? addr : "-", 146, 2, C_WHITE);
+  gfxDrawCentered("OTA flash to fix:", 182, 2, C_GRAY);
+  gfxDrawCentered(ip && ip[0] ? ip : "-", 204, 2, C_GREEN);
+}
+
+// Tiny built-in recovery display. It uses only the shared ASCII font and draw
+// helpers, so it remains available when a package or its assets keep crashing.
+void gfxSafeTheme(const char* ip, uint8_t crashCount) {
+  if (!gfx) return;
+  gfx->fillScreen(C_BLACK);
+  gfxDrawCentered("SMALLTV", 24, 3, C_BLUE);
+  gfxDrawCentered("RECOVERY THEME", 72, 2, C_YELLOW);
+  gfxDrawCentered("Saved theme paused", 112, 2, C_WHITE);
+  char count[28];
+  snprintf(count, sizeof(count), "Crashes: %u", (unsigned)crashCount);
+  gfxDrawCentered(count, 144, 2, C_GRAY);
+  gfxDrawCentered("Choose theme + reboot", 174, 1, C_GRAY);
+  gfxDrawCentered("Settings:", 194, 1, C_GRAY);
+  gfxDrawCentered(ip && ip[0] ? ip : "-", 214, 1, C_GREEN);
+}
