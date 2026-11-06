@@ -63,7 +63,7 @@ int main() {
   auto with=[&](const char* from,const std::string& to){std::string s=line;s.replace(s.find(from),strlen(from),to);return s+"\n";};
   assert(walk("")=="");
   assert(walk("\n\n"+a)=="pixel-room ");
-  assert(walk(a+with("\"revision\":1","\"revision\":2")+b)=="pixel-room ? other-theme ");
+  assert(walk(a+with("\"revision\":2","\"revision\":1")+b)=="pixel-room ? other-theme ");
   assert(walk(with("\"pixel-room\"","\"Bad Id\"")+b)=="? other-theme ");
   assert(walk(with("\"version\":","\"versio\":")+b)=="? other-theme ");
   assert(walk(with("\"Pixel Room\"","\""+std::string(97,'n')+"\"")+b)=="? other-theme ");
@@ -79,7 +79,7 @@ int main() {
   assert(walk(a+std::string(MaxIndexLine+10,'1')+"\n"+b)=="pixel-room ? other-theme ");
   std::string keys;                                     // well-formed, but over MaxIndexLine
   for(int i=0;keys.size()<MaxIndexLine;++i) keys+=",\"k"+std::to_string(i)+"\":0";
-  assert(walk(with("\"revision\":1","\"revision\":1"+keys)+b)=="? other-theme ");
+  assert(walk(with("\"revision\":2","\"revision\":2"+keys)+b)=="? other-theme ");
   assert(walk(a+"   \n"+b)=="pixel-room other-theme ");
   // CONTRIBUTING (ESP8266 memory and untrusted input): reading pauses after
   // every line (a yield() on the device), and an index over MaxIndexBytes,
@@ -107,7 +107,7 @@ int main() {
   // any line that is not usable; an install adds the new line at the end.
   {
     InstalledTheme newer=other;newer.version="2";
-    Memory from;from.data=a+with("\"revision\":1","\"revision\":2")+b;
+    Memory from;from.data=a+with("\"revision\":2","\"revision\":1")+b;
     Text out;assert(copyThemeIndex(from,out,"other-theme",&newer)&&out.data==a+themeIndexLine(newer));
     Text removed;assert(copyThemeIndex(from,removed,"pixel-room",nullptr)&&removed.data==b);
     Memory none;Text first;assert(copyThemeIndex(none,first,"pixel-room",&good)&&first.data==a);
@@ -131,9 +131,10 @@ int main() {
     for(int i=0;i<16;++i){
       std::string id="theme-"+std::to_string(i),name=i==2?odd:"Name \"q\" \\ "+std::to_string(i),author=i%3?"":"a\tb";
       std::string version="1."+std::to_string(i),error=i%2?"Invalid package":"";
-      ListedTheme& t=themes.emplace_back();t.set(id.c_str(),name.c_str(),author.c_str(),version.c_str(),error.c_str());
+      ListedTheme& t=themes.emplace_back();t.set(id.c_str(),name.c_str(),author.c_str(),version.c_str(),"description","category","preview",error.c_str());
       t.bytes=i==5?4294967295u:40000+i;t.valid=i%2==0;
       JsonObject o=list.add<JsonObject>();o["id"]=id;o["name"]=name;o["author"]=author;o["version"]=version;
+      o["description"]="description";o["category"]="category";o["preview"]="preview";
       o["bytes"]=t.bytes;o["valid"]=t.valid;o["error"]=error;
     }
     std::string whole;serializeJson(doc,whole);
@@ -147,14 +148,14 @@ int main() {
     BlockList<ListedTheme> none;Pieces empty;writeThemeList<16>("","",0,none,empty);
     assert(empty.joined()=="{\"selected\":\"\",\"error\":\"\",\"freeBytes\":0,\"themes\":[]}");
   }
-  // A ListedTheme keeps its five fields apart, also when set from its own
+  // A ListedTheme keeps its metadata fields apart, also when set from its own
   // fields; a field ends at a 0 byte, as the document's copy of c_str() did.
   {
-    ListedTheme t;t.set("a","","c","d","");
+    ListedTheme t;t.set("a","","c","d","description","category","preview","");
     assert(t.id()==std::string("a")&&!*t.name()&&t.author()==std::string("c")&&t.version()==std::string("d")&&!*t.error());
-    t.set(t.id(),"Name",t.author(),t.version(),"e");
+    t.set(t.id(),"Name",t.author(),t.version(),t.description(),t.category(),t.preview(),"e");
     assert(t.id()==std::string("a")&&t.name()==std::string("Name")&&t.author()==std::string("c")&&t.version()==std::string("d")&&t.error()==std::string("e"));
-    const std::string cut("x\0y",3);t.set(cut.c_str(),"n","","","");
+    const std::string cut("x\0y",3);t.set(cut.c_str(),"n","","","","","","");
     assert(t.id()==std::string("x")&&t.name()==std::string("n"));
   }
   source.data.resize(10);

@@ -286,7 +286,7 @@ struct Settings {
 bool settingsBegin();                       // mount LittleFS
 bool loadSettings(Settings& s);             // false => defaults applied
 bool saveSettings(const Settings& s);
-void factoryReset(Settings& s);             // wipe file + defaults
+void factoryReset(Settings& s);             // set defaults; persist via saveSettings()
 size_t settingsStoredSize();                // bytes of the last load or save
 
 // JSON <-> struct. `includeSecrets=false` masks passwords for the web API.

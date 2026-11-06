@@ -221,7 +221,11 @@ void handlePhotoDeleteAll() {
   appRelease();
   const uint16_t removed = smalltv_photo::removeAll();
   JsonDocument doc; doc["deleted"] = removed;
-  String body; serializeJson(doc, body); server.send(200, "application/json", body);
+  const uint16_t remaining = smalltv_photo::count();
+  const bool complete = remaining == 0;
+  if (!complete) doc["error"] = "Einige Fotos konnten nicht gelöscht werden";
+  String body; serializeJson(doc, body);
+  server.send(complete ? 200 : 500, "application/json", body);
 }
 }
 #endif
@@ -512,8 +516,13 @@ static void handleReboot() {
 
 static void handleFactory() {
   if (!requireAuth()) return;
-  factoryReset(*S);
-  saveSettings(*S);
+  appRelease();  // Free theme/runtime allocations before serializing defaults.
+  if (!applyAndSaveSettings(*S,
+        [](Settings& settings) { factoryReset(settings); },
+        [](const Settings& settings) { return saveSettings(settings); })) {
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save factory defaults\"}");
+    return;
+  }
   server.send(200, "application/json", "{\"ok\":true}");
   scheduleReboot(400);
 }

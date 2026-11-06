@@ -36,7 +36,13 @@ def executable():
     dependencies = [*sources, *sorted((ROOT/'src/features/theme').glob('*.h')),
                     *sorted(arduino_json.rglob('*.h')), *sorted(arduino_json.rglob('*.hpp')),
                     gfx/'font/glcdfont.h']
-    compiler = shlex.split(os.environ.get('CXX', 'c++'))
+    # `shlex` defaults to POSIX parsing, which strips the backslashes from a
+    # Windows CXX path (for example C:\msys64\... becomes C:msys64...). Keep
+    # Windows path separators intact while still accepting quoted paths.
+    compiler = shlex.split(os.environ.get('CXX', 'c++'), posix=os.name != 'nt')
+    if os.name == 'nt':
+        compiler = [part[1:-1] if len(part) >= 2 and part[0] == part[-1] and part[0] in "\"'" else part
+                    for part in compiler]
     try:
         version = subprocess.run([*compiler, '--version'], capture_output=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError) as error:
@@ -47,11 +53,12 @@ def executable():
         digest.update(path.read_bytes())
     cache = ROOT/'.pio/theme-host'
     cache.mkdir(parents=True, exist_ok=True)
-    target = cache/f'theme-native-{digest.hexdigest()[:20]}'
+    suffix = '.exe' if os.name == 'nt' else ''
+    target = cache/f'theme-native-{digest.hexdigest()[:20]}{suffix}'
     if target.is_file():
         return target
     with tempfile.TemporaryDirectory(dir=cache) as scratch:
-        output = Path(scratch)/'theme-native'
+        output = Path(scratch)/('theme-native' + suffix)
         args = [*compiler, '-std=c++11', '-O2', '-Wall', '-Wextra', '-Werror',
                 '-I'+str(ROOT/'src/features/theme'), '-I'+str(arduino_json), '-I'+str(gfx),
                 *map(str, sources), '-o', str(output)]

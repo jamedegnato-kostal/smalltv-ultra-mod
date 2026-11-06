@@ -96,12 +96,27 @@ body.light input[type=text],body.light input[type=password],body.light input[typ
 body.light button.btn.sec{background:#e7f0e7;color:#25432c}body.light header .help-toggle{background:#edf4ec;color:var(--mut)}
 body.light .theme-art{background:radial-gradient(circle at 75% 25%,rgba(75,159,92,.22),transparent 38%),linear-gradient(135deg,#eff7ef,#e7f0e7)}
 body.light .theme-subnav button.active{background:#e8f3e8}
-@media(max-width:600px){header{padding:12px}nav{padding:8px 10px}main{padding:18px 12px 28px}.quick-grid{grid-template-columns:1fr 1fr;gap:9px}.stat-card{padding:13px}.stat-card strong{font-size:15px}.welcome h2{font-size:21px}.card{padding:15px}.savebar{padding:9px 12px}.savebar-inner{gap:8px}.save-status{font-size:11px}.savebar button{min-width:0;white-space:nowrap}.row{flex-wrap:wrap}.row>*{min-width:min(100%,220px)}}
+/* Shared visual system: calm office colours, clear hierarchy and accessible controls. */
+:root{color-scheme:dark;--field:#0b0e13;--shadow:0 10px 28px rgba(0,0,0,.14);--focus:rgba(114,199,124,.28)}
+body{line-height:1.5;padding-bottom:88px}
+body.light{color-scheme:light;--field:#f8fbf8;--shadow:0 8px 24px rgba(28,66,36,.055);--focus:rgba(51,139,79,.2)}
+header{max-width:1120px;min-height:68px;padding:16px 22px;gap:12px}header h1{font-size:18px;letter-spacing:-.02em}header .logo{width:30px;height:30px}
+nav{padding:10px max(22px,calc((100vw - 1120px)/2));gap:6px}nav button{min-height:42px;padding:10px 14px;border-radius:10px;font-weight:550}nav button.active{box-shadow:inset 0 0 0 1px var(--bd)}
+main{max-width:1040px;padding:30px 22px 40px}.card{padding:22px;margin-bottom:16px;border-radius:16px;box-shadow:var(--shadow)}.card h2{color:var(--fg);font-size:14px;letter-spacing:.02em;text-transform:none;margin-bottom:15px}
+.page-intro{margin:0 0 22px}.page-intro .eyebrow{margin:0 0 5px;color:var(--acc2);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.page-intro h2{margin:0;color:var(--fg);font-size:26px;line-height:1.2;letter-spacing:-.035em;text-transform:none}.page-intro p:last-child{max-width:680px;margin:8px 0 0;color:var(--mut);font-size:14px}
+label{margin:14px 0 6px;font-weight:550}input[type=text],input[type=password],input[type=number],input[type=url],input[type=search],input[type=time],select{min-height:42px;padding:9px 11px;border-radius:10px;background:var(--field)}
+button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;transition:filter .15s,transform .15s,box-shadow .15s}button.btn:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}button.btn:disabled{opacity:.48;cursor:not-allowed}button.btn.sec{border:1px solid var(--bd)}button.btn.danger{background:#c84d50;color:#fff}body.light button.btn.danger{background:#bd3f43}
+:focus-visible{outline:3px solid var(--acc);outline-offset:3px;box-shadow:0 0 0 4px var(--focus)}input[type=range],input[type=checkbox]{accent-color:var(--acc)}
+.savebar{padding:12px 22px;backdrop-filter:blur(14px)}body.light .savebar{background:rgba(242,247,241,.95)}.savebar-inner{max-width:996px;min-height:46px}.savebar button{min-width:190px;min-height:44px}.save-status.dirty{font-weight:600}
+.toast{z-index:30;bottom:82px;max-width:min(560px,calc(100vw - 32px));text-align:center;line-height:1.4;box-shadow:var(--shadow)}.status-pill{font-weight:600}.stat-card{box-shadow:var(--shadow)}.details summary{padding:9px 0}
+@media(min-width:900px){.quick-grid{gap:14px}.card{padding:24px}.theme-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+@media(max-width:600px){body{padding-bottom:92px}header{padding:12px 14px;min-height:58px}header h1{font-size:15px}header .logo{width:25px;height:25px}header .help-toggle{padding:7px 9px}nav{padding:8px 10px;gap:3px}nav button{padding:9px 11px;font-size:13px}main{padding:22px 13px 30px}.quick-grid{grid-template-columns:1fr 1fr;gap:9px}.stat-card{padding:13px}.stat-card strong{font-size:15px}.welcome h2{font-size:21px}.page-intro h2{font-size:23px}.card{padding:17px;border-radius:14px}.savebar{padding:8px 12px}.savebar-inner{gap:8px}.save-status{font-size:11px;line-height:1.3}.savebar button{min-width:0;white-space:nowrap;padding:10px 12px}.row{flex-wrap:wrap}.row>*{min-width:min(100%,220px)}.photo-upload-actions button{flex:1 1 140px}.dialog-actions{position:sticky;bottom:-20px;background:var(--card);padding:12px 0 0}}
 </style></head>
 <body class="light">
 <header><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="6"/><polyline points="15,38 23,30 30,34 37,22 44,28 50,20"/><path d="M24 51v6M40 51v6M20 57h8M36 57h8"/></g></svg><span id="dot" class="dot"></span><h1>SmallTV · Arbeitsplatz</h1><span id="chip" class="chip" style="display:none"></span><span id="hi" class="muted"></span><span class="spacer"></span><button id="themeMode" class="help-toggle" type="button">Dunkles Design</button><button id="helpToggle" class="help-toggle" type="button" aria-expanded="false">Tipps</button></header>
 <nav>
- <button data-t="status" class="active">Übersicht</button>
+ <button data-t="status" class="active" aria-current="page">Übersicht</button>
  <button data-t="settingsDisplay">Anzeige</button>
  <button data-t="settingsClock">Uhr &amp; Zeit</button>
  <button data-t="settingsThemes">Themes</button>
@@ -111,9 +126,10 @@ body.light .theme-subnav button.active{background:#e8f3e8}
  <button data-t="settingsAdvanced">Erweitert</button>
 </nav>
 <main>
- <section id="settingsDisplay" class="tab"></section>
- <section id="settingsClock" class="tab"></section>
+ <section id="settingsDisplay" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Anzeige</h2><p>Helligkeit, Farben, Bildrate und Verhalten des Displays anpassen.</p></div></section>
+ <section id="settingsClock" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Uhr &amp; Zeit</h2><p>Zeitzone, Zeitformat und Darstellung deiner Uhr festlegen.</p></div></section>
  <section id="settingsThemes" class="tab">
+  <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Themes</h2><p>Themes verwalten und festlegen, wann sie angezeigt werden.</p></div>
   <div class="theme-subnav" role="tablist" aria-label="Theme-Bereiche">
    <button type="button" class="active" data-theme-pane-button="themeLibrary">Bibliothek</button>
    <button type="button" data-theme-pane-button="themeAutomation">Automatik</button>
@@ -122,6 +138,7 @@ body.light .theme-subnav button.active{background:#e8f3e8}
   <div id="themeAutomation" class="themePane"></div>
  </section>
  <section id="photos" class="tab">
+  <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Fotos</h2><p>Fotos verwalten und ihre Wiedergabe zwischen Themes konfigurieren.</p></div>
   <div class="card"><h2>Foto-Wiedergabe</h2>
    <div class="chk"><input id="photoPlaybackEnabled" type="checkbox"><label for="photoPlaybackEnabled">Fotos nach jedem Theme anzeigen</label></div>
    <label for="photosPerTheme">Fotos nach jedem Theme</label><select id="photosPerTheme"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select>
@@ -137,7 +154,7 @@ body.light .theme-subnav button.active{background:#e8f3e8}
    <div id="photoGrid" class="photo-grid"></div>
   </div>
  </section>
- <section id="settingsAdvanced" class="tab"></section>
+ <section id="settingsAdvanced" class="tab"><div class="page-intro"><p class="eyebrow">Gerätekonfiguration</p><h2>Erweitert</h2><p>Zusätzliche Bedienelemente für dieses Gerät.</p></div></section>
  <!-- STATUS -->
  <section id="status" class="tab active">
   <div class="welcome"><div><p class="eyebrow">SMALLTV · GERÄTEÜBERSICHT</p><h2>Gerätestatus</h2><p>Verbindung, Anzeige und Uhr auf einen Blick.</p></div><span id="statusPill" class="status-pill">Status wird geprüft</span></div>
@@ -155,6 +172,7 @@ body.light .theme-subnav button.active{background:#e8f3e8}
 
  <!-- WIFI -->
  <section id="wifi" class="tab">
+  <div class="page-intro"><p class="eyebrow">Verbindung</p><h2>Netzwerk</h2><p>WLAN-Zugang und Gerätenamen konfigurieren.</p></div>
   <div class="card"><h2>Gespeicherte WLAN-Netzwerke</h2>
    <button class="btn sec" onclick="scan()">Netzwerke suchen</button>
    <div id="scanList"></div>
@@ -300,6 +318,7 @@ body.light .theme-subnav button.active{background:#e8f3e8}
 
  <!-- UPDATE -->
  <section id="update" class="tab">
+  <div class="page-intro"><p class="eyebrow">Geräteverwaltung</p><h2>System</h2><p>Firmware und Geräteeinstellungen sichern oder warten.</p></div>
   <div class="card"><h2>Online-Update</h2>
    <div class="muted">Installiert: <b id="fwVer">-</b></div>
    <div style="margin-top:10px">
@@ -335,12 +354,12 @@ body.light .theme-subnav button.active{background:#e8f3e8}
  </section>
 </main>
 
-<div class="savebar"><div class="savebar-inner"><span id="saveStatus" class="save-status">Änderungen werden erst beim Speichern übernommen.</span><button class="btn" id="saveSettingsBtn" type="button" onclick="saveAll()">Änderungen speichern</button></div></div>
+<div class="savebar"><div class="savebar-inner"><span id="saveStatus" class="save-status" role="status" aria-live="polite">Änderungen werden erst beim Speichern übernommen.</span><button class="btn" id="saveSettingsBtn" type="button" onclick="saveAll()">Änderungen speichern</button></div></div>
 <div style="text-align:center;padding:0 0 24px;font-size:12px">
  <a id="footRepo" href="https://github.com/jamedegnato-kostal/smalltv-ultra-mod" target="_blank" rel="noopener" style="color:var(--acc2);text-decoration:none">Projektseite: SmallTV Settings Firmware</a>
  <span id="footVer" class="muted"></span>
 </div>
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <dialog id="themeInfoDialog" aria-labelledby="themeInfoTitle">
  <h2 id="themeInfoTitle">Theme-Informationen bearbeiten</h2>
  <input id="themeEditId" type="hidden">
@@ -424,7 +443,7 @@ document.querySelectorAll('nav button').forEach(function(b){b.onclick=function()
  showTab(b.dataset.t);
 }});
 function showTab(id){
- document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('active',x.dataset.t===id)});
+ document.querySelectorAll('nav button').forEach(function(x){var active=x.dataset.t===id;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current')});
  document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('active',x.id===id)});
 }
 document.querySelectorAll('[data-go]').forEach(function(b){b.onclick=function(){showTab(b.dataset.go)}});

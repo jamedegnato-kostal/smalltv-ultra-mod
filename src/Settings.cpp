@@ -562,8 +562,8 @@ bool saveSettings(const Settings& s) {
 }
 
 void factoryReset(Settings& s) {
-  LittleFS.remove(CONFIG_PATH);
-  g_storedSize = 0;
+  // Keep the persisted file intact until the caller has successfully written
+  // the defaults. saveSettings() publishes through an atomic temp-file rename.
   s.setDefaults();
 }
 

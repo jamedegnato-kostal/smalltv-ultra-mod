@@ -173,7 +173,9 @@ class ThemeIndexReader {
     const char* category = root["category"];
     const char* preview = root["preview"];
     if (!root["revision"].is<int>() || root["revision"].as<int>() != MetaRevision || !root["bytes"].is<uint32_t>() ||
-        !id || !validId(id) || !name || !author || !version || strlen(version) > 32 || !description || strlen(description) > 160 || !category || strlen(category) > 24 || !preview || strlen(preview) > 120) return false;
+        !id || !validId(id) || !name || strlen(name) > 96 || !author || strlen(author) > 96 ||
+        !version || strlen(version) > 32 || !description || strlen(description) > 160 ||
+        !category || strlen(category) > 24 || !preview || strlen(preview) > 120) return false;
     entry.id = id;
     entry.name = name;
     entry.author = author;

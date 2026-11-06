@@ -351,7 +351,8 @@ static ListUsage listUsage(size_t idLength, size_t nameLength, size_t versionLen
   themes.reserve(16);
   for (int i = 0; i < 16; ++i) {
     ListedTheme& t = themes.emplace_back();
-    t.set(ids[i].c_str(), names[i].c_str(), authors[i].c_str(), versions[i].c_str(), errors[i].c_str());
+    t.set(ids[i].c_str(), names[i].c_str(), authors[i].c_str(), versions[i].c_str(),
+          "description", "category", "preview", errors[i].c_str());
     t.bytes = 4294967295u;
   }
   counting = false;

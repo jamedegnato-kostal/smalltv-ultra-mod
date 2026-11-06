@@ -22,6 +22,34 @@ Exportieren von Themes aus der Firmware ist nicht vorgesehen.
 - Optionale Vorschaudatei und Metadaten: Name, Beschreibung, Autor, Version und Kategorie.
 - Optionale PNG-Bitmap-Schriftatlanten. TTF- und OTF-Schriften werden nicht auf dem Gerät geladen.
 
+### Layer-Typen
+
+| Typ | Inhalt |
+| --- | --- |
+| text | Text, Tokens, Bitmap-Schrift und optionaler Lauftext |
+| rectangle | Rechteck mit optionaler Füllung, Kontur und abgerundeten Ecken (`cornerRadius`) |
+| circle | Kreis mit Füllung oder Kontur |
+| line | Linie mit Farbe und Stärke |
+| image | Einzelnes STI-Bild oder PNG-Atlasbild |
+| animation | Sprite-Animation mit begrenzter Framerate |
+
+### Lauftext und dynamische Werte
+
+Text kann über `scroll.width` ein festes Anzeigefenster erhalten. `scroll.speed`
+bestimmt die Bewegungsgeschwindigkeit; `"mode": "loop"` wiederholt den Text
+fortlaufend und `"mode": "bounce"` lässt ihn an den Fensterenden umkehren.
+Pausen und Abstand werden im Theme-Manifest festgelegt.
+
+Zahlen- und Farb-Bindings lesen Werte aus den deklarierten `data`-Quellen. Der
+Desktop-Vorschaulauf kann mit `--data` Beispielwerte bekommen. Das Beispiel
+`live-status` zeigt eine solche dynamische Anzeige. Fehlt ein Wert oder ist er
+ungültig, bleibt der statische Layerwert erhalten.
+
+Farb-Bindings können eine Folge von **color stops** verwenden: Ein Quellwert
+wird zwischen den benachbarten Farbstufen interpoliert. Lege die Stopps in
+aufsteigender Reihenfolge an; Werte außerhalb des Bereichs erhalten die
+nächstgelegene Randfarbe.
+
 Die Theme-Engine unterstützt Paketversionen 1 und 2. Version 2 fügt unter anderem zeilenweise komprimierte STI2-Bilder und zusätzliche Bindungs-/Formoptionen hinzu. Für die genauen Felder und Grenzen sind die Beispielmanifeste in `examples/themes/` und die Parserdefinition in `src/features/theme/ThemeEngine.cpp` maßgeblich.
 
 ## Ressourcenlimits
