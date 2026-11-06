@@ -78,7 +78,7 @@ Wenn Foto-Wiedergabe aktiv ist, wird nach einem Playlist-Theme ein Shuffle-Batch
 
 ## Beispiele und Werkzeuge
 
-Im Ordner `examples/themes/` liegen installierbare Pakete, Quellmanifeste und Offline-Vorschauen. Der Desktop-Packer befindet sich in `tools/theme_pack.py`; er benötigt Pillow und einen C++11-Compiler für die native Validierung. Die Firmware braucht Pillow nicht.
+Im Ordner `examples/themes/` liegen installierbare Pakete, Quellmanifeste und Offline-Vorschauen. Dazu gehören eine dynamische Analoguhr und ein Wetter-Theme für Bellmerei, das aktuelle Wetterdaten von Open-Meteo abruft. Diese Pakete lassen sich über die Theme-Verwaltung in der WebUI importieren; sie werden nicht automatisch in den LittleFS-Speicher des Geräts geschrieben. Der Desktop-Packer befindet sich in `tools/theme_pack.py`; er benötigt Pillow und einen C++11-Compiler für die native Validierung. Die Firmware braucht Pillow nicht.
 
 ```powershell
 python -m pip install -r tools/requirements-theme.txt

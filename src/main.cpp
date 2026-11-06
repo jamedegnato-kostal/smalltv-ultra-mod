@@ -258,7 +258,13 @@ static void themePlaylistService(const Settings& s) {
 #if WITH_PHOTOS
   if (!g_themePhotosChecked) {
     g_themePhotosChecked = true;
-    if (s.photosEnabled && g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) return;
+    if (s.photosEnabled && g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) {
+      // The JPEG decoder needs working memory while drawing. Drop the current
+      // theme package for the duration of the photo batch, then load the next
+      // playlist theme when the slideshow completes.
+      g_themeMode.setPlaylistTheme(nullptr);
+      return;
+    }
   }
 #endif
   if (!themePlaylistSelectNext(s, false)) {

@@ -23,6 +23,10 @@ assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
 assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs/);
 assert.match(html, /function arrangeSettingsPages\(\)/);
+assert.match(html, /function showThemePane\(id\)/);
+assert.match(html, /Zur Theme-Bibliothek/);
+assert.match(html, /Während des Zeitfensters bleibt das Theme bis zum Ende aktiv/);
+assert.match(html, /greifen Zufallsmodus, Anzeigedauer und Fotoeinblendung nicht/);
 
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',

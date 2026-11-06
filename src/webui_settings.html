@@ -220,7 +220,7 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
     <button class="btn sec" type="button" onclick="themePlaylistAddItem()">Hinzufügen</button>
    </div>
    <div id="themePlaylistList" style="margin-top:12px"></div>
-   <small class="hint">Mit den Pfeilen sortieren und die Anzeigedauer je Theme (5 bis 3600 Sekunden) festlegen. Zeitfenster verwenden die konfigurierte Zeitzone und benötigen NTP-Sync; bei überlappenden Fenstern gewinnt der erste Playlist-Eintrag. Außerhalb aller Fenster erscheint das Rückfall-Theme. Änderungen werden mit „Einstellungen speichern“ gesichert.</small>
+   <small class="hint">Ohne Zeitfenster wechseln die Themes nach Anzeigedauer oder zufällig. Ein Zeitfenster benötigt NTP und hält das erste passende Theme bis zum Ende des Fensters aktiv; in dieser Zeit greifen Zufallsmodus, Anzeigedauer und Fotoeinblendung nicht. Bei überlappenden Fenstern gewinnt der erste Playlist-Eintrag. Außerhalb der Zeitfenster erscheint das Rückfall-Theme. Ohne NTP läuft die Playlist normal weiter. Änderungen mit „Änderungen speichern“ sichern.</small>
   </div>
   <div class="card"><h2>Bildschirm</h2>
    <label>Helligkeit: <span id="brVal"></span>%</label>
@@ -963,15 +963,17 @@ function renderThemePlaylist(){
  themeEntries.forEach(function(t){if(t.valid===false||used[t.id])return;
   var o=document.createElement('option');o.value=t.id;o.textContent=t.name+(t.version?' — '+t.version:'');add.appendChild(o)});
  list.textContent='';
- if(!themePlaylistItems.length){var empty=document.createElement('div');empty.className='muted';empty.textContent='Noch keine Themes in der Playlist.';list.appendChild(empty);return}
+ if(!themePlaylistItems.length){var empty=document.createElement('div');empty.className='muted';
+  var note=document.createElement('p');note.textContent=themeEntries.length?'Noch keine Themes in der Playlist. Wähle oben ein Theme aus und klicke auf „Hinzufügen“.':'Noch keine Themes installiert. Installiere zuerst ein Theme in der Bibliothek.';empty.appendChild(note);
+  var go=document.createElement('button');go.type='button';go.className='btn sec';go.textContent='Zur Theme-Bibliothek';go.onclick=function(){showThemePane('themeLibrary')};empty.appendChild(go);list.appendChild(empty);return}
  themePlaylistItems.forEach(function(item,index){
   var row=document.createElement('div');row.className='net';row.style.cursor='default';row.style.alignItems='center';row.style.gap='8px';row.style.flexWrap='wrap';
   var name=document.createElement('span');name.style.flex='1';name.style.minWidth='100px';
   var found=themeEntries.find(function(t){return t.id===item.id});
   name.textContent=(index+1)+'. '+(found?(found.name+(found.valid===false?' — fehlerhaft':'')):item.id);
-  var duration=document.createElement('input');duration.type='number';duration.min='5';duration.max='3600';duration.step='1';duration.value=item.seconds;duration.setAttribute('aria-label','Anzeigedauer in Sekunden');duration.style.width='88px';duration.style.flex='0 0 88px';
+  var duration=document.createElement('input');duration.type='number';duration.min='5';duration.max='3600';duration.step='1';duration.value=item.seconds;duration.disabled=!!item.scheduled;duration.title=item.scheduled?'Während des Zeitfensters bleibt das Theme bis zum Ende aktiv.':'Anzeigedauer ohne Zeitfenster';duration.setAttribute('aria-label',item.scheduled?'Anzeigedauer (bei Zeitfenster nicht aktiv)':'Anzeigedauer in Sekunden');duration.style.width='88px';duration.style.flex='0 0 88px';
   duration.onchange=function(){item.seconds=Math.max(5,Math.min(3600,parseInt(duration.value,10)||30));duration.value=item.seconds};
-  var schedule=document.createElement('input');schedule.type='checkbox';schedule.checked=!!item.scheduled;schedule.title='Zu einer Tageszeit aktivieren';schedule.setAttribute('aria-label','Zeitplan aktivieren');schedule.onchange=function(){item.scheduled=schedule.checked;renderThemePlaylist()};
+  var schedule=document.createElement('input');schedule.type='checkbox';schedule.checked=!!item.scheduled;schedule.title='Zu einer Tageszeit aktivieren; benötigt NTP-Synchronisierung';schedule.setAttribute('aria-label','Zeitplan aktivieren');schedule.onchange=function(){item.scheduled=schedule.checked;renderThemePlaylist()};
   var from=document.createElement('input');from.type='time';from.value=minutesTime(item.startMinute);from.disabled=!item.scheduled;from.setAttribute('aria-label','Aktiv ab');from.onchange=function(){item.startMinute=timeMinutes(from.value)};
   var to=document.createElement('input');to.type='time';to.value=minutesTime(item.endMinute);to.disabled=!item.scheduled;to.setAttribute('aria-label','Aktiv bis');to.onchange=function(){item.endMinute=timeMinutes(to.value)};
   row.appendChild(name);row.appendChild(duration);row.appendChild(schedule);row.appendChild(from);row.appendChild(to);

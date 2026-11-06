@@ -8,6 +8,10 @@ Three examples are ready to install from **Display → Theme clocks** on SmallTV
   fetched JSON status endpoint: a loop-scrolling headline, a bounce-scrolling
   headline, a threshold-colored rounded progress bar bound to a numeric level,
   and status text.
+* [`dynamische-uhr.stheme`](dynamische-uhr.stheme) — analog clock with moving
+  hour, minute, and second hands.
+* [`wetter-bellmerei.stheme`](wetter-bellmerei.stheme) — weather theme for
+  Bellmerei, Germany, using current conditions from Open-Meteo.
 
 Their editable sources are in the matching directories. Open
 [pixel-room-preview.html](pixel-room-preview.html),
