@@ -47,10 +47,11 @@ Die Tests unter `tests/` benötigen je nach Skript einen C++-Compiler und unter
 Linux teils 32-Bit-Unterstützung. Sie decken Hostcode ab, simulieren aber kein
 vollständiges ESP8266-Gerät.
 
-## Veröffentlichungsdatei
+## Veröffentlichungsdateien
 
-Der Firmware-Workflow legt `smalltv-settings-firmware.bin` als Build-Artefakt
-ab. Ein Git-Tag im Format `vX.Y.Z` löst zusätzlich die Release-Erstellung aus.
-Der Asset-Name muss zum Selbstupdate-Eintrag `UPDATE_ASSET` in `src/config.h`
-passen. Erstelle ein Release erst, wenn Repository und Versionsnummer dort
-stimmen.
+Der Firmware-Workflow stellt das Hauptimage und die Beispiel-Themes als
+separate Dateien bereit: `smalltv-settings-firmware.bin`,
+`dynamische-uhr.stheme` und `wetter-bellmerei.stheme`. Ein Git-Tag im Format
+`vX.Y.Z` veröffentlicht dieselben Dateien als einzelne Release-Assets. Der
+Firmware-Dateiname muss zum Selbstupdate-Eintrag `UPDATE_ASSET` in
+`src/config.h` passen.

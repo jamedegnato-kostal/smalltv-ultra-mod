@@ -84,7 +84,8 @@ jobs:
           mkdir -p dist
           copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
           copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-settings-firmware.bin
-          copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-settings-loader.bin
+          copy examples/themes/dynamische-uhr.stheme dist/dynamische-uhr.stheme
+          copy examples/themes/wetter-bellmerei.stheme dist/wetter-bellmerei.stheme
 
       - name: Check app-slot space
         run: python tools/ci_checks.py size --envs smalltv_settings,smalltv_loader --min-free 8192
