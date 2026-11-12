@@ -3,6 +3,7 @@
 #include "ThemeMode.h"
 #include "ThemeCatalog.h"
 #include "Clock.h"
+#include "SettingsTransaction.h"
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <string.h>
@@ -852,44 +853,34 @@ void deleteTheme() {
       return;
     }
   }
-  if (settings->themeId == id) {
-    settings->themeId = "";
-    if (!saveSettings(*settings)) {
-      settings->themeId = id;
-      reply(500, "Could not clear saved selection");
-      return;
-    }
-    appInvalidate();
-  }
-  if (!LittleFS.remove(path)) {
-    reply(404, "Theme not found or could not be removed");
+  bool settingsChanged = settings->themeId == id;
+#if WITH_THEME_PLAYLIST
+  for (uint8_t i = 0; i < settings->themePlaylistCount; ++i)
+    if (id == settings->themePlaylist[i].id) settingsChanged = true;
+#endif
+  if (settingsChanged && !applyAndSaveSettings(*settings, [&](Settings& candidate) {
+        if (candidate.themeId == id) candidate.themeId = "";
+#if WITH_THEME_PLAYLIST
+        for (uint8_t i = 0; i < candidate.themePlaylistCount; ++i) {
+          if (id != candidate.themePlaylist[i].id) continue;
+          for (uint8_t j = i + 1; j < candidate.themePlaylistCount; ++j)
+            candidate.themePlaylist[j - 1] = candidate.themePlaylist[j];
+          --candidate.themePlaylistCount;
+          memset(&candidate.themePlaylist[candidate.themePlaylistCount], 0,
+                 sizeof(candidate.themePlaylist[0]));
+          if (!candidate.themePlaylistCount) candidate.themePlaylistEnabled = false;
+          break;
+        }
+#endif
+      }, [](const Settings& candidate) { return saveSettings(candidate); })) {
+    reply(500, "Could not save theme selection and playlist changes");
     return;
   }
-#if WITH_THEME_PLAYLIST
-  Settings::ThemePlaylistItem removedItem{};
-  bool oldPlaylistEnabled = settings->themePlaylistEnabled;
-  for (uint8_t i = 0; i < settings->themePlaylistCount; ++i) {
-    if (id != settings->themePlaylist[i].id) continue;
-    removedItem = settings->themePlaylist[i];
-    for (uint8_t j = i + 1; j < settings->themePlaylistCount; ++j)
-      settings->themePlaylist[j - 1] = settings->themePlaylist[j];
-    --settings->themePlaylistCount;
-    memset(&settings->themePlaylist[settings->themePlaylistCount], 0,
-           sizeof(settings->themePlaylist[0]));
-    if (!settings->themePlaylistCount) settings->themePlaylistEnabled = false;
-    if (!saveSettings(*settings)) {
-      for (uint8_t j = settings->themePlaylistCount; j > i; --j)
-        settings->themePlaylist[j] = settings->themePlaylist[j - 1];
-      settings->themePlaylist[i] = removedItem;
-      ++settings->themePlaylistCount;
-      settings->themePlaylistEnabled = oldPlaylistEnabled;
-      appInvalidate();
-      reply(500, "Theme removed, but playlist settings could not be saved");
-      return;
-    }
-    break;
+  if (settingsChanged) appInvalidate();
+  if (!LittleFS.remove(path)) {
+    reply(500, "Theme settings were cleared, but the package file could not be removed");
+    return;
   }
-#endif
   updateIndex(id, nullptr);
 #if WITH_THEME_PLAYLIST
   appInvalidate();

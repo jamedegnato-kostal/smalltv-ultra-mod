@@ -127,6 +127,19 @@ int main() {
     entry(packed.data,"images/other.png.sti",sti2(rows,3));
     assert(!rle.load(theme,error));
   }
+  // Spec-2 embedded STF font: one fallback glyph (A), a 1x1 opaque ink
+  // bitmap, one-byte advance and a transparent line row before the ink.
+  {
+    std::string manifest=R"({"spec":2,"theme":{"id":"font-test","name":"Font test","author":"Me","version":"1"},"display":{"width":240,"height":240,"background":"#000000"},"layers":[{"id":"label","type":"text","x":10,"y":10,"value":"A","font":"tiny","color":"#ffffff"}]})";
+    std::string font="STF1";font+=char(8);font+=char(7);font+=char(65);font+=char(1);font+=char(65);font.append(3,'\0');
+    u16(font,0);font+=char(1);font+=char(0);font+=char(7);font+=char(1);font+=char(1);font+=char(0);font+=char(0xf0);
+    Memory packed;Package package(packed);Theme theme;packed.data="STH1";u16(packed.data,2);u16(packed.data,0);entry(packed.data,"theme.json",manifest);entry(packed.data,"fonts/tiny.stf",font);
+    assert(package.load(theme,error));assert(theme.layers[0].stfFont==1&&theme.layers[0].size==8);
+    auto handle=package.resolve("fonts/tiny.stf");assert(handle!=InvalidAsset);uint8_t coverage[240]{};int left=0,width=0;
+    assert(package.glyphRow(handle,'A',0,coverage,left,width)&&width==0);
+    assert(package.glyphRow(handle,'A',7,coverage,left,width)&&width==1&&coverage[0]==255);
+    packed.data.back()=char(0x0f);assert(!package.load(theme,error));
+  }
 
   // Loading checks every STI2 row, and on the ESP8266 that runs at install
   // and at every boot (#53 review): the row table and the runs are read in

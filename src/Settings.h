@@ -284,7 +284,9 @@ struct Settings {
 };
 
 // Persistence
-bool settingsBegin();                       // mount LittleFS
+bool settingsBegin();                       // mount LittleFS without formatting on failure
+bool settingsStorageReady();                // whether LittleFS is mounted
+bool settingsFormatStorage();               // explicit destructive recovery, only when unmounted
 bool loadSettings(Settings& s);             // false => defaults applied
 bool saveSettings(const Settings& s);
 void factoryReset(Settings& s);             // set defaults; persist via saveSettings()

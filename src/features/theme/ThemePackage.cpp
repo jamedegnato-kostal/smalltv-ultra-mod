@@ -107,7 +107,13 @@ __attribute__((noinline)) bool Package::readIndex(std::string& error) {
     if (path == "theme.json") {
       if (e.length == 0 || e.length > MaxManifest) return false;
     } else if (path.compare(0, 6, "fonts/") == 0 && path.size() > 10 && path.compare(path.size() - 4, 4, ".stf") == 0) {
-      if (++fonts > 4 || e.length < 12 || !source_.read(pos, b, 12) || memcmp(b, "STF1", 4) || !b[5] || b[5] > b[4]) return false;
+      // Keep the on-disk font name within the same safe identifier grammar
+      // used by the manifest, so fonts cannot alias paths or ambiguous names.
+      const std::string fontName = path.substr(6, path.size() - 10);
+      const bool safeName = !fontName.empty() && std::all_of(fontName.begin(), fontName.end(), [](char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
+      });
+      if (!safeName || ++fonts > 4 || e.length < 12 || !source_.read(pos, b, 12) || memcmp(b, "STF1", 4) || !b[5] || b[5] > b[4]) return false;
       e.compressed = true;
       e.width = b[6];
       e.height = b[7];

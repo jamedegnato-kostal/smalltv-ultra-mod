@@ -5,6 +5,7 @@
 #include <string.h>
 
 static const char* CONFIG_PATH = "/config.json";
+static bool g_storageReady = false;
 // Bytes in CONFIG_PATH as last read or written: what the next save needs on
 // the filesystem, known without building the settings document again.
 static size_t g_storedSize = 0;
@@ -541,14 +542,23 @@ void Settings::setDefaults() {
 
 // ---------------------------------------------------------------------------
 bool settingsBegin() {
-  if (LittleFS.begin()) return true;
-  // First boot on a fresh chip: format then mount.
-  if (LittleFS.format() && LittleFS.begin()) return true;
-  return false;
+  g_storageReady = LittleFS.begin();
+  return g_storageReady;
+}
+
+bool settingsStorageReady() {
+  return g_storageReady;
+}
+
+bool settingsFormatStorage() {
+  if (g_storageReady || !LittleFS.format()) return false;
+  g_storageReady = LittleFS.begin();
+  return g_storageReady;
 }
 
 bool loadSettings(Settings& s) {
   s.setDefaults();
+  if (!g_storageReady) return false;
   File f = LittleFS.open(CONFIG_PATH, "r");
   if (!f) return false;
   g_storedSize = f.size();
@@ -563,6 +573,7 @@ bool loadSettings(Settings& s) {
 }
 
 bool saveSettings(const Settings& s) {
+  if (!g_storageReady) return false;
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(s, root, /*includeSecrets=*/true);

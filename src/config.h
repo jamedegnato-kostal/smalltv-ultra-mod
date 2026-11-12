@@ -8,7 +8,7 @@
 // Firmware identity
 // ---------------------------------------------------------------------------
 #define FW_NAME    "smalltv-settings"
-#define FW_VERSION "0.1.0"
+#define FW_VERSION "0.1.1"
 
 // Project / update references (shown in the web UI; used by the GitHub self-update)
 #define REPO_URL      "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"

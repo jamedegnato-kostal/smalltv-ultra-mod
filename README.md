@@ -64,9 +64,9 @@ python tools/theme_pack.py examples/themes/pixel-room .pio/pixel-room.stheme
 | `tests/` | Parser-, Speicher-, Theme-, Foto- und API-nahe Hosttests |
 | `docs/` | ausführliche Bedienungs- und Entwicklungsdokumentation |
 
-## GitHub-Vorbereitung
+## GitHub-Releases
 
-Das Repository kann lokal mit den Dateien in diesem Ordner vorbereitet werden. Build- und Dokumentationsprüfungen laufen über `.github/workflows/`. Die Firmware-Version, Release-Datei und Repository-Adresse für den optionalen integrierten Update-Check stehen in `src/config.h`; diese Werte müssen vor dem ersten eigenen Release zum tatsächlichen Repository passen. Dieses Projekt wird durch Codex nicht veröffentlicht.
+Ein Push eines Versions-Tags (`v*`) startet den Workflow unter `.github/workflows/build.yml`. Er baut `smalltv_settings` und veröffentlicht `smalltv-settings-firmware.bin` als Release-Asset. Firmware-Version, Release-Dateiname und Repository-Adresse für den integrierten Update-Check stehen in `src/config.h`.
 
 ## Sicherheit und Supportdaten
 

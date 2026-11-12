@@ -276,6 +276,7 @@ static void themePlaylistService(const Settings& s) {
 #endif
 
 static Settings g_settings;
+static bool g_storageReady = false;
 static String   g_resetReason;        // why the chip last reset (diagnostics)
 static bool     g_safeMode = false;   // last reset was a crash -> don't re-enter the crash path
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
@@ -572,7 +573,8 @@ void setup() {
 #endif
 
   Serial.println("[boot] settings");
-  settingsBegin();
+  g_storageReady = settingsBegin();
+  if (!g_storageReady) Serial.println("[boot] LittleFS unavailable; waiting for explicit recovery format");
   loadSettings(g_settings);
 
   Serial.println("[boot] display");
@@ -608,14 +610,16 @@ void setup() {
 #endif
 
   Serial.println("[boot] modes");
-  for (size_t i = 0; i < kModeCount; i++) kModes[i]->begin(g_settings);
+  if (g_storageReady) {
+    for (size_t i = 0; i < kModeCount; i++) kModes[i]->begin(g_settings);
 #if WITH_PHOTOS
-  smalltv_photo::begin();
-  g_photoSlideshow.begin();
+    smalltv_photo::begin();
+    g_photoSlideshow.begin();
 #endif
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
-  if (g_fallbackTheme && !g_nativeRecovery) g_themeMode.useRecoveryTheme(g_crashStreak);
+    if (g_fallbackTheme && !g_nativeRecovery) g_themeMode.useRecoveryTheme(g_crashStreak);
 #endif
+  }
   Serial.println("[boot] done");
 
   if (netMode() == NET_AP) {
@@ -670,7 +674,7 @@ void loop() {
         shownFail = netFailSeq();
         gfxApInfo(g_settings.apSsid.c_str(), g_settings.apPass.c_str(), netIP().c_str(), netFailReason());
       }
-    } else if (g_fallbackTheme && !g_nativeRecovery) {
+    } else if (g_fallbackTheme && !g_nativeRecovery && g_storageReady) {
       crashGuardMarkRecoveryThemeAttempted();
       g_themeMode.service(g_settings);
     }

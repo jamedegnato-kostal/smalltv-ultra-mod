@@ -150,15 +150,18 @@ void netBegin(const Settings& s, void (*onProgress)(const char*)) {
   uint8_t order[MAX_WIFI_NETS];
   bool    seen[MAX_WIFI_NETS];
   if (s.wifiCount == 1) {
+    if (onProgress) onProgress("Scanning...");
 #if !defined(SMALLTV_FAMILY_ESP32)
     // The stock Ultra firmware can leave stale RF state behind. A boot scan is
-    // the second half of the mesh compatibility fix; keep the result unused.
-    if (onProgress) onProgress("Scanning...");
-    WiFi.scanNetworks();
-    WiFi.scanDelete();
+    // the second half of the mesh compatibility fix. Its result also selects
+    // the same join budget that setup-mode retries will use later.
 #endif
+    int found = WiFi.scanNetworks();
+    seen[0] = false;
+    for (int i = 0; i < found; ++i)
+      if (WiFi.SSID(i) == s.wifi[0].ssid) { seen[0] = true; break; }
+    WiFi.scanDelete();
     order[0] = 0;
-    seen[0] = true;
   } else {
     int32_t rssi[MAX_WIFI_NETS];
     for (uint8_t i = 0; i < s.wifiCount; i++) { rssi[i] = -32768; seen[i] = false; }

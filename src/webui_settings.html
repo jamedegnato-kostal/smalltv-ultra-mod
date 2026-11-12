@@ -350,6 +350,12 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <div style="margin-top:10px"><button class="btn sec" type="button" onclick="removePassword()">Passwort entfernen</button></div>
    <small class="hint">Ein Passwort schützt Einstellungsseite, API und Firmware-Upload. Zum Ändern das neue Passwort zweimal eingeben. „Passwort entfernen“ wird erst beim Speichern übernommen.</small>
   </div>
+  <div class="card" id="storageRecovery" style="display:none">
+   <h2>Dateisystem nicht verfügbar</h2>
+   <p>Der Speicher konnte nicht eingebunden werden. Themes, Fotos und Einstellungen bleiben zunächst unangetastet.</p>
+   <button class="btn danger" type="button" onclick="repairStorage()">Speicher formatieren und reparieren</button>
+   <small class="hint">Das Formatieren löscht alle gespeicherten Themes, Fotos und Einstellungen. Nur fortfahren, wenn du diese Daten verlieren darfst.</small>
+  </div>
   <div class="card"><h2>Wartung</h2>
    <button class="btn sec" onclick="reboot()">Neu starten</button>
    <button class="btn danger" style="margin-left:8px" onclick="factory()">Werkseinstellungen</button>
@@ -503,6 +509,7 @@ function resetColors(){setGain('rGain','rgVal',100);setGain('gGain','ggVal',100)
  sv('contrast',100);if($('contrastVal'))$('contrastVal').textContent='100';sv('saturation',100);if($('saturationVal'))$('saturationVal').textContent='100';
  toast('Farbkorrektur neutral gesetzt – Einstellungen speichern')}
 function loadConfig(){return j('/api/config').then(function(c){C=c;
+ var sr=$('storageRecovery');if(sr)sr.style.display=c.storageReady===false?'block':'none';
  var f=c.features||{};
  if(f.theme!==true){['themeCard','themePlaylistCard','clockThemeCard'].forEach(function(id){var card=$(id);if(card)card.remove()})}else{loadThemes()}
  if(f.themePlaylist===true){var pc=$('themePlaylistCard');if(pc)pc.style.display='block'}
@@ -892,6 +899,8 @@ function importCfg(){var f=$('cfgFile').files[0];if(!f){toast('Pick a config .js
 // maintenance
 function reboot(){if(confirm('Reboot device?'))j('/api/reboot',{method:'POST'}).then(function(){toast('Rebooting...')})}
 function factory(){if(confirm('Erase ALL settings and reboot?'))j('/api/factory',{method:'POST'}).then(function(){toast('Reset, rebooting...')})}
+function repairStorage(){if(!confirm('Dateisystem formatieren? Themes, Fotos und Einstellungen werden gelöscht.'))return;
+ j('/api/storage/format',{method:'POST'}).then(function(){toast('Speicher repariert, Gerät startet neu…');setTimeout(function(){location.reload()},8000)}).catch(function(e){toast(e.message||'Speicher konnte nicht repariert werden')})}
 
 // OTA
 function themeRequest(path,body){return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Theme request failed');return d})})}

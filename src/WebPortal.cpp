@@ -315,6 +315,7 @@ static void handleGetConfig() {
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(*S, root, /*includeSecrets=*/false);
+  root["storageReady"] = settingsStorageReady();
   // Which features are compiled in (so a lean build hides the tabs it dropped).
   JsonObject feat = root["features"].to<JsonObject>();
   feat["ticker"] = (bool)WITH_TICKER;
@@ -541,6 +542,24 @@ static void handleFactory() {
   }
   server.send(200, "application/json", "{\"ok\":true}");
   scheduleReboot(400);
+}
+
+static void handleStorageFormat() {
+  if (!requireAuth()) return;
+  if (settingsStorageReady()) {
+    server.send(409, "application/json", "{\"ok\":false,\"error\":\"storage is already mounted\"}");
+    return;
+  }
+  if (!settingsFormatStorage()) {
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not format and mount storage\"}");
+    return;
+  }
+  if (!saveSettings(*S)) {
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"storage formatted but defaults could not be saved\"}");
+    return;
+  }
+  server.send(200, "application/json", "{\"ok\":true,\"reboot\":true}");
+  scheduleReboot(800);
 }
 
 // Full settings backup: stream the persisted config.json verbatim. It includes
@@ -846,6 +865,7 @@ void webPortalBegin(Settings& settings) {
   server.on("/api/scan", HTTP_GET, handleScan);
   server.on("/api/reboot", HTTP_POST, handleReboot);
   server.on("/api/factory", HTTP_POST, handleFactory);
+  server.on("/api/storage/format", HTTP_POST, handleStorageFormat);
   server.on("/api/refresh", HTTP_POST, handleRefresh);
   server.on("/api/export", HTTP_GET, handleExport);
   server.on("/api/import", HTTP_POST, handleImport);
