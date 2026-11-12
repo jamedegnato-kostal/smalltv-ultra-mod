@@ -393,10 +393,30 @@ bool Package::loadFonts(Theme& t,std::string& error){
   return true;
 }
 bool Package::glyphRow(AssetHandle handle,uint8_t code,int y,uint8_t* coverage,int& left,int& width){
-  if(handle>=entries_.size())return false;const Entry& e=entries_[handle];if(!e.font()||code<e.width||code>=unsigned(e.width)+e.height||glyphs_.empty())return false;
-  Glyph& g=glyphs_[code%GlyphSlots];if(g.code!=code||g.font!=handle){uint8_t b[8];if(!source_.read(e.offset+12+8u*(code-e.width),b,8))return false;g.font=uint8_t(handle);g.code=code;g.bitmap=u16(b);g.left=b[3];g.top=b[4];g.width=b[5];g.rows=b[6];}
-  left=g.left;width=0;if(y<g.top||y>=g.top+g.rows)return true;unsigned n=(g.width+1)/2;if(!source_.read(e.offset+12+8u*e.height+g.bitmap+(y-g.top)*n,coverage,n))return false;
-  for(int i=g.width-1;i>=0;i--)coverage[i]=uint8_t((i%2?coverage[i/2]&15:coverage[i/2]>>4)*17);width=g.width;return true;
+  if (handle >= entries_.size()) return false;
+  const Entry& e = entries_[handle];
+  if (!e.font() || code < e.width || code >= unsigned(e.width) + e.height || glyphs_.empty()) return false;
+  Glyph& g = glyphs_[code % GlyphSlots];
+  if (g.code != code || g.font != handle) {
+    uint8_t b[8];
+    if (!source_.read(e.offset + 12 + 8u * (code - e.width), b, 8)) return false;
+    g.font = uint8_t(handle);
+    g.code = code;
+    g.bitmap = u16(b);
+    g.left = b[3];
+    g.top = b[4];
+    g.width = b[5];
+    g.rows = b[6];
+  }
+  left = g.left;
+  width = 0;
+  if (y < g.top || y >= g.top + g.rows) return true;
+  unsigned n = (g.width + 1) / 2;
+  if (!source_.read(e.offset + 12 + 8u * e.height + g.bitmap + (y - g.top) * n, coverage, n)) return false;
+  for (int i = g.width - 1; i >= 0; i--)
+    coverage[i] = uint8_t((i % 2 ? coverage[i / 2] & 15 : coverage[i / 2] >> 4) * 17);
+  width = g.width;
+  return true;
 }
 }
 #endif
