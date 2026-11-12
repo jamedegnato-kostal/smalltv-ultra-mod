@@ -111,7 +111,7 @@ uint16_t resolveColorBinding(const ColorBinding& binding, double value);
 // each layer's `id` (valid, unique) but does not keep it: nothing reads it
 // once the theme is parsed, and every running layer would carry it in RAM.
 struct Layer {
-  std::string value, source, font;
+  std::string value, source;
   LayerType type = LayerType::Text;
   Shape shape = Shape::Rectangle;
   Coord x = 0, y = 0, width = 0, height = 0, x2 = 0, y2 = 0, radius = 0;

@@ -168,8 +168,8 @@ __attribute__((noinline)) bool Package::checkAssets(Theme& candidate, std::strin
   for (size_t i = 0; i < candidate.layers.size(); ++i) {
     auto& l = candidate.layers[i];
     const std::string field = "layers[" + std::to_string(i) + "].source: ";
-    if (l.type == LayerType::Text && !l.font.empty()) {
-      const std::string fontPath = l.font + ".sti";
+    if (l.type == LayerType::Text && !l.stfFont && !l.source.empty()) {
+      const std::string fontPath = l.source + ".sti";
       const Entry* font = find(fontPath);
       if (!font || font->stride != 3 || font->width != 80 || font->height != 48) {
         error = "layers[" + std::to_string(i) + "].font: expected a transparent 80x48 bitmap atlas: " + fontPath;

@@ -1188,8 +1188,8 @@ __attribute__((noinline)) static bool parseLayer(JsonObjectConst o, Theme& t, Bl
         if (at == t.fonts.size()) { t.fonts.emplace_back(); t.fonts.back().name = std::move(name); }
         l.stfFont = static_cast<uint8_t>(at + 1);
       } else {
-        l.font = std::move(name);
-        if (!validPath(l.font)) return f.fail("font", "expected a safe relative font atlas path");
+          l.source = std::move(name);
+          if (!validPath(l.source)) return f.fail("font", "expected a safe relative font atlas path");
       }
     }
     if (!l.stfFont && !f.number("size", 8, 96, l.size)) return false;
@@ -2029,8 +2029,8 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
           continue;
         }
         AssetHandle fontHandle = InvalidAsset;
-        if (l.type == LayerType::Text && (l.stfFont || !l.font.empty())) {
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.font + ".sti");
+        if (l.type == LayerType::Text && (l.stfFont || !l.source.empty())) {
+          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.source + ".sti");
           if (handles[i] == InvalidAsset) return false;
           fontHandle = handles[i];
         }
@@ -2074,7 +2074,7 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
               const int row = (y - s.bounds.y) * 8 / s.resolved.size;
               if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
                 const uint8_t character = static_cast<uint8_t>(s.text[charIndex]);
-                if (l.font.empty()) {
+                if (l.source.empty()) {
                   draw = (display.glyphColumn(character, col) & (1 << row)) != 0;
                 } else if (character >= 32 && character <= 126) {
                   const int glyph = character - 32;
