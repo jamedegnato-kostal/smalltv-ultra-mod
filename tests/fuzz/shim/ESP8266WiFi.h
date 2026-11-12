@@ -6,7 +6,9 @@
 struct WiFiClient { virtual ~WiFiClient() {} };
 struct IPAddress {};
 struct rst_info { int reason; unsigned epc1, excvaddr; };
+#define REASON_WDT_RST 1
 #define REASON_EXCEPTION_RST 2
+#define REASON_SOFT_WDT_RST 3
 namespace BearSSL {
 struct Session {};
 struct WiFiClientSecure : WiFiClient {
