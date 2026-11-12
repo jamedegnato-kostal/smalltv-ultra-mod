@@ -95,6 +95,13 @@ static void recordFailure(const String& ssid) {
 static void beginJoin(const WifiCred& n) {
   g_lastReason = 0;
   g_assoc = false;
+#if !defined(SMALLTV_FAMILY_ESP32)
+  // Restore the ESP8266 SDK RF defaults before each association. Stock Ultra
+  // firmware can leave a PHY mode/power combination in flash that some mesh
+  // access points reject after an OTA update without erasing flash.
+  WiFi.setPhyMode(WIFI_PHY_MODE_11N);
+  WiFi.setOutputPower(20.5f);
+#endif
   WiFi.begin(n.ssid.c_str(), n.pass.c_str());
 }
 
@@ -143,6 +150,13 @@ void netBegin(const Settings& s, void (*onProgress)(const char*)) {
   uint8_t order[MAX_WIFI_NETS];
   bool    seen[MAX_WIFI_NETS];
   if (s.wifiCount == 1) {
+#if !defined(SMALLTV_FAMILY_ESP32)
+    // The stock Ultra firmware can leave stale RF state behind. A boot scan is
+    // the second half of the mesh compatibility fix; keep the result unused.
+    if (onProgress) onProgress("Scanning...");
+    WiFi.scanNetworks();
+    WiFi.scanDelete();
+#endif
     order[0] = 0;
     seen[0] = true;
   } else {

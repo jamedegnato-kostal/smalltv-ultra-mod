@@ -29,6 +29,7 @@ class Package : public Assets {
   bool imageSize(const std::string& path, uint16_t& width, uint16_t& height);
   using Assets::row;
   bool row(AssetHandle handle, int y, int x, int count, uint16_t* colors, uint8_t* alpha) override;
+  bool glyphRow(AssetHandle handle, uint8_t code, int y, uint8_t* coverage, int& left, int& width) override;
  private:
   // Every animation frame is an entry, so an entry is kept small: its path
   // is not held in RAM (that took ~45 bytes more per frame), only its FNV-1a
@@ -40,13 +41,19 @@ class Package : public Assets {
     uint8_t pathLength = 0, stride = 0;
     bool compressed = false;   // STI2: rows as runs (see row())
     uint8_t palette = 0;       // STI2 palette size, 0 for direct colours
+    bool font() const { return !stride && compressed; }
   };
   Source& source_;
   // In blocks: in one vector, a package with many frames needed a block of
   // several KiB.
   BlockList<Entry> entries_;
+  static constexpr unsigned GlyphSlots = 16;
+  struct Glyph { uint8_t font = 0, code = 0, left = 0, top = 0, width = 0, rows = 0; uint16_t bitmap = 0; };
+  std::vector<Glyph> glyphs_;
   bool samePath(const Entry& entry, const std::string& path) const;
   bool checkRows(const Entry& entry) const;
+  bool checkFont(const Entry& entry) const;
+  bool loadFonts(Theme& theme, std::string& error);
   size_t indexOf(const std::string& path) const;
   const Entry* find(const std::string& path) const;
   bool readIndex(std::string& error);

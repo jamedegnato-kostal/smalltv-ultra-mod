@@ -178,6 +178,7 @@ void ClockSettings::setDefaults() {
   showSeconds = true;
   showDate = true;
   dateFormat = "{WD}, {DD} {MON} {YYYY}";
+  lang = "de";
 }
 
 void ClockSettings::toJson(JsonObject o) const {
@@ -191,6 +192,7 @@ void ClockSettings::toJson(JsonObject o) const {
   o["showSeconds"] = showSeconds;
   o["showDate"] = showDate;
   o["dateFormat"] = dateFormat;
+  o["lang"] = lang;
 }
 
 void ClockSettings::fromJson(JsonObjectConst o) {
@@ -204,6 +206,10 @@ void ClockSettings::fromJson(JsonObjectConst o) {
   if (o["showSeconds"].is<bool>()) showSeconds = o["showSeconds"];
   if (o["showDate"].is<bool>()) showDate = o["showDate"];
   if (o["dateFormat"].is<const char*>()) { dateFormat = o["dateFormat"].as<String>(); if (dateFormat.length() > 48) dateFormat.remove(48); }
+  if (o["lang"].is<const char*>()) {
+    const String candidate = o["lang"].as<String>();
+    if (candidate == "en" || candidate == "pt" || candidate == "es" || candidate == "fr" || candidate == "de" || candidate == "it") lang = candidate;
+  }
 }
 
 // ===========================================================================
@@ -247,6 +253,13 @@ void AuthSettings::toJson(JsonObject o, bool includeSecrets) const {
 
 void AuthSettings::fromJson(JsonObjectConst o) {
   if (o["user"].is<const char*>()) user = o["user"].as<String>();
+  // Removing a password is explicit. A blank input still means "keep the
+  // stored one", which prevents an unrelated settings save from unlocking
+  // the device accidentally.
+  if (o["clear"].is<bool>() && o["clear"].as<bool>()) {
+    pass = "";
+    enabled = false;
+  }
   // Blank keeps the stored password, as everywhere else in this file.
   if (o["pass"].is<const char*>()) {
     String p = o["pass"].as<String>();

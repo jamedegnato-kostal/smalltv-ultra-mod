@@ -200,6 +200,10 @@ static bool validFieldToken(const std::string& token, const Theme& theme) {
   if (!validId(source) || !validId(field)) return false;
   for (const auto& data : theme.data) {
     if (data.id != source) continue;
+    // Spec 2 supplies this virtual field at runtime: whole minutes since the
+    // source's last successful fetch. A declared field named age takes
+    // precedence, but both forms remain valid manifest references.
+    if (theme.spec >= 2 && field == "age") return true;
     for (const auto& f : data.fields) if (f.id == field) return true;
   }
   return false;
@@ -226,6 +230,11 @@ static bool validText(const std::string& s, const Theme& theme) {
     i = end;
   }
   return true;
+}
+static int languageIndex(const char* code, size_t length) {
+  static const char* const codes[] = {"en", "pt", "es", "fr", "de", "it"};
+  for (int i = 0; i < 6; ++i) if (strlen(codes[i]) == length && !memcmp(codes[i], code, length)) return i;
+  return -1;
 }
 // A manifest held in RAM, for the string overload of parseTheme().
 class StringManifest : public ManifestSource {
@@ -1117,6 +1126,34 @@ static const char lineKeys[] PROGMEM = "|id|type|shape|x|y|x2|y2|stroke|strokeWi
 static const char arcKeys[] PROGMEM = "|id|type|shape|x|y|radius|start|sweep|stroke|strokeWidth|bind|";
 static const char handKeys[] PROGMEM = "|id|type|shape|x|y|length|tail|angle|stroke|strokeWidth|bind|";
 static const char ticksKeys[] PROGMEM = "|id|type|shape|x|y|radius|count|length|stroke|strokeWidth|bind|";
+// Parses the text field after Fields is available.  Spec-2 permits a map of
+// language codes; the English member is the compatibility fallback.
+static bool parseTextValue(JsonObjectConst o, Theme& t, const Fields& f, Layer& l) {
+  JsonObjectConst languages = o["value"].as<JsonObjectConst>();
+  if (languages.isNull()) {
+    if (!f.text("value", l.value, 128)) return false;
+    return validText(l.value, t) || f.fail("value", "use printable ASCII and declared clock/data variables only");
+  }
+  if (t.spec < 2) return f.fail("value", "a text per language needs spec 2");
+  bool english = false;
+  for (JsonPairConst item : languages) {
+    int language = languageIndex(item.key().c_str(), item.key().size());
+    if (language < 0) return f.fail("value", "unknown language; expected en, pt, es, fr, de or it");
+    if (!item.value().is<const char*>()) return f.fail("value", "each language needs a string");
+    JsonString source = item.value().as<JsonString>();
+    std::string text(source.c_str(), source.size());
+    if (text.empty() || text.size() > 128 || !validText(text, t)) return f.fail("value", "each language must be a valid 1 to 128 byte text");
+    if (language == 0) { l.value = std::move(text); english = true; }
+    else {
+      if (!l.translationCount) l.firstTranslation = static_cast<uint16_t>(t.translations.size());
+      ++l.translationCount;
+      LocalizedText& translated = t.translations.emplace_back();
+      translated.language = static_cast<uint8_t>(language);
+      translated.text = std::move(text);
+    }
+  }
+  return english || f.fail("value", "the en text is required");
+}
 // Parses one element of the root `layers` array and appends it to `t`, whose
 // data sources it is checked against; `ids` holds the earlier layers' IDs.
 // The layer is built in place in the list rather than in a local copy: a
@@ -1136,10 +1173,27 @@ __attribute__((noinline)) static bool parseLayer(JsonObjectConst o, Theme& t, Bl
   if (!f.text("type", type, 16) || !f.number("x", -240, 479, l.x) || !f.number("y", -240, 479, l.y)) return false;
   if (type == "text") {
     l.type = LayerType::Text;
-    if (!f.keys("|id|type|x|y|anchor|value|size|color|font|scroll|bind|") || !f.text("value", l.value, 128)) return false;
-    if (!validText(l.value, t)) return f.fail("value", "use printable ASCII and declared clock/data variables only");
-    if (!f.number("size", 8, 96, l.size) || !f.color("color", l.color)) return false;
-    if (!f.text("font", l.font, 110, false) || (!l.font.empty() && !validPath(l.font))) return f.fail("font", "expected a safe relative font atlas path");
+    if (!f.keys("|id|type|x|y|anchor|value|size|color|font|scroll|bind|") || !parseTextValue(o, t, f, l)) return false;
+    if (f.has("font")) {
+      std::string name;
+      if (!f.text("font", name, 110)) return false;
+      // Existing themes use a path to a compiled .sti atlas.  A simple ID is
+      // the Spec-2 STF name and maps to fonts/<name>.stf in the package.
+      if (name.find('/') == std::string::npos && name.find('.') == std::string::npos) {
+        if (t.spec < 2 || !validId(name)) return f.fail("font", "STF fonts need spec 2 and an ASCII ID");
+        if (f.has("size")) return f.fail("size", "STF fonts define their own line height");
+        size_t at = 0;
+        while (at < t.fonts.size() && t.fonts[at].name != name) ++at;
+        if (at >= 4) return f.fail("font", "at most four STF fonts per theme");
+        if (at == t.fonts.size()) { t.fonts.emplace_back(); t.fonts.back().name = std::move(name); }
+        l.stfFont = static_cast<uint8_t>(at + 1);
+      } else {
+        l.font = std::move(name);
+        if (!validPath(l.font)) return f.fail("font", "expected a safe relative font atlas path");
+      }
+    }
+    if (!l.stfFont && !f.number("size", 8, 96, l.size)) return false;
+    if (!f.color("color", l.color)) return false;
     std::string anchor = "top-left";
     if (!f.text("anchor", anchor, 20, false)) return false;
     // The 9 anchor names are a 3x3 grid in row-major order (left/center/right
@@ -1231,8 +1285,47 @@ std::string expandText(const std::string& value, const tm* t, const std::vector<
 // `device` holds the firmware's values keyed "device.<name>"; a name it does
 // not provide stays "--". Validation only lets a spec 2 theme use them.
 std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device) {
-  static const char* months[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-  static const char* days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  return expandText(value, t, values, device, 0);
+}
+// Fixed-width names live in program flash on ESP8266.  Keeping a pointer table
+// here would consume more than 1 KiB of the scarce heap at boot.
+constexpr size_t MonthSlot = 11, DaySlot = 14, ShortSlot = 5;
+static const char monthNames[6][12][MonthSlot] PROGMEM = {
+  {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"},
+  {"Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"},
+  {"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"},
+  {"Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"},
+  {"Januar", "Februar", "Maerz", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"},
+  {"Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"}};
+static const char monthShort[6][12][ShortSlot] PROGMEM = {
+  {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
+  {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"},
+  {"Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"},
+  {"Janv", "Fevr", "Mars", "Avr", "Mai", "Juin", "Juil", "Aout", "Sept", "Oct", "Nov", "Dec"},
+  {"Jan", "Feb", "Mar", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"},
+  {"Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"}};
+static const char dayNames[6][7][DaySlot] PROGMEM = {
+  {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"},
+  {"Domingo", "Segunda-feira", "Terca-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sabado"},
+  {"Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"},
+  {"Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"},
+  {"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"},
+  {"Domenica", "Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato"}};
+static const char dayShort[6][7][ShortSlot] PROGMEM = {
+  {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},
+  {"Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"},
+  {"Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"},
+  {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"},
+  {"Son", "Mon", "Die", "Mit", "Don", "Fre", "Sam"},
+  {"Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"}};
+static std::string localName(const char* slot, size_t width) {
+  char b[DaySlot];
+  memcpy_P(b, slot, width);
+  b[width - 1] = 0;
+  return std::string(b);
+}
+std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device, uint8_t language) {
+  if (language >= 6) language = 0;
   std::string out;
   for (size_t i = 0; i < value.size();) {
     if (value[i] != '{') {
@@ -1264,11 +1357,9 @@ std::string expandText(const std::string& value, const tm* t, const std::vector<
       } else if (key == "AMPM" && t->tm_hour >= 0 && t->tm_hour < 24) {
         v = t->tm_hour < 12 ? "AM" : "PM";
       } else if ((key == "MON" || key == "MONTH") && t->tm_mon >= 0 && t->tm_mon < 12) {
-        v = months[t->tm_mon];
-        if (key == "MON") v.resize(3);
+        v = key == "MON" ? localName(monthShort[language][t->tm_mon], ShortSlot) : localName(monthNames[language][t->tm_mon], MonthSlot);
       } else if ((key == "WD" || key == "WEEKDAY") && t->tm_wday >= 0 && t->tm_wday < 7) {
-        v = days[t->tm_wday];
-        if (key == "WD") v.resize(3);
+        v = key == "WD" ? localName(dayShort[language][t->tm_wday], ShortSlot) : localName(dayNames[language][t->tm_wday], DaySlot);
       }
     }
     if (v == "--") for (const auto& item : values) if (item.key == key) {
@@ -1474,6 +1565,13 @@ static bool sameColors(const ResolvedLayer& a, const ResolvedLayer& b) {
 static int textPixelWidth(int size, size_t length) {
   return static_cast<int>(length) * ((size * 6 + 7) / 8);
 }
+static int textPixelWidth(const Theme& theme, const Layer& l, int size, const std::string& text) {
+  if (!l.stfFont || l.stfFont > theme.fonts.size()) return textPixelWidth(size, text.size());
+  int width = 0;
+  const ThemeFont& font = theme.fonts[l.stfFont - 1];
+  for (unsigned char c : text) width += font.advance(c);
+  return width;
+}
 // ---- Rotation shapes (spec 2, #31) ----
 // Angles are kept in sixteenths of a degree, 0 at 12 o'clock, growing
 // clockwise. There is no sine table and no floating point: sin comes from
@@ -1607,9 +1705,9 @@ static Rect arcBounds(const ResolvedLayer& r) {
 // this layer's footprint. For scrolling text this is the fixed viewport, not
 // the full (possibly much wider) expanded text -- render() maps viewport-
 // local pixels back to a position in the text itself via scrollContentColumn.
-static Rect bounds(const Layer& l, const ResolvedLayer& resolved, const std::string& text) {
+static Rect bounds(const Theme& theme, const Layer& l, const ResolvedLayer& resolved, const std::string& text) {
   if (l.type == LayerType::Text) {
-    int w = l.scroll.enabled ? resolved.scrollWidth : textPixelWidth(resolved.size, text.size());
+    int w = l.scroll.enabled ? resolved.scrollWidth : textPixelWidth(theme, l, resolved.size, text);
     return Rect(resolved.x - w * l.anchorX / 2, resolved.y - resolved.size * l.anchorY / 2, w, resolved.size);
   }
   if (l.type == LayerType::Shape && l.shape == Shape::Circle && resolved.radius == 0)
@@ -1680,6 +1778,12 @@ void Engine::setDeviceValues(std::vector<ThemeValue> values) {
   device_ = std::move(values);
   valuesChanged_ = true;
 }
+void Engine::setLanguage(uint8_t language) {
+  if (language >= 6) language = 0;
+  if (language_ == language) return;
+  language_ = language;
+  languageChanged_ = true;
+}
 // Merges a newly dirty region into the accumulated list, absorbing any
 // existing rectangle it overlaps so update() never reports two overlapping
 // regions (which would otherwise make render() redraw the overlap twice).
@@ -1727,10 +1831,16 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       changed = changed || !sameGeometry(previous, s.resolved) || !sameColors(previous, s.resolved);
     }
     bool textChanged = false;
-    if (l.type == LayerType::Text && (timeChanged || valuesChanged_)) {
+    if (l.type == LayerType::Text && (timeChanged || valuesChanged_ || languageChanged_)) {
       // Only spec 2 reads device.* values: a spec 1 `device` data source with
       // no fetched value shows "--", never what the firmware supplies.
       std::string formatted = l.value;
+      if (language_ && l.translationCount) {
+        for (size_t at = 0; at < l.translationCount; ++at) {
+          const LocalizedText& translated = theme_.translations[l.firstTranslation + at];
+          if (translated.language == language_) { formatted = translated.text; break; }
+        }
+      }
       auto replace = [&](const std::string& token, const std::string& value) {
         size_t at = 0; const std::string needle = "{" + token + "}";
         while ((at = formatted.find(needle, at)) != std::string::npos) { formatted.replace(at, needle.size(), value); at += value.size(); }
@@ -1739,7 +1849,7 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       if (!clockOptions_.showSeconds) replace("SS", "");
       if (clockOptions_.showDate) replace("DATE", clockOptions_.dateFormat);
       else for (const char* token : {"DATE", "DD", "MON", "MONTH", "WD", "WEEKDAY", "YYYY", "MO"}) replace(token, "");
-      std::string text = theme_.spec >= 2 ? expandText(formatted, time, values_, device_) : expandText(formatted, time, values_);
+      std::string text = theme_.spec >= 2 ? expandText(formatted, time, values_, device_, language_) : expandText(formatted, time, values_);
       if (text != s.text) {
         s.text = std::move(text);
         changed = true;
@@ -1772,7 +1882,7 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
         resetScroll(s, l, now);
         changed = true;
       } else {
-        const int textWidth = textPixelWidth(s.resolved.size, s.text.size());
+        const int textWidth = textPixelWidth(theme_, l, s.resolved.size, s.text);
         const int previousOffset = s.scrollOffset;
         advanceScroll(l, s, now, textWidth);
         if (s.scrollOffset != previousOffset) changed = true;
@@ -1780,7 +1890,7 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
     }
     // The dirty region is the union of this layer's old and new footprint, so
     // moving/shrinking/hiding a layer also erases wherever it used to be.
-    Rect next = bounds(l, s.resolved, s.text);
+    Rect next = bounds(theme_, l, s.resolved, s.text);
     // A rotation shape sweeps a thin diagonal: its old and new boxes are
     // repainted apart, since their union would also cover everything between.
     if (changed && !full_) {
@@ -1797,6 +1907,7 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
   }
   valuesChanged_ = false;
   optionsChanged_ = false;
+  languageChanged_ = false;
   return dirty;
 }
 // Alpha-composites an RGB565 foreground pixel over a background one, blending
@@ -1918,8 +2029,8 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
           continue;
         }
         AssetHandle fontHandle = InvalidAsset;
-        if (l.type == LayerType::Text && !l.font.empty()) {
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.font + ".sti");
+        if (l.type == LayerType::Text && (l.stfFont || !l.font.empty())) {
+          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.font + ".sti");
           if (handles[i] == InvalidAsset) return false;
           fontHandle = handles[i];
         }
@@ -1944,9 +2055,21 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
             // 6-wide cell (col, with column 5 always blank as spacing), and
             // which row within the glyph (scaled from pixel row to the font's
             // fixed 8-row bitmap by `resolved.size`).
-            const int cell = (s.resolved.size * 6 + 7) / 8, local = x - s.bounds.x;
+            const int local = x - s.bounds.x;
+            const bool stf = l.stfFont != 0;
+            const int textWidth = textPixelWidth(e.theme(), l, s.resolved.size, s.text);
             int contentX = 0;
-            if (scrollContentColumn(l, s, textPixelWidth(s.resolved.size, s.text.size()), local, contentX)) {
+            if (scrollContentColumn(l, s, textWidth, local, contentX)) {
+              if (stf) {
+                const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
+                while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
+                if(index<s.text.size()) { int left=0,width=0; uint8_t coverage[240];
+                  if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,coverage,left,width)) return false;
+                  int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=coverage[col];draw=drawAlpha!=0;}
+                }
+                c=s.resolved.color;
+              } else {
+              const int cell = (s.resolved.size * 6 + 7) / 8;
               const int col = (contentX % cell) * 6 / cell, charIndex = contentX / cell;
               const int row = (y - s.bounds.y) * 8 / s.resolved.size;
               if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
@@ -1966,6 +2089,7 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
                 }
               }
               c = s.resolved.color;
+              }
             }
           } else if (rotationShape(l.shape)) {
             const int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy;

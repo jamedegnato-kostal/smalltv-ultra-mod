@@ -42,6 +42,10 @@ struct StatusData {
   int rssi = 0;
   uint8_t brightness = 0;
   uint32_t heap = 0, maxblk = 0, contstk = 0, uptime = 0;
+  const char* lastCrashReason = "";
+  const char* lastCrashFw = "";
+  bool lastCrashRegisters = false, lastCrashUptimeKnown = false;
+  uint32_t lastCrashCause = 0, lastCrashEpc = 0, lastCrashAddr = 0, lastCrashUptime = 0;
   StatusWg wg;
 };
 struct StatusTicker {
@@ -106,6 +110,19 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
   member(out, PSTR(",\"night\":"), d.night);
   member(out, PSTR(",\"nightHeld\":"), d.nightHeld);
   member(out, PSTR(",\"clockFresh\":"), d.clockFresh);
+  if (d.lastCrashReason[0]) {
+    member(out, PSTR(",\"lastCrash\":{\"reason\":"), d.lastCrashReason);
+    member(out, PSTR(",\"firmware\":"), d.lastCrashFw);
+    member(out, PSTR(",\"hasRegisters\":"), d.lastCrashRegisters);
+    if (d.lastCrashRegisters) {
+      member(out, PSTR(",\"exccause\":"), d.lastCrashCause);
+      member(out, PSTR(",\"epc1\":"), d.lastCrashEpc);
+      member(out, PSTR(",\"excvaddr\":"), d.lastCrashAddr);
+    }
+    member(out, PSTR(",\"uptimeKnown\":"), d.lastCrashUptimeKnown);
+    if (d.lastCrashUptimeKnown) member(out, PSTR(",\"uptime\":"), d.lastCrashUptime);
+    jsonout::raw(out, PSTR("}"));
+  }
   const StatusWg& w = d.wg;
   member(out, PSTR(",\"wg\":{\"compiledIn\":"), w.compiledIn);
   member(out, PSTR(",\"enabled\":"), w.enabled);

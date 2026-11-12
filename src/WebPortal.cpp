@@ -8,6 +8,9 @@
 #include "Net.h"
 #include "Gfx.h"
 #include "OtaUpdate.h"
+#if defined(SMALLTV_FAMILY_ESP8266)
+#include "UpdateBuffer.h"
+#endif
 #if WITH_TICKER
 #include "StockClient.h"
 #endif
@@ -398,6 +401,13 @@ static void handleStatus() {
   d.night = clockNightActive();          // dimming now
   d.nightHeld = clockNightHeld();        // in the window but waiting for a fresh NTP sync
   d.clockFresh = clockTrusted();         // last NTP sync within the trust window
+  PlatformCrashRecord crash;
+  if (platformCrashRecordGet(crash)) {
+    d.lastCrashReason = crash.reason; d.lastCrashFw = crash.fw;
+    d.lastCrashRegisters = crash.hasRegisters; d.lastCrashUptimeKnown = crash.uptimeKnown;
+    d.lastCrashCause = crash.exccause; d.lastCrashEpc = crash.epc1;
+    d.lastCrashAddr = crash.excvaddr; d.lastCrashUptime = crash.uptimeS;
+  }
 
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "application/json", "");
@@ -512,6 +522,12 @@ static void handleReboot() {
   if (!requireAuth()) return;
   server.send(200, "application/json", "{\"ok\":true}");
   scheduleReboot(400);
+}
+
+static void handleCrashClear() {
+  if (!requireAuth()) return;
+  platformCrashRecordClear();
+  server.send(200, "application/json", "{\"ok\":true}");
 }
 
 static void handleFactory() {
@@ -745,6 +761,16 @@ static void handleUpdateUpload() {
         return;  // reject before Update.begin() erases any OTA sectors
       }
       g_uploadMagicOk = true;
+#if defined(SMALLTV_FAMILY_ESP8266)
+      char refusal[192];
+      const uint32_t freeHeap = ESP.getFreeHeap();
+      const uint32_t maxBlock = platformMaxFreeBlock();
+      if (!updatebuf::uploadCanStart(freeHeap, maxBlock)) {
+        updatebuf::refusalText(refusal, sizeof(refusal), freeHeap, maxBlock);
+        g_uploadError = refusal;
+        return;  // refuse before Update.begin() erases any OTA sectors
+      }
+#endif
       if (!Update.begin(g_uploadMax)) {
         g_uploadError = platformUpdateError();
         return;
@@ -816,6 +842,7 @@ void webPortalBegin(Settings& settings) {
   server.on("/api/config", HTTP_GET, handleGetConfig);
   server.on("/api/config", HTTP_POST, handlePostConfig);
   server.on("/api/status", HTTP_GET, handleStatus);
+  server.on("/api/crash/clear", HTTP_POST, handleCrashClear);
   server.on("/api/scan", HTTP_GET, handleScan);
   server.on("/api/reboot", HTTP_POST, handleReboot);
   server.on("/api/factory", HTTP_POST, handleFactory);

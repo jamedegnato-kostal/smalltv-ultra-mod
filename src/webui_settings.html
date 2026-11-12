@@ -294,6 +294,7 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <div class="chk"><input id="showDate" type="checkbox"><label>Datum und Wochentag anzeigen</label></div>
    <label>Eigenes Datumsformat für das Theme-Token <code>{DATE}</code></label><input id="dateFormat" type="text" maxlength="48" placeholder="{WD}, {DD} {MON} {YYYY}">
    <small class="hint">Das aktive Uhr-Theme muss <code>{DATE}</code> enthalten, damit dieses Format verwendet wird. Die übrigen Zeit-Tokens und das Layout bleiben vom Theme bestimmt.</small>
+   <label>Sprache für Uhr-Themes</label><select id="clockLang"><option value="de">Deutsch</option><option value="en">English</option><option value="pt">Português</option><option value="es">Español</option><option value="fr">Français</option><option value="it">Italiano</option></select>
    <label>Zeitzone</label>
    <select id="tz"></select>
    <div class="muted" id="clockNow" style="margin:8px 0">Uhr: –</div>
@@ -345,7 +346,9 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <div class="chk"><input id="authEnabled" type="checkbox"><label>Diese Einstellungsseite mit Passwort schützen</label></div>
    <label>Benutzername</label><input id="authUser" type="text" autocomplete="off" placeholder="admin">
    <label>Passwort</label><input id="authPass" type="password" autocomplete="new-password" placeholder="(unverändert lassen)">
-   <small class="hint">Standardmäßig ist der Zugriff im lokalen Netzwerk ungeschützt. Mit Passwort werden Einstellungsseite, API und Firmware-Upload geschützt. Es gibt keine Passwort-Wiederherstellung; bei Verlust muss die Firmware neu geflasht werden.</small>
+   <label>Passwort wiederholen</label><input id="authPassConfirm" type="password" autocomplete="new-password" placeholder="Nur beim neuen Passwort nötig">
+   <div style="margin-top:10px"><button class="btn sec" type="button" onclick="removePassword()">Passwort entfernen</button></div>
+   <small class="hint">Ein Passwort schützt Einstellungsseite, API und Firmware-Upload. Zum Ändern das neue Passwort zweimal eingeben. „Passwort entfernen“ wird erst beim Speichern übernommen.</small>
   </div>
   <div class="card"><h2>Wartung</h2>
    <button class="btn sec" onclick="reboot()">Neu starten</button>
@@ -537,7 +540,7 @@ function loadConfig(){return j('/api/config').then(function(c){C=c;
  var chE=$('chip'); if(chE&&chipName){chE.textContent=chipName;chE.style.display='inline-block';}
  // clock slice
  fillTz(); var ck=c.clock||{};
- sc('use24Hour',ck.use24Hour!==false);sc('showSeconds',ck.showSeconds!==false);sc('showDate',ck.showDate!==false);sv('dateFormat',ck.dateFormat||'{WD}, {DD} {MON} {YYYY}');
+ sc('use24Hour',ck.use24Hour!==false);sc('showSeconds',ck.showSeconds!==false);sc('showDate',ck.showDate!==false);sv('dateFormat',ck.dateFormat||'{WD}, {DD} {MON} {YYYY}');sv('clockLang',ck.lang||'de');
  if(ck.tz && !(ck.tz in TZMAP)){var _ts=$('tz'); if(_ts){var _o=document.createElement('option');_o.value=ck.tz;_o.textContent=ck.tz;_ts.appendChild(_o);}}
  sv('tz',ck.tz||''); sc('nightEnabled',!!ck.nightEnabled);
  sv('nightStart',ck.nightStart||'22:00'); sv('nightEnd',ck.nightEnd||'07:00');
@@ -582,7 +585,7 @@ function loadConfig(){return j('/api/config').then(function(c){C=c;
  sv('radarUiScale',r.uiScale!=null?r.uiScale:1);
  sv('radarMinAlt',r.minAltFt!=null?r.minAltFt:0);
  renderAps(r.airports||[]);
- var au=c.auth||{};
+ var au=c.auth||{};window._removeAuthPassword=false;
  sc('authEnabled',!!au.enabled); sv('authUser',au.user||'admin');
  var apw=$('authPass'); if(apw){apw.value='';apw.placeholder=au.passSet?'(unchanged)':'set a password';}
  var ap=$('apPass'); if(ap){ap.value='';ap.placeholder=c.apPassSet?'(unchanged)':'(open)';}
@@ -652,7 +655,9 @@ function collect(){
  // Web UI password: same blank-keeps-stored rule as everywhere else. The
  // firmware refuses to enable it without a stored password to check against.
  if($('authEnabled')){var _a={enabled:gc('authEnabled'), user:gv('authUser')||'admin'};
-  var _ap2=gv('authPass'); if(_ap2)_a.pass=_ap2; o.auth=_a;}
+  var _ap2=gv('authPass'),_apConfirm=gv('authPassConfirm');
+  if(_ap2){if(_ap2!==_apConfirm)throw new Error('Die beiden Passwörter stimmen nicht überein');_a.pass=_ap2;}
+  if(window._removeAuthPassword){_a.clear=true;_a.enabled=false}o.auth=_a;}
  // Only send apPass when there is something to say: the typed value, or an
  // explicit empty string when the user asked for an open hotspot. Sending the
  // blank field unconditionally used to wipe the stored password on every save.
@@ -685,7 +690,7 @@ function collect(){
   var _hp=gv('haBrokerPass'); if(_hp)_h.brokerPass=_hp; o.ha=_h;}
  // clock slice
  if($('tz')){var _tzn=gv('tz'); var _tzp=(_tzn in TZMAP)?TZMAP[_tzn]:((C.clock&&C.clock.tz===_tzn&&C.clock.tzPosix)?C.clock.tzPosix:'UTC0');
-  o.clock={tz:_tzn,tzPosix:_tzp,use24Hour:gc('use24Hour'),showSeconds:gc('showSeconds'),showDate:gc('showDate'),dateFormat:gv('dateFormat'),
+  o.clock={tz:_tzn,tzPosix:_tzp,use24Hour:gc('use24Hour'),showSeconds:gc('showSeconds'),showDate:gc('showDate'),dateFormat:gv('dateFormat'),lang:gv('clockLang')||'de',
   nightEnabled:gc('nightEnabled'),nightStart:gv('nightStart')||'22:00',
   nightEnd:gv('nightEnd')||'07:00',nightLevel:parseInt(gv('nightLevel'))||0};}
  // radar slice
@@ -706,10 +711,12 @@ function collect(){
  return o;
 }
 function saveAll(){var btn=$('saveSettingsBtn'),status=$('saveStatus');if(btn)btn.disabled=true;if(status){status.textContent='Speichert …';status.classList.remove('dirty')}
- j('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())})
+ var body;try{body=collect()}catch(e){if(status){status.textContent='Speichern fehlgeschlagen';status.classList.add('dirty')}toast(e.message);if(btn)btn.disabled=false;return}
+ j('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
  .then(function(r){if(status)status.textContent=r.reboot?'Gespeichert · Neustart läuft':'Alle Änderungen gespeichert';toast(r.reboot?'Gespeichert — Neustart läuft …':'Einstellungen gespeichert');if(r.reboot)setTimeout(function(){location.reload()},6000);loadStatus()})
  .catch(function(e){if(status){status.textContent='Speichern fehlgeschlagen';status.classList.add('dirty')}toast('Speichern fehlgeschlagen: '+e.message)})
  .finally(function(){if(btn)btn.disabled=false})}
+function removePassword(){window._removeAuthPassword=true;sc('authEnabled',false);sv('authPass','');sv('authPassConfirm','');markSettingsDirty();toast('Passwort wird beim Speichern entfernt')}
 
 function saveWifi(){
  var o={wifi:collectWifi()};
@@ -782,6 +789,7 @@ function loadStatus(){
  return statusRead;
 }
 function statusNext(){clearTimeout(statusTimer);statusTimer=0;if(!document.hidden)statusTimer=setTimeout(loadStatus,STATUS_MS)}
+function clearCrash(){j('/api/crash/clear',{method:'POST'}).then(function(){toast('Absturzinfo gelöscht');loadStatus()}).catch(function(e){toast('Löschen fehlgeschlagen: '+e.message)})}
 document.addEventListener('visibilitychange',function(){
  if(document.hidden){clearTimeout(statusTimer);statusTimer=0}else loadStatus()});
 function showStatus(s){
@@ -809,6 +817,7 @@ function showStatus(s){
   (s.wifiFail?kv('Last join failure',s.wifiFail):'')+
   kv('Free heap',s.heap+' B'+(s.maxblk?' ('+s.maxblk+' B largest block)':''))+
   kv('Uptime',fmtUp(s.uptime))+kv('Last reset',s.reset||'-')+
+  (s.lastCrash?kv('Letzter Absturz',s.lastCrash.reason+(s.lastCrash.firmware?' · '+s.lastCrash.firmware:'')+(s.lastCrash.uptimeKnown?' nach '+fmtUp(s.lastCrash.uptime):''))+'<button class="btn sec" style="margin-top:8px" onclick="clearCrash()">Absturzinfo löschen</button>':'')+
   (s.radar?kv('Radar',radarLine(s.radar)):'');
  var tb=$('tickBox');
  if(tb){var h='';(s.tickers||[]).forEach(function(t){
@@ -843,11 +852,6 @@ function radarLine(r){
 function fmtUp(s){var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
  return (d?d+'d ':'')+(h?h+'h ':'')+m+'m'}
 function refreshNow(){j('/api/refresh',{method:'POST'}).then(function(){toast('Aktualisiere …');setTimeout(loadStatus,1500)}).catch(function(e){toast('Aktualisierung fehlgeschlagen: '+e.message)})}
-
-// HA screens purge: wipes the device store and the broker's retained copies.
-function haClearScreens(){if(!confirm('Clear all HA screens on the device and on the broker?'))return;
- j('/api/ha/clear',{method:'POST'}).then(function(r){
-  toast('Cleared '+r.cleared+' screen(s)'+(r.broker?'':' — device only, broker not connected'));})}
 
 // GitHub self-update
 function checkUpdate(){$('ghMsg').textContent='Suche nach Updates …';$('chkBtn').disabled=true;

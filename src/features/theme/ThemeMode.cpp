@@ -72,6 +72,7 @@ void ThemeMode::unload() {
   dataNextMs_.clear();
   dataScheduled_.clear();
   dataValues_.clear();
+  dataAges_.reset(0);
   dataCursor_ = 0;
   engine_.setValues({});
   engine_.setTheme(smalltv::Theme{}, millis());
@@ -116,7 +117,10 @@ void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
 // over sources so no single slow/failing one starves the others.
 void ThemeMode::refreshData() {
   const auto& sources = engine_.theme().data;
+  dataAges_.tick(millis());
+  bool valuesChanged = false;
   if (auto result = dataRequests_.take()) {
+    dataAges_.result(result->index, result->success);
     if (result->success) {
       // Merge into the running set by key rather than replace it wholesale:
       // a source's fields persist across refreshes of the *other* sources, so
@@ -126,11 +130,13 @@ void ThemeMode::refreshData() {
         if (existing == dataValues_.end()) dataValues_.push_back(std::move(value));
         else existing->value = std::move(value.value);
       }
-      engine_.setValues(dataValues_);
+      valuesChanged = true;
     }
     // Schedule from completion, preserving the interval even for slow sources.
     dataNextMs_[result->index] = millis() + sources[result->index].interval * 1000UL;
   }
+  if (dataAges_.publish(sources, dataValues_)) valuesChanged = true;
+  if (valuesChanged) engine_.setValues(dataValues_);
   if (sources.empty() || dataRequests_.busy() || WiFi.status() != WL_CONNECTED) return;
   // Scan forward from `dataCursor_` for the first source that is due (an
   // unscheduled one always is), start it, and advance the cursor past it --
@@ -255,6 +261,7 @@ void ThemeMode::service(const Settings& s) {
         dataNextMs_.assign(theme.data.size(), 0);
         dataScheduled_.assign(theme.data.size(), false);
         dataValues_.clear();
+        dataAges_.reset(theme.data.size(), theme.spec >= 2);
         dataCursor_ = 0;
       }
       engine_.setTheme(std::move(theme), millis());
@@ -302,6 +309,13 @@ void ThemeMode::service(const Settings& s) {
   clockOptions.showDate = s.clock.showDate;
   clockOptions.dateFormat = s.clock.dateFormat.c_str();
   engine_.setClockOptions(clockOptions);
+  uint8_t language = 0;
+  if (s.clock.lang == "pt") language = 1;
+  else if (s.clock.lang == "es") language = 2;
+  else if (s.clock.lang == "fr") language = 3;
+  else if (s.clock.lang == "de") language = 4;
+  else if (s.clock.lang == "it") language = 5;
+  engine_.setLanguage(language);
   engine_.setAnimationOptions(s.display.animationsEnabled, s.display.animationSpeedPct);
   Panel panel;
   const auto& dirty = engine_.update(millis(), valid ? &t : nullptr);

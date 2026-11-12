@@ -258,12 +258,12 @@ static void themePlaylistService(const Settings& s) {
 #if WITH_PHOTOS
   if (!g_themePhotosChecked) {
     g_themePhotosChecked = true;
-    if (s.photosEnabled && g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) {
-      // The JPEG decoder needs working memory while drawing. Drop the current
-      // theme package for the duration of the photo batch, then load the next
-      // playlist theme when the slideshow completes.
+    if (s.photosEnabled) {
+      // Free the current package before asking TJpg_Decoder for a photo batch.
+      // Testing memory first while the package was still loaded left the
+      // decoder competing with a large theme and could reset an ESP8266.
       g_themeMode.setPlaylistTheme(nullptr);
-      return;
+      if (g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) return;
     }
   }
 #endif
@@ -551,6 +551,7 @@ void setup() {
   // ESP8266 we also keep the crash PC (epc1) for addr2line decoding; the
   // ESP32-C2 (RISC-V) doesn't expose it, so epc/addr come back empty there.
   PlatformReset pr = platformResetInfo();
+  platformCrashRecordBegin();
   Serial.print("[boot] reset reason: ");
   Serial.println(pr.reason);
 

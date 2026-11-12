@@ -71,7 +71,7 @@ bool Package::load(Theme& theme, std::string& error) {
   // by itself exceed what the ESP8266 has free next to a running theme.
   EntryManifest json(source_, manifest->offset, manifest->length);
   Theme candidate;
-  if (!parseTheme(json, candidate, error) || !checkSpec(candidate, error) || !checkAssets(candidate, error)) return false;
+  if (!parseTheme(json, candidate, error) || !checkSpec(candidate, error) || !checkAssets(candidate, error) || !loadFonts(candidate, error)) return false;
   theme = std::move(candidate);
   error.clear();
   return true;
@@ -87,6 +87,7 @@ __attribute__((noinline)) bool Package::readIndex(std::string& error) {
   if (!count || count > MaxEntries) return false;
   entries_.reserve(count);
   uint32_t pos = 8;
+  size_t fonts = 0;
   for (unsigned i = 0; i < count; ++i) {
     // Each entry: uint16 path length, uint32 payload length, path bytes,
     // then the payload itself (read lazily, never buffered here).
@@ -105,6 +106,12 @@ __attribute__((noinline)) bool Package::readIndex(std::string& error) {
     if (e.length > size - pos) return false;
     if (path == "theme.json") {
       if (e.length == 0 || e.length > MaxManifest) return false;
+    } else if (path.compare(0, 6, "fonts/") == 0 && path.size() > 10 && path.compare(path.size() - 4, 4, ".stf") == 0) {
+      if (++fonts > 4 || e.length < 12 || !source_.read(pos, b, 12) || memcmp(b, "STF1", 4) || !b[5] || b[5] > b[4]) return false;
+      e.compressed = true;
+      e.width = b[6];
+      e.height = b[7];
+      if (!checkFont(e)) return false;
     } else {
       // Every non-manifest entry must be a well-formed .sti image: "STI1"
       // (raw pixels) or "STI2" (rows as runs) magic, width/height, an alpha
@@ -141,8 +148,8 @@ bool Package::checkSpec(const Theme& theme, std::string& error) const {
     const Entry& e = entries_[i];
     if (!e.compressed) continue;
     std::string path(e.pathLength, '\0');
-    if (!source_.read(e.offset - e.pathLength, &path[0], path.size())) path = "an image";
-    error = path + ": STI2 image needs \"spec\": 2";
+    if (!source_.read(e.offset - e.pathLength, &path[0], path.size())) path = e.font() ? "a font" : "an image";
+    error = path + (e.font() ? ": font needs \"spec\": 2" : ": STI2 image needs \"spec\": 2");
     return false;
   }
   return true;
@@ -162,6 +169,10 @@ __attribute__((noinline)) bool Package::checkAssets(Theme& candidate, std::strin
         error = "layers[" + std::to_string(i) + "].font: expected a transparent 80x48 bitmap atlas: " + fontPath;
         return false;
       }
+    }
+    if (l.type == LayerType::Text && l.stfFont) {
+      const std::string path = "fonts/" + candidate.fonts[l.stfFont - 1].name + ".stf";
+      if (!find(path)) { error = "layers[" + std::to_string(i) + "].font: missing font: " + path; return false; }
     }
     if (l.type != LayerType::Image && l.type != LayerType::Animation) continue;
     for (unsigned frame = 0; frame < l.frames; ++frame) {
@@ -193,7 +204,7 @@ __attribute__((noinline)) bool Package::checkAssets(Theme& candidate, std::strin
 // has stride 0 and so can never be resolved as an asset.
 AssetHandle Package::resolve(const std::string& path) {
   size_t i = indexOf(path);
-  return i < entries_.size() && entries_[i].stride ? static_cast<AssetHandle>(i) : InvalidAsset;
+  return i < entries_.size() && (entries_[i].stride || entries_[i].font()) ? static_cast<AssetHandle>(i) : InvalidAsset;
 }
 bool Package::imageSize(const std::string& path, uint16_t& width, uint16_t& height) {
   size_t i = indexOf(path);
@@ -355,6 +366,31 @@ bool Package::row(AssetHandle handle, int y, int x, int count, uint16_t* colors,
   if (!source_.read(table + 4u * y, b, 4)) return false;
   Reader reader(source_, table + 4u * e->height + u32(b), e->offset + e->length);
   return walkRow(reader, e->stride, e->palette, e->width, paletteColor, paletteAlpha, x, x + count, colors, alpha);
+}
+bool Package::checkFont(const Entry& e) const {
+  uint8_t h[12]; if(!source_.read(e.offset,h,12)) return false;
+  unsigned height=h[4], first=h[6], count=h[7], fallback=h[8];
+  if(height<6||height>96||!h[5]||h[5]>height||first<32||!count||first+count>127||fallback<first||fallback>=first+count||h[9]||h[10]||h[11]||e.length<12+8*count)return false;
+  uint32_t at=0, base=12+8*count; Reader rec(source_,e.offset+12,e.offset+base), bits(source_,e.offset+base,e.offset+e.length); bool fb=false;
+  for(unsigned i=0;i<count;i++){uint8_t g[8];for(uint8_t& b:g)if(!rec.byte(b))return false;unsigned a=g[2],l=g[3],t=g[4],w=g[5],rows=g[6],n=(w+1)/2;
+    if(!w||!rows){if(u16(g)||l||t||w||rows||g[7]||a>120)return false;fb|=(first+i==fallback&&a);continue;}
+    if(u16(g)!=at||!a||a>120||l+w>a||t+rows>height||g[7]||e.length-base-at<n*rows)return false;
+    if(w&1){bits.skipTo(e.offset+base+at);for(unsigned j=1;j<=n*rows;j++){uint8_t b;if(!bits.byte(b)||(j%n==0&&(b&15)))return false;}}
+    at+=n*rows;if(at>65535)return false;fb|=(first+i==fallback);
+  } return fb&&e.length==base+at;
+}
+bool Package::loadFonts(Theme& t,std::string& error){
+  for(size_t i=0;i<t.layers.size();i++){Layer& l=t.layers[i];if(!l.stfFont)continue;if(glyphs_.empty())glyphs_.resize(GlyphSlots);
+    ThemeFont& f=t.fonts[l.stfFont-1];const Entry* e=find("fonts/"+f.name+".stf");uint8_t h[12];if(!e||!source_.read(e->offset,h,12)){error="missing STF font";return false;}
+    l.size=h[4];f.first=h[6];f.fallback=h[8];f.advances.assign(h[7],0);Reader rd(source_,e->offset+12,e->offset+12+8u*h[7]);
+    for(uint8_t& a:f.advances){uint8_t g[8];for(uint8_t& b:g)if(!rd.byte(b))return false;a=g[2];}}
+  return true;
+}
+bool Package::glyphRow(AssetHandle handle,uint8_t code,int y,uint8_t* coverage,int& left,int& width){
+  if(handle>=entries_.size())return false;const Entry& e=entries_[handle];if(!e.font()||code<e.width||code>=unsigned(e.width)+e.height||glyphs_.empty())return false;
+  Glyph& g=glyphs_[code%GlyphSlots];if(g.code!=code||g.font!=handle){uint8_t b[8];if(!source_.read(e.offset+12+8u*(code-e.width),b,8))return false;g.font=uint8_t(handle);g.code=code;g.bitmap=u16(b);g.left=b[3];g.top=b[4];g.width=b[5];g.rows=b[6];}
+  left=g.left;width=0;if(y<g.top||y>=g.top+g.rows)return true;unsigned n=(g.width+1)/2;if(!source_.read(e.offset+12+8u*e.height+g.bitmap+(y-g.top)*n,coverage,n))return false;
+  for(int i=g.width-1;i>=0;i--)coverage[i]=uint8_t((i%2?coverage[i/2]&15:coverage[i/2]>>4)*17);width=g.width;return true;
 }
 }
 #endif

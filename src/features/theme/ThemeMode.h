@@ -82,6 +82,7 @@ class ThemeMode : public DisplayMode {
   std::vector<bool> dataScheduled_;
   std::vector<smalltv::ThemeValue> dataValues_;
   smalltv::DataRequests dataRequests_;
+  smalltv::DataAges dataAges_;
   size_t dataCursor_ = 0;
   uint32_t lastRenderMs_ = 0;
   uint32_t transitionStartedMs_ = 0;

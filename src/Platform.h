@@ -161,3 +161,13 @@ static inline bool platformTimeValid() { return time(nullptr) > 1609459200; }
 // reachable and set the clock" signal used to trust the clock for night mode).
 // Defined per core in Platform.cpp. Call once, after platformTimeBegin.
 void platformOnTimeSync(void (*cb)());
+
+// Last abnormal ESP8266 restart, held only in RTC RAM until power loss or clear.
+struct PlatformCrashRecord {
+  char reason[24] = {}, fw[16] = {};
+  bool hasRegisters = false, uptimeKnown = false;
+  uint32_t exccause = 0, epc1 = 0, excvaddr = 0, uptimeS = 0;
+};
+void platformCrashRecordBegin();
+bool platformCrashRecordGet(PlatformCrashRecord& out);
+void platformCrashRecordClear();

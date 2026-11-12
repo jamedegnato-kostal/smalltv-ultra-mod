@@ -124,9 +124,19 @@ struct Layer {
   uint16_t color = 0xffff, fill = 0, stroke = 0;
   bool hasFill = false, hasStroke = false, loop = true;
   bool timeBound = false;   // some binding reads a time.* source
+  uint16_t firstTranslation = 0;
+  uint8_t translationCount = 0;
+  // 1 + index in Theme::fonts. `font` above remains the legacy .sti atlas.
+  uint8_t stfFont = 0;
   uint16_t frames = 1, fps = 1;
   Scroll scroll;
   std::vector<Binding> bindings;
+};
+// Optional Spec-2 text variants. English remains in Layer::value so legacy
+// themes cost no extra RAM and retain their exact behaviour.
+struct LocalizedText {
+  uint8_t language = 0;
+  std::string text;
 };
 struct ThemeDataField {
   std::string id, path;
@@ -146,6 +156,13 @@ struct ThemeValue {
   std::string key, value;
 };
 inline bool operator==(const ThemeValue& a, const ThemeValue& b) { return a.key == b.key && a.value == b.value; }
+struct ThemeFont {
+  std::string name;
+  uint8_t first = 0, fallback = 0;
+  std::vector<uint8_t> advances;
+  uint8_t glyph(uint8_t c) const { return c >= first && size_t(c - first) < advances.size() && advances[c - first] ? c : fallback; }
+  int advance(uint8_t c) const { size_t at = size_t(glyph(c) - first); return at < advances.size() ? advances[at] : 0; }
+};
 // The immutable parsed manifest. Engine::setTheme() takes this by value and
 // never mutates it afterward; fetched values only ever affect LayerState.
 struct Theme {
@@ -153,7 +170,9 @@ struct Theme {
   std::string id, name, author, version, description, category, preview;
   uint16_t background = 0;
   BlockList<Layer> layers;
+  BlockList<LocalizedText> translations;
   std::vector<ThemeDataSource> data;
+  std::vector<ThemeFont> fonts;
 };
 // Random-access bytes of a manifest. parseTheme() reads it forward in small
 // pieces, several times, so a package's manifest never has to be copied into
@@ -169,6 +188,7 @@ bool parseTheme(ManifestSource& json, Theme& out, std::string& error);
 std::string expandText(const std::string& value, const tm* time);
 std::string expandText(const std::string& value, const tm* time, const std::vector<ThemeValue>& values);
 std::string expandText(const std::string& value, const tm* time, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device);
+std::string expandText(const std::string& value, const tm* time, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device, uint8_t language);
 std::string assetPath(const Layer& layer, uint16_t frame);
 
 // Per-layer runtime state: the current resolved geometry/color, the expanded
@@ -203,6 +223,7 @@ class Engine {
   // A name that is not set leaves its bindings on the layer's static value,
   // like a fetched field that is missing.
   void setDeviceValues(std::vector<ThemeValue> values);
+  void setLanguage(uint8_t language);
   // Forces the next update() to report a full-canvas dirty rectangle, e.g.
   // after a notification overlay restores the theme. It never resets scroll
   // progress, only what gets repainted.
@@ -222,7 +243,8 @@ class Engine {
   ClockOptions clockOptions_;
   bool animationsEnabled_ = true;
   uint8_t animationSpeedPct_ = 100;
-  bool full_ = true, hadTime_ = false, valuesChanged_ = false, optionsChanged_ = false;
+  bool full_ = true, hadTime_ = false, valuesChanged_ = false, optionsChanged_ = false, languageChanged_ = false;
+  uint8_t language_ = 0;
   tm lastTime_{};
 };
 
@@ -243,6 +265,7 @@ class Assets {
            uint16_t* colors, uint8_t* alpha) {
     return row(resolve(path), y, x, count, colors, alpha);
   }
+  virtual bool glyphRow(AssetHandle, uint8_t, int, uint8_t*, int&, int&) { return false; }
 };
 // Font/output sink render() writes into. glyphColumn() returns the built-in
 // bitmap font's column bits for one character; row() streams one already

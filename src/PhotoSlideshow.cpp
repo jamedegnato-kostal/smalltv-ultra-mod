@@ -1,6 +1,7 @@
 #include "PhotoSlideshow.h"
 #if WITH_PHOTOS
 #include "Gfx.h"
+#include "Platform.h"
 #include "PhotoLibrary.h"
 #include <Arduino_GFX_Library.h>
 #include <TJpg_Decoder.h>
@@ -37,6 +38,12 @@ void PhotoSlideshow::begin() {
 }
 
 bool PhotoSlideshow::start(uint8_t photosPerTheme, uint8_t dwellSeconds) {
+  // TJpg_Decoder allocates working buffers while decoding.  Refuse a batch
+  // before entering the decoder when the heap is fragmented rather than
+  // risking an ESP8266 watchdog/exception reset loop.
+  constexpr uint32_t MinFreeHeap = 16UL * 1024UL;
+  constexpr uint32_t MinLargestBlock = 8UL * 1024UL;
+  if (ESP.getFreeHeap() < MinFreeHeap || platformMaxFreeBlock() < MinLargestBlock) return false;
   const uint8_t available = smalltv_photo::count();
   if (!available || !photosPerTheme) return false;
   sequence_.setPhotos(smalltv_photo::slots(), available);

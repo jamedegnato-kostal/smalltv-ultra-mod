@@ -93,6 +93,7 @@ struct ClockSettings {
   bool showSeconds;
   bool showDate;
   String dateFormat;
+  String lang;          // Theme language: en, pt, es, fr, de, it
 
   void setDefaults();
   void toJson(JsonObject o) const;

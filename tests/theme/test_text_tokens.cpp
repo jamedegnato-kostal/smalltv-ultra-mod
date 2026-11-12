@@ -67,6 +67,11 @@ static void testSpecs() {
   e.setValues({});                                           // not fetched: "--", never the firmware's value
   e.update(1, &t);
   assert(e.states()[0].text == "--");
+
+  // Spec 2 publishes <source>.age even when it is not declared in fields.
+  const std::string ageData = "\"data\":[{\"id\":\"weather\",\"url\":\"http://example.test/a.json\",\"interval\":60,\"fields\":[{\"id\":\"temp\",\"path\":\"t\"}]}],";
+  assert(parseTheme(manifest(2, "{weather.age}", ageData), theme, error));
+  assert(!parseTheme(manifest(1, "{weather.age}", ageData), theme, error));
 }
 
 static void testDevice() {

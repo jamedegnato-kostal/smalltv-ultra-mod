@@ -96,4 +96,50 @@ class DataRequests {
  private:
   std::shared_ptr<DataFetch> pending_;
 };
+
+// Spec 2 exposes the minutes since each data source last succeeded as
+// "<source>.age". Ages use millis() only, so NTP is not required and wrap is
+// handled with unsigned subtraction. Unknown ages stay absent until a success.
+class DataAges {
+ public:
+  void reset(size_t count, bool enabled = true) {
+    ageMs_.assign(enabled ? count : 0, Unknown);
+    published_.assign(count, Unpublished);
+    started_ = false;
+  }
+  void tick(uint32_t now) {
+    const uint32_t delta = started_ ? uint32_t(now - last_) : 0;
+    started_ = true;
+    last_ = now;
+    for (auto& age : ageMs_) if (age != Unknown) age = delta >= MaxAge - age ? MaxAge : age + delta;
+  }
+  void result(size_t index, bool success) { if (success && index < ageMs_.size()) ageMs_[index] = 0; }
+  int minutes(size_t index) const { return index < ageMs_.size() && ageMs_[index] != Unknown ? int(ageMs_[index] / 60000) : -1; }
+  bool publish(const std::vector<ThemeDataSource>& sources, std::vector<ThemeValue>& values) {
+    if (published_.size() < sources.size()) published_.resize(sources.size(), Unpublished);
+    bool changed = false;
+    for (size_t i = 0; i < sources.size(); ++i) {
+      const int age = minutes(i);
+      if (age == published_[i]) continue;
+      published_[i] = age;
+      bool own = false;
+      for (const auto& field : sources[i].fields) own = own || field.id == "age";
+      if (own) continue;
+      const std::string key = sources[i].id + ".age";
+      auto it = std::find_if(values.begin(), values.end(), [&](const ThemeValue& v) { return v.key == key; });
+      if (age < 0) { if (it != values.end()) { values.erase(it); changed = true; } continue; }
+      const std::string text = std::to_string(age);
+      if (it == values.end()) { values.push_back({key, text}); changed = true; }
+      else if (it->value != text) { it->value = text; changed = true; }
+    }
+    return changed;
+  }
+ private:
+  enum : uint32_t { Unknown = 0xffffffffu, MaxAge = 0xfffffffeu };
+  enum : int { Unpublished = -2 };
+  std::vector<uint32_t> ageMs_;
+  std::vector<int> published_;
+  uint32_t last_ = 0;
+  bool started_ = false;
+};
 }
