@@ -47,12 +47,14 @@ Diese Endpunkte sind im Profil `smalltv_settings` aktiv.
 | --- | --- | --- |
 | `GET` | `/api/photos` | Fotoliste, Größen und Speicherstatus |
 | `GET` | `/api/photos/file?id=…` | Vorschaubild laden |
-| `POST` | `/api/photos/upload` | JPEG hochladen und prüfen |
+| `POST` | `/api/photos/upload` | JPEG oder vorbereitete GIF-Framegruppe hochladen und prüfen |
 | `POST` | `/api/photos/delete` | ein Foto löschen |
 | `POST` | `/api/photos/delete-all` | alle Fotos entfernen |
 
-Mehrere Bilder werden als einzelne Anfragen gesendet. Pro JPEG gilt ein
-Maximum von 128 KiB.
+Mehrere Bilder werden als einzelne Anfragen gesendet. JPEGs und die gesamte
+GIF-Framegruppe dürfen jeweils höchstens 128 KiB groß sein. Der Web-Client
+wandelt GIFs in einen internen PGA1-Container aus 2 bis 12 vollständigen
+240×240-JPEG-Frames um; externe Clients sollten JPEGs verwenden.
 
 ## System und Updates
 

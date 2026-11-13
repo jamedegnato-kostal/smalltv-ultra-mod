@@ -146,9 +146,9 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <small class="hint">Fotos werden nur zwischen den Themes der aktiven Playlist gezeigt. Die Theme-Reihenfolge bleibt bestehen. Änderungen mit „Einstellungen speichern“ übernehmen.</small>
   </div>
   <div class="card"><h2>Foto-Bibliothek</h2>
-   <p>Bilder werden im Browser mittig auf 240 × 240 Pixel zugeschnitten und als JPEG übertragen. Die Firmware speichert sie getrennt von den .stheme-Dateien.</p>
+  <p>Fotos werden auf 240 × 240 Pixel zugeschnitten und als JPEG gespeichert. GIFs laufen im Foto-Cycle als Animation mit bis zu 12 bei etwa 100 ms abgetasteten Frames und maximal 128 KiB.</p>
    <div class="photo-stats"><span><b id="photoCount">0</b> / 240 Fotos</span><span>Fotodaten: <b id="photoBytes">0 B</b></span><span>Für Fotos frei: <b id="photoFree">wird geladen …</b></span><span>LittleFS gesamt: <b id="photoStorageTotal">—</b></span></div>
-   <label for="photoFiles">Bilder auswählen (mehrere möglich)</label><input id="photoFiles" type="file" accept="image/*" multiple>
+  <label for="photoFiles">Fotos und GIFs auswählen (mehrere möglich)</label><input id="photoFiles" type="file" accept="image/*,.gif" multiple>
    <div class="photo-upload-actions"><button class="btn" id="photoUploadButton" type="button" onclick="uploadPhotos()">Fotos hochladen</button><button class="btn sec" id="photoCancelButton" type="button" onclick="cancelPhotoUpload()" disabled>Upload abbrechen</button><button class="btn danger" id="photoDeleteAllButton" type="button" onclick="deleteAllPhotos()">Alle Fotos löschen</button></div>
    <progress id="photoProgress" max="100" value="0" style="display:none;width:100%;margin-top:10px"></progress><div id="photoMessage" class="muted" role="status" style="margin-top:8px"></div>
    <div id="photoGrid" class="photo-grid"></div>
@@ -426,20 +426,37 @@ function fmtBytes(n){n=Number(n)||0;if(n<1024)return n+' B';if(n<1048576)return 
 function loadPhotoLibrary(){var grid=$('photoGrid');if(!grid)return Promise.resolve();grid.innerHTML='<div class="muted">Fotobibliothek wird geladen …</div>';
  return j('/api/photos').then(function(d){$('photoCount').textContent=d.count||0;$('photoBytes').textContent=fmtBytes(d.photoBytes);$('photoFree').textContent=fmtBytes(d.availableForPhotos);$('photoStorageTotal').textContent=fmtBytes(d.totalBytes);
   if(!d.photos||!d.photos.length){grid.innerHTML='<div class="muted">Noch keine Fotos gespeichert.</div>';return}
-  grid.innerHTML=d.photos.map(function(p){return '<div class="photo-card"><img loading="lazy" src="/api/photos/file?id='+encodeURIComponent(p.id)+'" alt="Foto '+p.id+'"><div class="photo-meta"><span>#'+p.id+' · '+fmtBytes(p.bytes)+'</span><button class="btn danger" type="button" onclick="deletePhoto('+p.id+')" aria-label="Foto '+p.id+' löschen">Löschen</button></div></div>'}).join('');
+  grid.innerHTML=d.photos.map(function(p){var kind=p.type==='gif'?'GIF · '+p.frames+' Frames':'JPEG';return '<div class="photo-card"><img loading="lazy" src="/api/photos/file?id='+encodeURIComponent(p.id)+'" alt="Foto '+p.id+'"><div class="photo-meta"><span>#'+p.id+' · '+kind+' · '+fmtBytes(p.bytes)+'</span><button class="btn danger" type="button" onclick="deletePhoto('+p.id+')" aria-label="Foto '+p.id+' löschen">Löschen</button></div></div>'}).join('');
  }).catch(function(e){grid.innerHTML='<div class="muted">Fotobibliothek nicht erreichbar: '+esc(e.message)+'</div>'})}
 function photoToJpeg(file){return new Promise(function(resolve,reject){var src=URL.createObjectURL(file);var done=function(){URL.revokeObjectURL(src)};
  var draw=function(img){try{var c=document.createElement('canvas');c.width=240;c.height=240;var side=Math.min(img.width,img.height),x=(img.width-side)/2,y=(img.height-side)/2;var ctx=c.getContext('2d',{alpha:false});ctx.drawImage(img,x,y,side,side,0,0,240,240);c.toBlob(function(blob){done();if(blob)resolve(blob);else reject(new Error('JPEG konnte nicht erzeugt werden'))},'image/jpeg',0.86)}catch(e){done();reject(e)}};
  if(window.createImageBitmap){createImageBitmap(file).then(function(img){draw(img);if(img.close)img.close()}).catch(function(e){done();reject(new Error('Bild kann nicht gelesen werden: '+e.message))})}
  else{var img=new Image();img.onload=function(){draw(img)};img.onerror=function(){done();reject(new Error('Bildformat kann im Browser nicht geöffnet werden'))};img.src=src}
  })}
-function photoUploadOne(blob,index,total){return new Promise(function(resolve,reject){var fd=new FormData();fd.append('photo',blob,'photo.jpg');var xhr=new XMLHttpRequest();photoUploadXhr=xhr;
+function photoBlob(file,quality){return new Promise(function(resolve,reject){var src=URL.createObjectURL(file),img=new Image();img.onload=function(){try{var c=document.createElement('canvas');c.width=240;c.height=240;var side=Math.min(img.width,img.height),x=(img.width-side)/2,y=(img.height-side)/2,ctx=c.getContext('2d',{alpha:false});ctx.drawImage(img,x,y,side,side,0,0,240,240);c.toBlob(function(blob){URL.revokeObjectURL(src);blob?resolve(blob):reject(new Error('JPEG konnte nicht erzeugt werden'))},'image/jpeg',quality)}catch(e){URL.revokeObjectURL(src);reject(e)}};img.onerror=function(){URL.revokeObjectURL(src);reject(new Error('GIF kann im Browser nicht dekodiert werden'))};img.src=src})}
+function photoDelay(ms){return new Promise(function(resolve){setTimeout(resolve,ms)})}
+async function gifToAnimation(file){var src=URL.createObjectURL(file),img=new Image();try{await new Promise(function(resolve,reject){img.onload=resolve;img.onerror=function(){reject(new Error('GIF kann im Browser nicht dekodiert werden'))};img.src=src});
+ var canvas=document.createElement('canvas');canvas.width=240;canvas.height=240;var ctx=canvas.getContext('2d',{alpha:false}),frames=[],seen={},previousHash='',sampleMs=100,lastSample=performance.now()-sampleMs;
+ for(var sample=0;sample<24&&frames.length<12;sample++){if(sample)await photoDelay(sampleMs);var side=Math.min(img.naturalWidth,img.naturalHeight);if(!side)throw new Error('GIF hat keine gültigen Bildmaße');var x=(img.naturalWidth-side)/2,y=(img.naturalHeight-side)/2;ctx.drawImage(img,x,y,side,side,0,0,240,240);
+  var pixels=ctx.getImageData(0,0,240,240).data,hash=2166136261;for(var q=0;q<pixels.length;q+=16)hash=Math.imul(hash^pixels[q],16777619);hash=String(hash>>>0);var now=performance.now(),delay=Math.max(20,Math.min(2000,Math.round(now-lastSample)));lastSample=now;
+  if(frames.length&&hash===previousHash){frames[frames.length-1].delay=Math.min(2000,frames[frames.length-1].delay+delay);continue}
+  if(frames.length>1&&Object.prototype.hasOwnProperty.call(seen,hash))break;
+  var blob=await new Promise(function(resolve,reject){canvas.toBlob(function(b){b?resolve(b):reject(new Error('GIF-Frame konnte nicht als JPEG gespeichert werden'))},'image/jpeg',0.48)});
+  frames.push({blob:blob,delay:delay});seen[hash]=frames.length-1;previousHash=hash;
+ }
+ if(frames.length<2)return {blob:await photoBlob(file,0.86),name:'photo.jpg'};
+ var total=5;for(var f=0;f<frames.length;f++)total+=6+frames[f].blob.size;if(total>128*1024)throw new Error('GIF ist nach der Umwandlung größer als 128 KiB; kürze oder verkleinere es');
+ var out=new Uint8Array(total),view=new DataView(out.buffer);out.set([80,71,65,49,frames.length],0);var at=5;
+ for(var i=0;i<frames.length;i++){var bytes=new Uint8Array(await frames[i].blob.arrayBuffer());view.setUint16(at,frames[i].delay,true);view.setUint32(at+2,bytes.length,true);out.set(bytes,at+6);at+=6+bytes.length}
+ return {blob:new Blob([out],{type:'application/x-smalltv-animation'}),name:'photo.pga'};
+ }finally{URL.revokeObjectURL(src)}}
+function photoUploadOne(blob,name,index,total){return new Promise(function(resolve,reject){var fd=new FormData();fd.append('photo',blob,name);var xhr=new XMLHttpRequest();photoUploadXhr=xhr;
  xhr.open('POST','/api/photos/upload');xhr.upload.onprogress=function(e){if(e.lengthComputable){var pct=(index+e.loaded/e.total)*100/total;$('photoProgress').value=Math.round(pct)}};
  xhr.onload=function(){photoUploadXhr=null;var d={};try{d=JSON.parse(xhr.responseText||'{}')}catch(e){}if(xhr.status>=200&&xhr.status<300)resolve(d);else reject(new Error(d.error||('Upload fehlgeschlagen ('+xhr.status+')')))};
  xhr.onerror=function(){photoUploadXhr=null;reject(new Error('Netzwerkfehler beim Upload'))};xhr.onabort=function(){photoUploadXhr=null;reject(new Error('Upload abgebrochen'))};xhr.send(fd)})}
 function uploadPhotos(){var input=$('photoFiles'),files=input&&input.files;if(!files||!files.length){toast('Wähle zuerst Bilder aus');return}
  var btn=$('photoUploadButton'),cancel=$('photoCancelButton'),prog=$('photoProgress'),msg=$('photoMessage'),picked=Array.prototype.slice.call(files);photoUploadCancel=false;btn.disabled=true;cancel.disabled=false;prog.style.display='block';prog.value=0;msg.textContent='Bilder werden für das 240×240-Display vorbereitet …';
- (async function(){var ok=0,errors=[];for(var i=0;i<picked.length;i++){if(photoUploadCancel)break;try{msg.textContent='Bild '+(i+1)+' von '+picked.length+' wird vorbereitet …';var blob=await photoToJpeg(picked[i]);if(photoUploadCancel)break;await photoUploadOne(blob,i,picked.length);ok++}catch(e){if(photoUploadCancel)break;errors.push(picked[i].name+': '+e.message)}}
+ (async function(){var ok=0,errors=[];for(var i=0;i<picked.length;i++){if(photoUploadCancel)break;try{msg.textContent='Bild '+(i+1)+' von '+picked.length+' wird vorbereitet …';var prepared=/\.gif$/i.test(picked[i].name)||picked[i].type==='image/gif'?await gifToAnimation(picked[i]):{blob:await photoToJpeg(picked[i]),name:'photo.jpg'};if(photoUploadCancel)break;await photoUploadOne(prepared.blob,prepared.name,i,picked.length);ok++}catch(e){if(photoUploadCancel)break;errors.push(picked[i].name+': '+e.message)}}
  btn.disabled=false;cancel.disabled=true;photoUploadXhr=null;input.value='';prog.style.display='none';await loadPhotoLibrary();
  if(photoUploadCancel)msg.textContent='Upload abgebrochen. '+ok+' Foto(s) gespeichert.';else if(errors.length)msg.textContent=ok+' Foto(s) gespeichert; '+errors.length+' fehlgeschlagen: '+errors.slice(0,3).join(' · ');else msg.textContent=ok+' Foto(s) gespeichert.';
  })()}

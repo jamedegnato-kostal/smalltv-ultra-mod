@@ -67,9 +67,94 @@ String photoUploadError;
 uint32_t photoUploadBytes = 0, photoUploadBudget = 0;
 int photoUploadSlot = -1;
 uint16_t photoUploadParts = 0;
-bool photoUploadAllowed = false, photoUploadEnded = false;
+uint8_t photoUploadFrameCount = 0;
+uint16_t photoUploadFrameDelays[smalltv_photo::MaxAnimationFrames] = {};
+bool photoUploadAllowed = false, photoUploadEnded = false, photoUploadAnimated = false;
 constexpr uint32_t MaxPhotoBytes = 128UL * 1024UL;
 constexpr char PhotoUploadPath[] = "/photos/.upload";
+constexpr char PhotoAnimationUploadPath[] = "/photos/.anim-upload";
+
+String photoAnimationFramePath(uint8_t slot, uint8_t frame, bool temporary) {
+  char path[32];
+  snprintf(path, sizeof(path), temporary ? "/photos/.p%03uf%02u.tmp" : "/photos/p%03uf%02u.jpg",
+           unsigned(slot), unsigned(frame));
+  return String(path);
+}
+String photoAnimationMetaPath(uint8_t slot, bool temporary) {
+  char path[28];
+  snprintf(path, sizeof(path), temporary ? "/photos/.p%03u.anim.tmp" : "/photos/p%03u.anim", unsigned(slot));
+  return String(path);
+}
+void clearPhotoAnimationStage(uint8_t slot) {
+  LittleFS.remove(photoAnimationMetaPath(slot, true));
+  for (uint8_t i = 0; i < smalltv_photo::MaxAnimationFrames; ++i)
+    LittleFS.remove(photoAnimationFramePath(slot, i, true));
+}
+void clearPhotoAnimationSlot(uint8_t slot) {
+  LittleFS.remove(photoAnimationMetaPath(slot, false));
+  for (uint8_t i = 0; i < smalltv_photo::MaxAnimationFrames; ++i)
+    LittleFS.remove(photoAnimationFramePath(slot, i, false));
+}
+
+bool unpackPhotoAnimation(const String& container, uint8_t slot) {
+  clearPhotoAnimationStage(slot);
+  File input = LittleFS.open(container, "r");
+  uint8_t header[5];
+  if (!input || input.read(header, sizeof(header)) != sizeof(header) || memcmp(header, "PGA1", 4)) return false;
+  const uint8_t count = header[4];
+  if (count < 2 || count > smalltv_photo::MaxAnimationFrames) return false;
+  uint8_t buffer[512];
+  uint64_t payloadEnd = 5;
+  for (uint8_t frame = 0; frame < count; ++frame) {
+    uint8_t record[6];
+    if (input.read(record, sizeof(record)) != sizeof(record)) { clearPhotoAnimationStage(slot); return false; }
+    const uint16_t delay = record[0] | (uint16_t(record[1]) << 8);
+    const uint32_t length = uint32_t(record[2]) | (uint32_t(record[3]) << 8) |
+      (uint32_t(record[4]) << 16) | (uint32_t(record[5]) << 24);
+    if (delay < 20 || delay > 2000 || !length || length > photoUploadBytes ||
+        uint64_t(input.position()) + length > input.size()) { clearPhotoAnimationStage(slot); return false; }
+    File output = LittleFS.open(photoAnimationFramePath(slot, frame, true), "w");
+    if (!output) { clearPhotoAnimationStage(slot); return false; }
+    uint32_t remaining = length;
+    while (remaining) {
+      const size_t take = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+      if (input.read(buffer, take) != static_cast<int>(take) || output.write(buffer, take) != take) {
+        output.close(); clearPhotoAnimationStage(slot); return false;
+      }
+      remaining -= take;
+      yield();
+    }
+    output.close();
+    if (!photoValidateJpeg(photoAnimationFramePath(slot, frame, true))) { clearPhotoAnimationStage(slot); return false; }
+    photoUploadFrameDelays[frame] = delay;
+    payloadEnd += 6 + length;
+  }
+  if (payloadEnd != input.size() || input.position() != input.size()) { clearPhotoAnimationStage(slot); return false; }
+  File meta = LittleFS.open(photoAnimationMetaPath(slot, true), "w");
+  const uint8_t metaHeader[5] = {'P', 'G', 'A', '1', count};
+  if (!meta || meta.write(metaHeader, sizeof(metaHeader)) != sizeof(metaHeader)) { clearPhotoAnimationStage(slot); return false; }
+  for (uint8_t frame = 0; frame < count; ++frame) {
+    const uint8_t delay[2] = {uint8_t(photoUploadFrameDelays[frame]), uint8_t(photoUploadFrameDelays[frame] >> 8)};
+    if (meta.write(delay, sizeof(delay)) != sizeof(delay)) { meta.close(); clearPhotoAnimationStage(slot); return false; }
+  }
+  meta.close();
+  photoUploadFrameCount = count;
+  return true;
+}
+
+bool commitPhotoAnimation(uint8_t slot) {
+  uint8_t moved = 0;
+  for (; moved < photoUploadFrameCount; ++moved) {
+    if (!LittleFS.rename(photoAnimationFramePath(slot, moved, true), photoAnimationFramePath(slot, moved, false))) {
+      clearPhotoAnimationSlot(slot); clearPhotoAnimationStage(slot); return false;
+    }
+  }
+  if (!LittleFS.rename(photoAnimationMetaPath(slot, true), photoAnimationMetaPath(slot, false))) {
+    clearPhotoAnimationSlot(slot); clearPhotoAnimationStage(slot); return false;
+  }
+  LittleFS.remove(PhotoAnimationUploadPath);
+  return true;
+}
 
 uint32_t photoReserveBytes() {
   size_t reserve = settingsStoredSize() + 4096;
@@ -95,16 +180,25 @@ bool requestPhotoId(uint8_t& id) {
 void abortPhotoUpload(const String& reason) {
   photoUpload.close();
   LittleFS.remove(PhotoUploadPath);
+  LittleFS.remove(PhotoAnimationUploadPath);
+  if (photoUploadSlot >= 0) clearPhotoAnimationStage(static_cast<uint8_t>(photoUploadSlot));
   photoUploadError = reason;
   photoUploadEnded = false;
   photoUploadAllowed = false;
   photoUploadSlot = -1;
+  photoUploadFrameCount = 0;
 }
 void receivePhotoUpload() {
   HTTPUpload& up = server.upload();
   if (up.status == UPLOAD_FILE_START) {
     if (++photoUploadParts > 1) { abortPhotoUpload("Pro Upload ist genau ein Bild erlaubt"); return; }
     photoUploadError = ""; photoUploadBytes = 0; photoUploadEnded = false;
+    photoUploadAnimated = up.filename.endsWith(".pga");
+    photoUploadFrameCount = 0;
+    if (!photoUploadAnimated && !up.filename.endsWith(".jpg")) {
+      photoUploadError = "Nur JPEG-Fotos und vorbereitete GIF-Animationen sind erlaubt";
+      return;
+    }
     photoUploadAllowed = guardAllowed() && (!S->auth.enabled || !S->auth.pass.length() ||
       server.authenticate(S->auth.user.c_str(), S->auth.pass.c_str()));
     if (!photoUploadAllowed) return;
@@ -114,9 +208,11 @@ void receivePhotoUpload() {
     const uint32_t reserve = photoReserveBytes();
     if (free <= reserve) { photoUploadError = "Zu wenig freier Speicher; lösche zuerst Fotos oder Themes"; return; }
     photoUploadBudget = free - reserve;
+    if (photoUploadAnimated) photoUploadBudget /= 2; // container and extracted JPEG frames coexist during validation
     if (photoUploadBudget > MaxPhotoBytes) photoUploadBudget = MaxPhotoBytes;
     LittleFS.remove(PhotoUploadPath);
-    photoUpload = LittleFS.open(PhotoUploadPath, "w");
+    LittleFS.remove(PhotoAnimationUploadPath);
+    photoUpload = LittleFS.open(photoUploadAnimated ? PhotoAnimationUploadPath : PhotoUploadPath, "w");
     if (!photoUpload) photoUploadError = "Temporäre Upload-Datei konnte nicht angelegt werden";
   } else if (up.status == UPLOAD_FILE_WRITE) {
     if (!photoUploadAllowed || photoUploadError.length()) return;
@@ -135,8 +231,13 @@ void receivePhotoUpload() {
       if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
       LittleFS.remove(PhotoUploadPath); return;
     }
-    if (!photoValidateJpeg(PhotoUploadPath)) {
-      photoUploadError = "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
+    const bool valid = photoUploadAnimated
+      ? unpackPhotoAnimation(PhotoAnimationUploadPath, static_cast<uint8_t>(photoUploadSlot))
+      : photoValidateJpeg(PhotoUploadPath);
+    if (!valid) {
+      photoUploadError = photoUploadAnimated
+        ? "Ungültige GIF-Animation; erwartet werden 2–12 vollständig lesbare 240×240-Frames"
+        : "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
       LittleFS.remove(PhotoUploadPath); return;
     }
     photoUploadEnded = true;
@@ -156,20 +257,25 @@ void finishPhotoUpload() {
     abortPhotoUpload(error); photoUploadParts = 0;
     photoReply(400, "error", error); return;
   }
-  const String target = smalltv_photo::path(static_cast<uint8_t>(photoUploadSlot));
-  if (LittleFS.exists(target)) {
+  const uint8_t slot = static_cast<uint8_t>(photoUploadSlot);
+  const String target = smalltv_photo::path(slot);
+  if (LittleFS.exists(target) || LittleFS.exists(smalltv_photo::animationPath(slot))) {
     abortPhotoUpload("Zielslot wurde bereits belegt; nichts wurde überschrieben"); photoUploadParts = 0;
     photoReply(409, "error", photoUploadError); return;
   }
-  if (!LittleFS.rename(PhotoUploadPath, target)) {
+  const bool committed = photoUploadAnimated ? commitPhotoAnimation(slot) : LittleFS.rename(PhotoUploadPath, target);
+  if (!committed) {
     abortPhotoUpload("Bild konnte nicht in die Bibliothek verschoben werden"); photoUploadParts = 0;
     photoReply(507, "error", photoUploadError); return;
   }
-  const int slot = photoUploadSlot;
   const uint32_t bytes = photoUploadBytes;
+  const bool animated = photoUploadAnimated;
+  const uint8_t frames = photoUploadFrameCount;
   photoUploadParts = 0; photoUploadSlot = -1; photoUploadAllowed = photoUploadEnded = false;
+  photoUploadAnimated = false; photoUploadFrameCount = 0;
   smalltv_photo::refresh();
-  JsonDocument doc; doc["id"] = slot; doc["bytes"] = bytes;
+  JsonDocument doc; doc["id"] = slot; doc["bytes"] = bytes; doc["type"] = animated ? "gif" : "jpeg";
+  if (animated) doc["frames"] = frames;
   String body; serializeJson(doc, body); server.send(201, "application/json", body);
 }
 void handlePhotoList() {
@@ -186,10 +292,14 @@ void handlePhotoList() {
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server.send(200, "application/json", "");
   server.sendContent(head);
-  char item[48];
+  char item[96];
   const uint8_t* ids = smalltv_photo::slots();
   for (uint8_t i = 0; i < smalltv_photo::count(); ++i) {
-    snprintf(item, sizeof(item), "%s{\"id\":%u,\"bytes\":%lu}", i ? "," : "", unsigned(ids[i]), (unsigned long)smalltv_photo::bytes(ids[i]));
+    const bool animated = smalltv_photo::isAnimation(ids[i]);
+    snprintf(item, sizeof(item), animated
+      ? "%s{\"id\":%u,\"bytes\":%lu,\"type\":\"gif\",\"frames\":%u}"
+      : "%s{\"id\":%u,\"bytes\":%lu,\"type\":\"jpeg\"}",
+      i ? "," : "", unsigned(ids[i]), (unsigned long)smalltv_photo::bytes(ids[i]), unsigned(smalltv_photo::frameCount(ids[i])));
     server.sendContent(item); yield();
   }
   server.sendContent("]}");
@@ -200,7 +310,8 @@ void handlePhotoFile() {
   uint8_t id;
   if (!requestPhotoId(id) || !smalltv_photo::contains(id)) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
   appRelease();
-  File file = LittleFS.open(smalltv_photo::path(id), "r");
+  const String path = smalltv_photo::isAnimation(id) ? smalltv_photo::framePath(id, 0) : smalltv_photo::path(id);
+  File file = LittleFS.open(path, "r");
   if (!file) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
   server.sendHeader("Cache-Control", "no-store");
   server.streamFile(file, "image/jpeg");

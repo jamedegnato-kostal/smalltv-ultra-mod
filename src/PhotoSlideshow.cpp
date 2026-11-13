@@ -67,7 +67,8 @@ void PhotoSlideshow::markAttempted(uint8_t id) {
 
 bool PhotoSlideshow::draw(uint8_t id) {
   if (!smalltv_photo::contains(id)) return false;
-  File file = LittleFS.open(smalltv_photo::path(id), "r");
+  const String path = currentAnimated_ ? smalltv_photo::framePath(id, animationFrame_) : smalltv_photo::path(id);
+  File file = LittleFS.open(path, "r");
   if (!file) return false;
   TJpgDec.setJpgScale(0);
   TJpgDec.setSwapBytes(false);
@@ -80,6 +81,7 @@ bool PhotoSlideshow::service(const Settings& settings) {
   if (!settings.photosEnabled || settings.mode != MODE_THEME || !settings.themePlaylistEnabled) {
     active_ = false;
     showing_ = false;
+    currentAnimated_ = false;
     return true;
   }
 
@@ -92,8 +94,17 @@ bool PhotoSlideshow::service(const Settings& settings) {
   }
 
   if (showing_) {
-    if (uint32_t(millis() - shownAt_) < uint32_t(currentDwellSeconds_) * 1000UL) return false;
+    const uint32_t now = millis();
+    if (uint32_t(now - shownAt_) < uint32_t(currentDwellSeconds_) * 1000UL) {
+      if (currentAnimated_ && int32_t(now - nextFrameAt_) >= 0) {
+        animationFrame_ = uint8_t((animationFrame_ + 1) % animationFrameCount_);
+        if (draw(currentPhoto_)) nextFrameAt_ = now + smalltv_photo::frameDelayMs(currentPhoto_, animationFrame_);
+        else currentAnimated_ = false;
+      }
+      return false;
+    }
     showing_ = false;
+    currentAnimated_ = false;
     if (shown_ >= target_) { active_ = false; return true; }
   }
 
@@ -103,12 +114,17 @@ bool PhotoSlideshow::service(const Settings& settings) {
     if (!sequence_.next(id)) break;
     if (wasAttempted(id)) continue;
     markAttempted(id);
+    currentPhoto_ = id;
+    animationFrameCount_ = smalltv_photo::isAnimation(id) ? smalltv_photo::frameCount(id) : 0;
+    currentAnimated_ = animationFrameCount_ > 1;
+    animationFrame_ = 0;
     if (!draw(id)) return false; // retry another ID on the next loop pass
     ++shown_;
     if (dwellSeconds_ == 0) {
       currentDwellSeconds_ = sequence_.randomDwellSeconds();
     } else currentDwellSeconds_ = dwellSeconds_;
     shownAt_ = millis();
+    nextFrameAt_ = shownAt_ + (currentAnimated_ ? smalltv_photo::frameDelayMs(id, 0) : 0);
     showing_ = true;
     return false;
   }
