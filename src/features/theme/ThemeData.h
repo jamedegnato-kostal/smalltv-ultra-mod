@@ -97,7 +97,8 @@ struct DataFetch {
   void reset(const ThemeDataSource& s, size_t i) {
     source = s;
     index = i;
-    values.clear();  // vector capacity is retained for the next response
+    // Keep the value objects and their string capacities. The fetcher
+    // overwrites every configured field before marking the request successful.
     success = false;
     cancelled_.store(false, std::memory_order_relaxed);
     finished_.store(false, std::memory_order_relaxed);
