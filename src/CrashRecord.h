@@ -14,6 +14,8 @@ struct CrashRtc {
   uint8_t rstReason, uptimeKnown;
   uint16_t pad;
   char fw[16];
+  // Optional diagnostics copied from the ESP8266 core's postmortem callback.
+  uint32_t allocCaller, allocSize, stack, stackEnd;
 };
 static inline uint32_t crashCheck(const CrashRtc& r) {
   const uint8_t* p = reinterpret_cast<const uint8_t*>(&r) + 8;
