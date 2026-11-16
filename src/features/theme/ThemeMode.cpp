@@ -29,9 +29,9 @@ class Panel : public smalltv::Display {
     return pgm_read_byte(font + unsigned(c) * 5 + col);
   }
   void row(int x, int y, const uint16_t* pixels, int count) override {
-    // Keep this scanline scratch off the ESP8266's 4 KiB continuation stack.
-    // Theme rendering is single-threaded and row() is never re-entered.
-    static uint16_t tinted[240];
+    // Theme rendering is single-threaded and sends at most 120 pixels per row.
+    // Keep its color-adjustment buffer bounded as well.
+    static uint16_t tinted[120];
     for (int i = 0; i < count; ++i) tinted[i] = gfxTint(pixels[i]);
     gfxDev()->draw16bitRGBBitmap(x, y, tinted, count, 1);
     if ((y & 15) == 15) yield();
