@@ -217,7 +217,7 @@ void ThemeMode::service(const Settings& s) {
     attempted_ = true;
     std::string error;
     smalltv::Theme theme;
-    platformMemorySample(true);  // baseline immediately before manifest/package allocations
+    platformMemoryPhaseBegin(PLATFORM_MEM_THEME_PARSE, true);
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
     bool sourceReady = false;
     if (recoveryMode_) {
@@ -264,7 +264,7 @@ void ThemeMode::service(const Settings& s) {
       }
     }
 #endif
-    platformMemorySample(true);  // capture the parse/load low-water point after temporary JSON is released
+    platformMemoryPhaseEnd(PLATFORM_MEM_THEME_PARSE, true);
     if (!error.empty()) {
       transitionPending_ = false;
       error_ = error.c_str();
@@ -331,15 +331,14 @@ void ThemeMode::service(const Settings& s) {
   engine_.setLanguage(language);
   engine_.setAnimationOptions(s.display.animationsEnabled, s.display.animationSpeedPct);
   Panel panel;
-  platformMemorySample();
+  platformMemoryPhaseBegin(PLATFORM_MEM_THEME_RENDER, false);
   const auto& dirty = engine_.update(millis(), valid ? &t : nullptr);
-  platformMemorySample();
   // A render failure (a corrupt or truncated asset read mid-frame) is treated
   // like a load failure: drop the package and show an error rather than
   // risk repeatedly failing on every subsequent frame.
   uint16_t background = s.display.backgroundEnabled ? s.display.background : engine_.theme().background;
   const bool rendered = smalltv::render(engine_, dirty, *package_, panel, background, s.display.themeOpacityPct);
-  platformMemorySample();
+  platformMemoryPhaseEnd(PLATFORM_MEM_THEME_RENDER, false);
   if (!rendered) {
     dataRequests_.cancel();
     dataRequests_.take();
