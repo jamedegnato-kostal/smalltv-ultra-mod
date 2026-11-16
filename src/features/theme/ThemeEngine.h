@@ -222,7 +222,6 @@ class Engine {
   void setAnimationOptions(bool enabled, uint8_t speedPct);
   void setTheme(Theme theme, uint32_t now);
   void setValues(const std::vector<ThemeValue>& values);
-  void setValues(std::vector<ThemeValue>&& values);
   // Values a firmware provides for `device.*` sources, keyed "device.<name>".
   // A name that is not set leaves its bindings on the layer's static value,
   // like a fetched field that is missing.
