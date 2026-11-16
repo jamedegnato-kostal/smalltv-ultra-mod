@@ -199,7 +199,7 @@ struct LayerState {
   uint16_t frame = 0;
   Rect bounds;
   ResolvedLayer resolved;
-  uint32_t lastMs = 0, phase = 0;
+  uint32_t lastMs = 0, phase = 0; // Animation remainder in 1/100000-frame units.
   // Loop/bounce scroll schedule. `scrollDirection` is -1 while advancing
   // toward the far edge (or continuously, in loop mode) and +1 on a bounce
   // leg's way back. See advanceScroll() in the .cpp for the timing model.
