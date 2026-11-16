@@ -26,7 +26,7 @@ static inline const char* crashReasonLabel(uint8_t reason) {
     case CRASH_RST_EXCEPTION: return "Exception";
     case CRASH_RST_SOFT_WDT: return "Software watchdog";
     case CRASH_RST_WDT: return "Hardware watchdog";
-    case CRASH_RST_SW_EXC: return "Abort/out of memory";
+    case CRASH_RST_SW_EXC: return "Software panic/abort";
     case CRASH_RST_STACK_SMASH: return "Stack overflow";
     default: return "Unknown";
   }
