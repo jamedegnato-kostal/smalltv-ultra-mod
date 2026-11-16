@@ -184,6 +184,17 @@ void platformMemorySample(bool force = false);
 void platformMemoryPhaseBegin(PlatformMemoryPhase phase, bool force = false);
 void platformMemoryPhaseEnd(PlatformMemoryPhase phase, bool force = false);
 void platformMemoryStatsGet(PlatformMemoryStats& out);
+class PlatformMemoryPhaseScope {
+ public:
+  explicit PlatformMemoryPhaseScope(PlatformMemoryPhase phase, bool force = false)
+      : phase_(phase), force_(force) { platformMemoryPhaseBegin(phase_, force_); }
+  ~PlatformMemoryPhaseScope() { platformMemoryPhaseEnd(phase_, force_); }
+  PlatformMemoryPhaseScope(const PlatformMemoryPhaseScope&) = delete;
+  PlatformMemoryPhaseScope& operator=(const PlatformMemoryPhaseScope&) = delete;
+ private:
+  PlatformMemoryPhase phase_;
+  bool force_;
+};
 
 // Last abnormal ESP8266 restart, held only in RTC RAM until power loss or clear.
 struct PlatformCrashRecord {
