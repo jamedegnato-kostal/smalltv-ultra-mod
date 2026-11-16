@@ -133,13 +133,22 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   if (!http.begin(*client, request.source.url.c_str())) return false;
   http.addHeader("Accept", "application/json");
   if (http.GET() != HTTP_CODE_OK || deadline.expired()) return false;
+#if defined(SMALLTV_ESP8266)
+  // The ESP8266 executes one theme-data fetch synchronously and DataRequests
+  // permits only one request at a time. Reuse the response buffer between
+  // polls: allocating/freeing up to 2 KiB for every refresh fragments the
+  // small heap over long uptimes. ArduinoJson parses this mutable buffer
+  // in-place, avoiding a second copy of every JSON key and string.
+  static std::string body;
+#else
   std::string body;
+#endif
   BodyStream stream{http.getStream(), *client, deadline};
   bool complete = smalltv::readDataBody(stream, http.getSize(), body);
   http.end();
-  if (!complete || request.cancelled()) return false;
+  if (!complete || request.cancelled() || body.empty()) return false;
   JsonDocument doc;
-  if (deserializeJson(doc, body, DeserializationOption::NestingLimit(8))) return false;
+  if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
   request.values.reserve(request.source.fields.size());
   for (const auto& field : request.source.fields) {
     request.values.push_back({request.source.id + "." + field.id, jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path))});
