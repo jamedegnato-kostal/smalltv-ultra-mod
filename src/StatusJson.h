@@ -28,6 +28,10 @@ struct StatusWg {
   const char* endpointIp = "";   // left out when empty
   long lastHandshake = 0;        // left out when 0
 };
+struct StatusMemoryPhase {
+  uint32_t heapBefore = 0, maxblkBefore = 0, heapAfter = 0, maxblkAfter = 0;
+};
+constexpr size_t StatusMemoryPhaseCount = 5;
 // The values behind the first part of the reply. Strings are borrowed: they
 // must live until writeStatusHead() returns.
 struct StatusData {
@@ -47,6 +51,7 @@ struct StatusData {
   bool lastCrashRegisters = false, lastCrashUptimeKnown = false;
   uint32_t lastCrashCause = 0, lastCrashEpc = 0, lastCrashAddr = 0, lastCrashUptime = 0;
   uint32_t lastCrashAllocCaller = 0, lastCrashAllocSize = 0, lastCrashStack = 0, lastCrashStackEnd = 0;
+  StatusMemoryPhase memoryPhases[StatusMemoryPhaseCount];
   StatusWg wg;
 };
 struct StatusTicker {
@@ -105,6 +110,26 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
   member(out, PSTR(",\"heapMin\":"), d.heapMin);
   member(out, PSTR(",\"maxblkMin\":"), d.maxblkMin);
   member(out, PSTR(",\"contstk\":"), d.contstk);
+  const char* phaseNames[StatusMemoryPhaseCount] = {
+    PSTR("\"themeParse\":{"), PSTR("\"themeRender\":{"), PSTR("\"themeData\":{"),
+    PSTR("\"webRequest\":{"), PSTR("\"photo\":{")
+  };
+  bool firstPhase = true;
+  for (size_t i = 0; i < StatusMemoryPhaseCount; ++i) {
+    const StatusMemoryPhase& p = d.memoryPhases[i];
+    if (!p.heapBefore && !p.heapAfter && !p.maxblkBefore && !p.maxblkAfter) continue;
+    if (firstPhase) {
+      jsonout::raw(out, PSTR(",\"memoryPhases\":{"));
+      firstPhase = false;
+    } else jsonout::raw(out, PSTR(","));
+    jsonout::raw(out, phaseNames[i]);
+    member(out, PSTR("\"heapBefore\":"), p.heapBefore);
+    member(out, PSTR(",\"maxblkBefore\":"), p.maxblkBefore);
+    member(out, PSTR(",\"heapAfter\":"), p.heapAfter);
+    member(out, PSTR(",\"maxblkAfter\":"), p.maxblkAfter);
+    jsonout::raw(out, PSTR("}"));
+  }
+  if (!firstPhase) jsonout::raw(out, PSTR("}"));
   member(out, PSTR(",\"uptime\":"), d.uptime);
   member(out, PSTR(",\"reset\":"), d.reset);
   member(out, PSTR(",\"synced\":"), d.synced);
