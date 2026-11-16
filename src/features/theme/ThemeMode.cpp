@@ -29,7 +29,9 @@ class Panel : public smalltv::Display {
     return pgm_read_byte(font + unsigned(c) * 5 + col);
   }
   void row(int x, int y, const uint16_t* pixels, int count) override {
-    uint16_t tinted[240];
+    // Keep this scanline scratch off the ESP8266's 4 KiB continuation stack.
+    // Theme rendering is single-threaded and row() is never re-entered.
+    static uint16_t tinted[240];
     for (int i = 0; i < count; ++i) tinted[i] = gfxTint(pixels[i]);
     gfxDev()->draw16bitRGBBitmap(x, y, tinted, count, 1);
     if ((y & 15) == 15) yield();
@@ -54,6 +56,17 @@ static constexpr const char* RecoveryThemeId = "office-recovery";
 constexpr uint32_t LoadFreeHeap = ThemeMode::ParseFreeHeap;
 constexpr uint32_t LoadLargestBlock = ThemeMode::ParseLargestBlock;
 const char* const WaitingForMemory = "Waiting for free memory";
+
+// Validate a theme ID without constructing a temporary std::string. This is
+// used from service(), which runs on every main-loop pass on the ESP8266.
+bool validThemeId(const char* id) {
+  if (!id || !*id) return false;
+  for (const unsigned char* p = reinterpret_cast<const unsigned char*>(id); *p; ++p) {
+    if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+          (*p >= '0' && *p <= '9') || *p == '-' || *p == '_')) return false;
+  }
+  return true;
+}
 }
 void ThemeMode::begin(const Settings&) {
   LittleFS.mkdir("/themes");
@@ -164,11 +177,11 @@ void ThemeMode::invalidate(const Settings& s) {
   }
 #endif
   const bool onScreen = s.mode == MODE_THEME || (s.mode == MODE_CAROUSEL && s.carouselTheme);
-  String desiredId = s.themeId;
+  const String* desiredId = &s.themeId;
 #if WITH_THEME_PLAYLIST
-  if (playlistId_.length()) desiredId = playlistId_;
+  if (playlistId_.length()) desiredId = &playlistId_;
 #endif
-  if (loadedId_ != desiredId || !onScreen) unload();
+  if (loadedId_ != *desiredId || !onScreen) unload();
   // A failed load may be retried after installation or settings changes.
   if (!package_) attempted_ = false;
   engine_.invalidate();
@@ -180,9 +193,9 @@ void ThemeMode::invalidate(const Settings& s) {
 // `loadedId_` together are the load state machine; everything past the load
 // block runs every call once a package is open.
 void ThemeMode::service(const Settings& s) {
-  String desiredId = s.themeId;
+  const char* desiredId = s.themeId.c_str();
 #if WITH_THEME_PLAYLIST
-  if (playlistId_.length()) desiredId = playlistId_;
+  if (playlistId_.length()) desiredId = playlistId_.c_str();
 #endif
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
   if (recoveryMode_) desiredId = RecoveryThemeId;
@@ -210,10 +223,10 @@ void ThemeMode::service(const Settings& s) {
       file_.reset(new(std::nothrow) RecoveryThemeSource);
       sourceReady = bool(file_);
     } else {
-      if (!smalltv::validId(desiredId.c_str())) error = "Select an installed theme";
+      if (!validThemeId(desiredId)) error = "Select an installed theme";
       else {
         ThemeFile* source = new(std::nothrow) ThemeFile;
-        if (source && source->open("/themes/" + desiredId + ".stheme")) {
+        if (source && source->open(String("/themes/") + desiredId + ".stheme")) {
           file_.reset(source);
           sourceReady = true;
         } else {
@@ -226,16 +239,16 @@ void ThemeMode::service(const Settings& s) {
       package_.reset(new(std::nothrow) smalltv::Package(*file_));
       if (!package_) error = "Cannot allocate theme package";
       else if (!package_->load(theme, error)) package_.reset();
-      else if (theme.id != desiredId.c_str()) {
+      else if (theme.id != desiredId) {
         error = "Theme ID mismatch";
         package_.reset();
       }
     }
 #else
-    if (!smalltv::validId(desiredId.c_str())) error = "Select an installed theme";
+    if (!validThemeId(desiredId)) error = "Select an installed theme";
     else {
       ThemeFile* source = new(std::nothrow) ThemeFile;
-      if (!source || !source->open("/themes/" + desiredId + ".stheme")) {
+      if (!source || !source->open(String("/themes/") + desiredId + ".stheme")) {
         delete source;
         error = "Theme file not found";
       } else {
@@ -243,7 +256,7 @@ void ThemeMode::service(const Settings& s) {
         package_.reset(new(std::nothrow) smalltv::Package(*file_));
         if (!package_) error = "Cannot allocate theme package";
         else if (!package_->load(theme, error)) package_.reset();
-        else if (theme.id != desiredId.c_str()) {
+        else if (theme.id != desiredId) {
           error = "Theme ID mismatch";
           package_.reset();
         }
@@ -303,12 +316,10 @@ void ThemeMode::service(const Settings& s) {
   lastRenderMs_ = millis();
   tm t{};
   bool valid = clockNow(t);
-  smalltv::Engine::ClockOptions clockOptions;
-  clockOptions.use24Hour = s.clock.use24Hour;
-  clockOptions.showSeconds = s.clock.showSeconds;
-  clockOptions.showDate = s.clock.showDate;
-  clockOptions.dateFormat = s.clock.dateFormat.c_str();
-  engine_.setClockOptions(clockOptions);
+  // Pass the persistent setting directly: constructing ClockOptions here
+  // used to allocate/free its std::string at every rendered frame.
+  engine_.setClockOptions(s.clock.use24Hour, s.clock.showSeconds,
+                          s.clock.showDate, s.clock.dateFormat.c_str());
   uint8_t language = 0;
   if (s.clock.lang == "pt") language = 1;
   else if (s.clock.lang == "es") language = 2;
