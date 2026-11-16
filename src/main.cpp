@@ -104,7 +104,12 @@ static void carouselNext(const Settings& s) {
 static DisplayMode* activeMode(const Settings& s) {
   if (s.mode == MODE_CAROUSEL && kModeCount > 0) {
     if (g_carSwitch == 0) g_carSwitch = millis();
-    if (!carouselHas(s, kModes[g_carIdx])) carouselNext(s);   // settings changed
+    if (!carouselHas(s, kModes[g_carIdx])) {
+      // A settings change forced us off the current page; start a fresh dwell
+      // period so an already-expired timer does not immediately skip another.
+      g_carSwitch = millis();
+      carouselNext(s);
+    }
     bool dwellExpired = millis() - g_carSwitch >= (uint32_t)s.carouselSec * 1000UL;
     if (g_carPaused) dwellExpired = false;   // button froze the rotation on the current page
     if (dwellExpired) {
