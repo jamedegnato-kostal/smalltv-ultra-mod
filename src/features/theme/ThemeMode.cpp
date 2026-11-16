@@ -17,6 +17,7 @@
 
 ThemeMode g_themeMode;
 extern void appApplyBrightness();
+extern uint8_t appStatusBrightness();
 namespace {
 // Adapts the portable engine's Display interface to this device's actual
 // panel: glyphColumn() reads the built-in font from flash (PROGMEM), and
@@ -324,7 +325,9 @@ void ThemeMode::service(const Settings& s) {
     const uint32_t elapsed = millis() - transitionStartedMs_;
     if (elapsed >= duration) {
       transitionActive_ = false;
-      appApplyBrightness();
+      // The fade writes the PWM directly, bypassing appApplyBrightness()'s
+      // cached last-value check. Write the resolved target explicitly here.
+      gfxSetBrightness(appStatusBrightness(), s.backlightInverted);
     } else {
       const uint32_t half = duration / 2 ? duration / 2 : 1;
       const uint32_t level = elapsed < half ? (half - elapsed) * 100 / half : (elapsed - half) * 100 / (duration - half);
