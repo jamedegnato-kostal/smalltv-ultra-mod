@@ -643,7 +643,10 @@ void loop() {
   // Throttled, allocation-free low-water sampling across normal operation.
   platformMemorySample();
   netLoop();
-  webPortalLoop();
+  {
+    PlatformMemoryPhaseScope webMemory(PLATFORM_MEM_WEB_REQUEST);
+    webPortalLoop();
+  }
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
   crashGuardService();
 #endif
