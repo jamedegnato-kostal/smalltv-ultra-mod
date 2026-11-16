@@ -2127,10 +2127,11 @@ static bool scrollContentColumn(const Layer& l, const LayerState& s, int textWid
 // disjoint dirty regions (or several rows of the same region) still resolves
 // its asset exactly once.
 bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Display& display, uint16_t background, uint8_t opacityPct) {
-  // Rendering is serial in the firmware. Keep these scanline buffers in
-  // static storage instead of consuming roughly 1.2 KiB of ESP8266 loop stack.
-  static uint16_t pixels[240], colors[240];
-  static uint8_t alpha[240];
+  // Render 120-pixel strips: the working buffers use about 600 B of stack
+  // instead of 1.2 KiB, without permanently taking that RAM from the heap.
+  constexpr int RenderChunkWidth = 120;
+  uint16_t pixels[RenderChunkWidth], colors[RenderChunkWidth];
+  uint8_t alpha[RenderChunkWidth];
   if (opacityPct > 100) opacityPct = 100;
   if (e.theme().layers.size() > MaxLayers || e.states().size() != e.theme().layers.size()) return false;
   AssetHandle handles[MaxLayers];
@@ -2138,11 +2139,13 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
   for (Rect region : dirty) {
     region = intersect(region, Rect(0, 0, 240, 240));
     for (int y = region.y; y < region.y + region.h; ++y) {
-      std::fill(pixels, pixels + region.w, background);
-      for (size_t i = 0; i < e.theme().layers.size(); ++i) {
-        const auto& l = e.theme().layers[i];
-        const auto& s = e.states()[i];
-        Rect r = intersect(s.bounds, Rect(region.x, y, region.w, 1));
+      for (int chunkX = region.x; chunkX < region.x + region.w; chunkX += RenderChunkWidth) {
+        const int chunkWidth = std::min(RenderChunkWidth, region.x + region.w - chunkX);
+        std::fill(pixels, pixels + chunkWidth, background);
+        for (size_t i = 0; i < e.theme().layers.size(); ++i) {
+          const auto& l = e.theme().layers[i];
+          const auto& s = e.states()[i];
+          Rect r = intersect(s.bounds, Rect(chunkX, y, chunkWidth, 1));
         if (r.empty()) continue;
         if (l.type == LayerType::Image || l.type == LayerType::Animation) {
           // Assets stream by row too: only the `r.w` pixels this dirty region
@@ -2151,7 +2154,7 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
           if (handles[i] == InvalidAsset || !assets.row(handles[i], y - s.resolved.y, r.x - s.resolved.x, r.w, colors, alpha)) return false;
           for (int x = 0; x < r.w; ++x) {
             const uint8_t effectiveAlpha = uint8_t((uint16_t(alpha[x]) * opacityPct + 50) / 100);
-            const int at = r.x - region.x + x;
+            const int at = r.x - chunkX + x;
             pixels[at] = blend(pixels[at], colors[x], effectiveAlpha);
           }
           continue;
@@ -2271,13 +2274,14 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
             }
           }
           if (draw) {
-            const int at = x - region.x;
+            const int at = x - chunkX;
             const uint8_t effectiveAlpha = uint8_t((uint16_t(drawAlpha) * opacityPct + 50) / 100);
             pixels[at] = blend(pixels[at], c, effectiveAlpha);
           }
         }
       }
-      display.row(region.x, y, pixels, region.w);
+        display.row(chunkX, y, pixels, chunkWidth);
+      }
     }
   }
   return true;
