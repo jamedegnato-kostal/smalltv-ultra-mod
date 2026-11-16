@@ -1,6 +1,7 @@
 #include "ThemeDataClient.h"
 #if WITH_THEME
 #include "Platform.h"
+#include "ThemeMode.h"
 #include <ArduinoJson.h>
 #if !defined(SMALLTV_ESP8266)
 #include <freertos/FreeRTOS.h>
@@ -110,10 +111,18 @@ JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
 bool fetchThemeSource(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
   PlatformMemoryPhaseScope dataMemory(PLATFORM_MEM_THEME_DATA, true);
+#if defined(SMALLTV_ESP8266)
+  // Keep external fetches below the same conservative request limits used
+  // by the web portal; the active theme cannot be released while it is the
+  // caller of this fetch.
+  if (ESP.getFreeHeap() < ThemeMode::RequestFreeHeap ||
+      platformMaxFreeBlock() < ThemeMode::RequestLargestBlock) return false;
+#endif
   Deadline deadline(request);
   std::unique_ptr<NetClient> client;
   if (request.source.url.rfind("https://", 0) == 0) {
-    if (ESP.getFreeHeap() < 18000) return false;
+    if (ESP.getFreeHeap() < 18000 ||
+        platformMaxFreeBlock() < ThemeMode::RequestLargestBlock) return false;
     auto secure = new(std::nothrow) BoundedClient<SecureClient>(deadline);
     if (!secure) return false;
     // HTTPS reaches this path only after the manifest explicitly opted in.
