@@ -231,9 +231,9 @@ void receivePhotoUpload() {
       if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
       LittleFS.remove(PhotoUploadPath); return;
     }
-    // JPEG validation enters TJpg_Decoder, which allocates working
-    // buffers. Release a theme when that decoder's conservative heap budget
-    // is not already available, then refuse safely instead of risking OOM.
+    // JPEG validation uses TJpg_Decoder's preallocated workspace plus
+    // small filesystem/decoder allocations. Release the theme if the normal
+    // request headroom is not available, then refuse safely below that floor.
 #if WITH_THEME
     g_themeMode.release(8UL * 1024UL, 3UL * 1024UL);
 #endif
