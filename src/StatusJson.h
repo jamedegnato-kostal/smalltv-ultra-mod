@@ -28,6 +28,10 @@ struct StatusWg {
   const char* endpointIp = "";   // left out when empty
   long lastHandshake = 0;        // left out when 0
 };
+struct StatusMemoryPhase {
+  uint32_t heapBefore = 0, maxblkBefore = 0, heapAfter = 0, maxblkAfter = 0;
+};
+constexpr size_t StatusMemoryPhaseCount = 5;
 // The values behind the first part of the reply. Strings are borrowed: they
 // must live until writeStatusHead() returns.
 struct StatusData {
@@ -39,13 +43,16 @@ struct StatusData {
   const char* time = "";        // left out when empty
   const char* tz = "";
   bool connected = false, synced = false, night = false, nightHeld = false, clockFresh = false;
+  bool memoryStatsValid = false;
   int rssi = 0;
   uint8_t brightness = 0;
-  uint32_t heap = 0, maxblk = 0, contstk = 0, uptime = 0;
+  uint32_t heap = 0, maxblk = 0, heapMin = 0, maxblkMin = 0, contstk = 0, uptime = 0;
   const char* lastCrashReason = "";
   const char* lastCrashFw = "";
   bool lastCrashRegisters = false, lastCrashUptimeKnown = false;
   uint32_t lastCrashCause = 0, lastCrashEpc = 0, lastCrashAddr = 0, lastCrashUptime = 0;
+  uint32_t lastCrashAllocCaller = 0, lastCrashAllocSize = 0, lastCrashStack = 0, lastCrashStackEnd = 0;
+  StatusMemoryPhase memoryPhases[StatusMemoryPhaseCount];
   StatusWg wg;
 };
 struct StatusTicker {
@@ -101,7 +108,31 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
   if (d.wifiFail[0]) member(out, PSTR(",\"wifiFail\":"), d.wifiFail);
   member(out, PSTR(",\"heap\":"), d.heap);
   member(out, PSTR(",\"maxblk\":"), d.maxblk);
+  if (d.memoryStatsValid) {
+    member(out, PSTR(",\"heapMin\":"), d.heapMin);
+    member(out, PSTR(",\"maxblkMin\":"), d.maxblkMin);
+  }
   member(out, PSTR(",\"contstk\":"), d.contstk);
+  const char* phaseNames[StatusMemoryPhaseCount] = {
+    PSTR("\"themeParse\":{"), PSTR("\"themeRender\":{"), PSTR("\"themeData\":{"),
+    PSTR("\"webRequest\":{"), PSTR("\"photo\":{")
+  };
+  bool firstPhase = true;
+  for (size_t i = 0; i < StatusMemoryPhaseCount; ++i) {
+    const StatusMemoryPhase& p = d.memoryPhases[i];
+    if (!p.heapBefore && !p.heapAfter && !p.maxblkBefore && !p.maxblkAfter) continue;
+    if (firstPhase) {
+      jsonout::raw(out, PSTR(",\"memoryPhases\":{"));
+      firstPhase = false;
+    } else jsonout::raw(out, PSTR(","));
+    jsonout::raw(out, phaseNames[i]);
+    member(out, PSTR("\"heapBefore\":"), p.heapBefore);
+    member(out, PSTR(",\"maxblkBefore\":"), p.maxblkBefore);
+    member(out, PSTR(",\"heapAfter\":"), p.heapAfter);
+    member(out, PSTR(",\"maxblkAfter\":"), p.maxblkAfter);
+    jsonout::raw(out, PSTR("}"));
+  }
+  if (!firstPhase) jsonout::raw(out, PSTR("}"));
   member(out, PSTR(",\"uptime\":"), d.uptime);
   member(out, PSTR(",\"reset\":"), d.reset);
   member(out, PSTR(",\"synced\":"), d.synced);
@@ -119,6 +150,10 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
       member(out, PSTR(",\"epc1\":"), d.lastCrashEpc);
       member(out, PSTR(",\"excvaddr\":"), d.lastCrashAddr);
     }
+    if (d.lastCrashAllocCaller) member(out, PSTR(",\"lastFailedAllocCaller\":"), d.lastCrashAllocCaller);
+    if (d.lastCrashAllocSize) member(out, PSTR(",\"lastFailedAllocSize\":"), d.lastCrashAllocSize);
+    if (d.lastCrashStack) member(out, PSTR(",\"stack\":"), d.lastCrashStack);
+    if (d.lastCrashStackEnd) member(out, PSTR(",\"stackEnd\":"), d.lastCrashStackEnd);
     member(out, PSTR(",\"uptimeKnown\":"), d.lastCrashUptimeKnown);
     if (d.lastCrashUptimeKnown) member(out, PSTR(",\"uptime\":"), d.lastCrashUptime);
     jsonout::raw(out, PSTR("}"));

@@ -2,6 +2,7 @@
 #include "ThemeEngine.h"
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <memory>
 
 namespace smalltv {
@@ -60,6 +61,17 @@ struct DataFetch {
   std::vector<ThemeValue> values;
   bool success = false;
   DataFetch(const ThemeDataSource& s, size_t i) : source(s), index(i) {}
+  // A single request is in flight at a time. Reinitialize the retained object
+  // after take() rather than allocating a new shared object on every refresh.
+  void reset(const ThemeDataSource& s, size_t i) {
+    source = s;
+    index = i;
+    // Keep the value objects and their string capacities. The fetcher
+    // overwrites every configured field before marking the request successful.
+    success = false;
+    cancelled_.store(false, std::memory_order_relaxed);
+    finished_.store(false, std::memory_order_relaxed);
+  }
   void cancel() { cancelled_.store(true); }
   bool cancelled() const { return cancelled_.load(); }
   void finish(bool ok) {
@@ -81,10 +93,18 @@ class DataRequests {
   // check busy() first; this only guards against a caller that does not.
   std::shared_ptr<DataFetch> start(const ThemeDataSource& source, size_t index) {
     if (pending_) return {};
-    pending_ = std::make_shared<DataFetch>(source, index);
+    // Do not mutate a completed result while a caller still holds its
+    // shared_ptr. In the normal ThemeMode path it is released before the next
+    // poll, so the same object and its capacities are reused.
+    if (!storage_ || storage_.use_count() > 1) storage_ = std::make_shared<DataFetch>(source, index);
+    else storage_->reset(source, index);
+    pending_ = storage_;
     return pending_;
   }
   void cancel() { if (pending_) pending_->cancel(); }
+  // Release the reusable request object only when no request is still pending.
+  // A worker on other targets may still own a cancelled in-flight request.
+  void releaseStorage() { if (!pending_) storage_.reset(); }
   // Returns the finished result once, or nothing if still pending or if it
   // was cancelled (a cancelled fetch's values are stale by definition, e.g.
   // from a theme that has since been switched away from).
@@ -94,6 +114,8 @@ class DataRequests {
     return result->cancelled() ? std::shared_ptr<DataFetch>{} : result;
   }
  private:
+  // Keep one allocation alive and reuse it for the next round-robin source.
+  std::shared_ptr<DataFetch> storage_;
   std::shared_ptr<DataFetch> pending_;
 };
 
@@ -103,8 +125,15 @@ class DataRequests {
 class DataAges {
  public:
   void reset(size_t count, bool enabled = true) {
-    ageMs_.assign(enabled ? count : 0, Unknown);
-    published_.assign(count, Unpublished);
+    if (!count) {
+      // assign(0) is permitted to keep vector capacity. A full theme unload
+      // must return the data-age backing stores to the ESP8266 heap.
+      std::vector<uint32_t>().swap(ageMs_);
+      std::vector<int>().swap(published_);
+    } else {
+      ageMs_.assign(enabled ? count : 0, Unknown);
+      published_.assign(count, Unpublished);
+    }
     started_ = false;
   }
   void tick(uint32_t now) {
@@ -125,12 +154,28 @@ class DataAges {
       bool own = false;
       for (const auto& field : sources[i].fields) own = own || field.id == "age";
       if (own) continue;
-      const std::string key = sources[i].id + ".age";
-      auto it = std::find_if(values.begin(), values.end(), [&](const ThemeValue& v) { return v.key == key; });
+      const std::string& id = sources[i].id;
+      auto it = std::find_if(values.begin(), values.end(), [&](const ThemeValue& v) {
+        return v.key.size() == id.size() + 4 &&
+               v.key.compare(0, id.size(), id) == 0 &&
+               v.key.compare(id.size(), 4, ".age", 4) == 0;
+      });
       if (age < 0) { if (it != values.end()) { values.erase(it); changed = true; } continue; }
-      const std::string text = std::to_string(age);
-      if (it == values.end()) { values.push_back({key, text}); changed = true; }
-      else if (it->value != text) { it->value = text; changed = true; }
+      char ageText[12];
+      snprintf(ageText, sizeof(ageText), "%d", age);
+      if (it == values.end()) {
+        // Reserve once for the small bounded number of source-age values.
+        if (values.size() == values.capacity()) values.reserve(values.size() + sources.size() - i);
+        ThemeValue value;
+        value.key = id;
+        value.key += ".age";
+        value.value = ageText;
+        values.push_back(std::move(value));
+        changed = true;
+      } else if (it->value != ageText) {
+        it->value = ageText;
+        changed = true;
+      }
     }
     return changed;
   }

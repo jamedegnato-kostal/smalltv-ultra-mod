@@ -231,6 +231,18 @@ void receivePhotoUpload() {
       if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
       LittleFS.remove(PhotoUploadPath); return;
     }
+    // JPEG validation uses TJpg_Decoder's preallocated workspace plus
+    // small filesystem/decoder allocations. Release the theme if the normal
+    // request headroom is not available, then refuse safely below that floor.
+#if WITH_THEME
+    g_themeMode.release(8UL * 1024UL, 3UL * 1024UL);
+#endif
+    if (ESP.getFreeHeap() < 8UL * 1024UL || platformMaxFreeBlock() < 3UL * 1024UL) {
+      photoUploadError = "Zu wenig freier Arbeitsspeicher für die Bildprüfung; Theme-Speicher wurde freigegeben";
+      LittleFS.remove(PhotoUploadPath);
+      LittleFS.remove(PhotoAnimationUploadPath);
+      return;
+    }
     const bool valid = photoUploadAnimated
       ? unpackPhotoAnimation(PhotoAnimationUploadPath, static_cast<uint8_t>(photoUploadSlot))
       : photoValidateJpeg(PhotoUploadPath);
@@ -502,9 +514,20 @@ static void handleStatus() {
   d.ip = ip.c_str();
   d.rssi = netRSSI();
   d.wifiFail = netFailReason();
+  PlatformMemoryStats memory;
+  platformMemoryStatsGet(memory);  // also refreshes the low-water sample once
   d.heap = ESP.getFreeHeap();
   d.maxblk = platformMaxFreeBlock();     // largest contiguous block (TLS handshake needs one)
-  d.contstk = platformFreeContStack();   // primary stack headroom (ESP8266)
+  d.memoryStatsValid = true;
+  d.heapMin = memory.minHeap;
+  d.maxblkMin = memory.minMaxBlock;
+  for (size_t i = 0; i < smalltv::StatusMemoryPhaseCount; ++i) {
+    d.memoryPhases[i].heapBefore = memory.phases[i].heapBefore;
+    d.memoryPhases[i].maxblkBefore = memory.phases[i].maxBlockBefore;
+    d.memoryPhases[i].heapAfter = memory.phases[i].heapAfter;
+    d.memoryPhases[i].maxblkAfter = memory.phases[i].maxBlockAfter;
+  }
+  d.contstk = platformFreeContStack();   // ESP8266 continuation-stack high-water (untouched bytes since last repaint)
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
   d.synced = clockSynced();
@@ -519,6 +542,8 @@ static void handleStatus() {
     d.lastCrashRegisters = crash.hasRegisters; d.lastCrashUptimeKnown = crash.uptimeKnown;
     d.lastCrashCause = crash.exccause; d.lastCrashEpc = crash.epc1;
     d.lastCrashAddr = crash.excvaddr; d.lastCrashUptime = crash.uptimeS;
+    d.lastCrashAllocCaller = crash.allocCaller; d.lastCrashAllocSize = crash.allocSize;
+    d.lastCrashStack = crash.stack; d.lastCrashStackEnd = crash.stackEnd;
   }
 
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -617,6 +642,9 @@ static void handlePostConfig() {
 
 static void handleScan() {
   if (!requireAuth()) return;
+  // Scan results and the JSON reply need temporary heap; release feature
+  // caches first so scanning cannot compete with a loaded theme.
+  appRelease();
   int n = WiFi.scanNetworks();
   JsonDocument doc;
   JsonArray arr = doc.to<JsonArray>();
@@ -1016,14 +1044,12 @@ void webPortalLoop() {
   if (g_selfUpdate) {
     g_selfUpdate = false;
 #if defined(SMALLTV_FAMILY_ESP8266)
-    // RAM-tight chip: verify there is something to install, then queue the
-    // download for the next boot (otaBootUpdate in setup(), ~45 KB free) and
-    // reboot. A failure there lands back in g_updateMsg via otaTakeBootResult.
-    OtaLatest r = otaCheckLatest(*S);
-    if (!r.ok)         g_updateMsg = "check failed: " + r.error;
-    else if (!r.newer) g_updateMsg = "already up to date (" FW_VERSION ")";
-    else if (otaRequestBootUpdate(r.tag.c_str())) {
-      g_updateMsg = "updating...";
+    // The runtime heap cannot safely hold BearSSL's update-check buffers.
+    // Queue the check and install for setup(), before modes claim RAM; that
+    // path re-resolves the latest release and consumes the request before
+    // attempting the download, so a failure cannot create a reboot loop.
+    if (otaRequestBootUpdate("")) {
+      g_updateMsg = "queued; checking for updates at boot";
       scheduleReboot(400);
     } else {
       g_updateMsg = F("could not queue update (storage error)");

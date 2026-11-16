@@ -18,8 +18,18 @@ class ShuffleBag {
 
   bool setPhotos(const uint8_t* ids, uint8_t count) {
     if (count > MaxPhotos) count = MaxPhotos;
+    if (count && !ids) return false;
     uint8_t nextPresent[(MaxPhotos + 7) / 8] = {};
-    for (uint8_t i = 0; i < count; ++i) nextPresent[ids[i] >> 3] |= uint8_t(1u << (ids[i] & 7));
+    for (uint8_t i = 0; i < count; ++i) {
+      const uint8_t id = ids[i];
+      // IDs are indexes into a 240-entry membership map. Reject invalid or
+      // duplicate values before indexing it; otherwise 240..255 write past
+      // the stack buffer and duplicate IDs silently bias the shuffle.
+      if (id >= MaxPhotos) return false;
+      const uint8_t mask = uint8_t(1u << (id & 7));
+      if (nextPresent[id >> 3] & mask) return false;
+      nextPresent[id >> 3] |= mask;
+    }
     if (count == count_ && memcmp(nextPresent, present_, sizeof(present_)) == 0) return false;
     count_ = count;
     memcpy(present_, nextPresent, sizeof(present_));

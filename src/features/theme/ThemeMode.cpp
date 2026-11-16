@@ -16,7 +16,7 @@
 #endif
 
 ThemeMode g_themeMode;
-extern void appApplyBrightness();
+extern uint8_t appStatusBrightness();
 namespace {
 // Adapts the portable engine's Display interface to this device's actual
 // panel: glyphColumn() reads the built-in font from flash (PROGMEM), and
@@ -29,7 +29,9 @@ class Panel : public smalltv::Display {
     return pgm_read_byte(font + unsigned(c) * 5 + col);
   }
   void row(int x, int y, const uint16_t* pixels, int count) override {
-    uint16_t tinted[240];
+    // Theme rendering is single-threaded and sends at most 120 pixels per row.
+    // Keep its color-adjustment buffer bounded as well.
+    static uint16_t tinted[120];
     for (int i = 0; i < count; ++i) tinted[i] = gfxTint(pixels[i]);
     gfxDev()->draw16bitRGBBitmap(x, y, tinted, count, 1);
     if ((y & 15) == 15) yield();
@@ -54,6 +56,19 @@ static constexpr const char* RecoveryThemeId = "office-recovery";
 constexpr uint32_t LoadFreeHeap = ThemeMode::ParseFreeHeap;
 constexpr uint32_t LoadLargestBlock = ThemeMode::ParseLargestBlock;
 const char* const WaitingForMemory = "Waiting for free memory";
+
+// Validate a theme ID without constructing a temporary std::string. This is
+// used from service(), which runs on every main-loop pass on the ESP8266.
+bool validThemeId(const char* id) {
+  if (!id || !*id) return false;
+  size_t length = 0;
+  for (const unsigned char* p = reinterpret_cast<const unsigned char*>(id); *p; ++p) {
+    if (++length > 48) return false;
+    if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+          (*p >= '0' && *p <= '9') || *p == '-' || *p == '_')) return false;
+  }
+  return true;
+}
 }
 void ThemeMode::begin(const Settings&) {
   LittleFS.mkdir("/themes");
@@ -67,11 +82,14 @@ void ThemeMode::begin(const Settings&) {
 void ThemeMode::unload() {
   dataRequests_.cancel();
   dataRequests_.take();
+  dataRequests_.releaseStorage();
   package_.reset();
   file_.reset();
-  dataNextMs_.clear();
-  dataScheduled_.clear();
-  dataValues_.clear();
+  // clear() destroys elements but keeps the vector's backing allocation.
+  // A theme switch/final unload should return all theme-specific capacity.
+  std::vector<uint32_t>().swap(dataNextMs_);
+  std::vector<bool>().swap(dataScheduled_);
+  std::vector<smalltv::ThemeValue>().swap(dataValues_);
   dataAges_.reset(0);
   dataCursor_ = 0;
   engine_.setValues({});
@@ -105,6 +123,7 @@ void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
   // fetches it again.
   dataRequests_.cancel();
   dataRequests_.take();
+  dataRequests_.releaseStorage();
   package_.reset();
   file_.reset();
   engine_.setValues({});
@@ -127,8 +146,10 @@ void ThemeMode::refreshData() {
       // a slow source does not blank fields a fast one already delivered.
       for (auto& value : result->values) {
         auto existing = std::find_if(dataValues_.begin(), dataValues_.end(), [&](const smalltv::ThemeValue& old) { return old.key == value.key; });
-        if (existing == dataValues_.end()) dataValues_.push_back(std::move(value));
-        else existing->value = std::move(value.value);
+        // Keep the request's reusable key/value buffers intact for the next
+        // poll. dataValues_ owns its stable copy used by the engine.
+        if (existing == dataValues_.end()) dataValues_.push_back(value);
+        else existing->value = value.value;
       }
       valuesChanged = true;
     }
@@ -144,6 +165,18 @@ void ThemeMode::refreshData() {
   for (size_t offset = 0; offset < sources.size(); ++offset) {
     size_t i = (dataCursor_ + offset) % sources.size();
     if (dataScheduled_[i] && static_cast<int32_t>(millis() - dataNextMs_[i]) < 0) continue;
+#if defined(SMALLTV_ESP8266)
+    // Check before DataRequests::start(), because its first shared allocation
+    // is itself heap-backed. If memory is too fragmented, defer this source
+    // by its configured interval rather than aborting while creating a request.
+    if (ESP.getFreeHeap() < RequestFreeHeap ||
+        platformMaxFreeBlock() < RequestLargestBlock) {
+      dataScheduled_[i] = true;
+      dataNextMs_[i] = millis() + (sources[i].interval ? sources[i].interval : 60UL) * 1000UL;
+      dataCursor_ = (i + 1) % sources.size();
+      break;
+    }
+#endif
     auto request = dataRequests_.start(sources[i], i);
     if (!startThemeDataFetch(request)) request->finish(false);
     dataScheduled_[i] = true;
@@ -164,11 +197,11 @@ void ThemeMode::invalidate(const Settings& s) {
   }
 #endif
   const bool onScreen = s.mode == MODE_THEME || (s.mode == MODE_CAROUSEL && s.carouselTheme);
-  String desiredId = s.themeId;
+  const String* desiredId = &s.themeId;
 #if WITH_THEME_PLAYLIST
-  if (playlistId_.length()) desiredId = playlistId_;
+  if (playlistId_.length()) desiredId = &playlistId_;
 #endif
-  if (loadedId_ != desiredId || !onScreen) unload();
+  if (loadedId_ != *desiredId || !onScreen) unload();
   // A failed load may be retried after installation or settings changes.
   if (!package_) attempted_ = false;
   engine_.invalidate();
@@ -180,9 +213,9 @@ void ThemeMode::invalidate(const Settings& s) {
 // `loadedId_` together are the load state machine; everything past the load
 // block runs every call once a package is open.
 void ThemeMode::service(const Settings& s) {
-  String desiredId = s.themeId;
+  const char* desiredId = s.themeId.c_str();
 #if WITH_THEME_PLAYLIST
-  if (playlistId_.length()) desiredId = playlistId_;
+  if (playlistId_.length()) desiredId = playlistId_.c_str();
 #endif
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
   if (recoveryMode_) desiredId = RecoveryThemeId;
@@ -204,16 +237,17 @@ void ThemeMode::service(const Settings& s) {
     attempted_ = true;
     std::string error;
     smalltv::Theme theme;
+    platformMemoryPhaseBegin(PLATFORM_MEM_THEME_PARSE, true);
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
     bool sourceReady = false;
     if (recoveryMode_) {
       file_.reset(new(std::nothrow) RecoveryThemeSource);
       sourceReady = bool(file_);
     } else {
-      if (!smalltv::validId(desiredId.c_str())) error = "Select an installed theme";
+      if (!validThemeId(desiredId)) error = "Select an installed theme";
       else {
         ThemeFile* source = new(std::nothrow) ThemeFile;
-        if (source && source->open("/themes/" + desiredId + ".stheme")) {
+        if (source && source->open(String("/themes/") + desiredId + ".stheme")) {
           file_.reset(source);
           sourceReady = true;
         } else {
@@ -226,16 +260,16 @@ void ThemeMode::service(const Settings& s) {
       package_.reset(new(std::nothrow) smalltv::Package(*file_));
       if (!package_) error = "Cannot allocate theme package";
       else if (!package_->load(theme, error)) package_.reset();
-      else if (theme.id != desiredId.c_str()) {
+      else if (theme.id != desiredId) {
         error = "Theme ID mismatch";
         package_.reset();
       }
     }
 #else
-    if (!smalltv::validId(desiredId.c_str())) error = "Select an installed theme";
+    if (!validThemeId(desiredId)) error = "Select an installed theme";
     else {
       ThemeFile* source = new(std::nothrow) ThemeFile;
-      if (!source || !source->open("/themes/" + desiredId + ".stheme")) {
+      if (!source || !source->open(String("/themes/") + desiredId + ".stheme")) {
         delete source;
         error = "Theme file not found";
       } else {
@@ -243,13 +277,14 @@ void ThemeMode::service(const Settings& s) {
         package_.reset(new(std::nothrow) smalltv::Package(*file_));
         if (!package_) error = "Cannot allocate theme package";
         else if (!package_->load(theme, error)) package_.reset();
-        else if (theme.id != desiredId.c_str()) {
+        else if (theme.id != desiredId) {
           error = "Theme ID mismatch";
           package_.reset();
         }
       }
     }
 #endif
+    platformMemoryPhaseEnd(PLATFORM_MEM_THEME_PARSE, true);
     if (!error.empty()) {
       transitionPending_ = false;
       error_ = error.c_str();
@@ -273,6 +308,11 @@ void ThemeMode::service(const Settings& s) {
     }
   }
   if (!package_) {
+    // A cancelled ESP32 data-fetch task may finish after unload(); keep
+    // collecting it here so its shared request buffer is not pinned forever
+    // while the error screen is displayed.
+    dataRequests_.take();
+    dataRequests_.releaseStorage();
     transitionActive_ = false;
     if (!messageDrawn_) {
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
@@ -289,11 +329,16 @@ void ThemeMode::service(const Settings& s) {
     const uint32_t elapsed = millis() - transitionStartedMs_;
     if (elapsed >= duration) {
       transitionActive_ = false;
-      appApplyBrightness();
+      // The fade writes the PWM directly, bypassing appApplyBrightness()'s
+      // cached last-value check. Write the resolved target explicitly here.
+      gfxSetBrightness(appStatusBrightness(), s.backlightInverted);
     } else {
       const uint32_t half = duration / 2 ? duration / 2 : 1;
       const uint32_t level = elapsed < half ? (half - elapsed) * 100 / half : (elapsed - half) * 100 / (duration - half);
-      const uint8_t brightness = uint8_t((uint32_t(s.brightness) * level) / 100);
+      // Fade the effective brightness (night level / button wake override),
+      // not the raw manual setting, so the transition respects those states.
+      const uint8_t targetBrightness = appStatusBrightness();
+      const uint8_t brightness = uint8_t((uint32_t(targetBrightness) * level) / 100);
       gfxSetBrightness(brightness, s.backlightInverted);
     }
   }
@@ -303,12 +348,10 @@ void ThemeMode::service(const Settings& s) {
   lastRenderMs_ = millis();
   tm t{};
   bool valid = clockNow(t);
-  smalltv::Engine::ClockOptions clockOptions;
-  clockOptions.use24Hour = s.clock.use24Hour;
-  clockOptions.showSeconds = s.clock.showSeconds;
-  clockOptions.showDate = s.clock.showDate;
-  clockOptions.dateFormat = s.clock.dateFormat.c_str();
-  engine_.setClockOptions(clockOptions);
+  // Pass the persistent setting directly: constructing ClockOptions here
+  // used to allocate/free its std::string at every rendered frame.
+  engine_.setClockOptions(s.clock.use24Hour, s.clock.showSeconds,
+                          s.clock.showDate, s.clock.dateFormat.c_str());
   uint8_t language = 0;
   if (s.clock.lang == "pt") language = 1;
   else if (s.clock.lang == "es") language = 2;
@@ -318,17 +361,22 @@ void ThemeMode::service(const Settings& s) {
   engine_.setLanguage(language);
   engine_.setAnimationOptions(s.display.animationsEnabled, s.display.animationSpeedPct);
   Panel panel;
+  platformMemoryPhaseBegin(PLATFORM_MEM_THEME_RENDER, true);
   const auto& dirty = engine_.update(millis(), valid ? &t : nullptr);
   // A render failure (a corrupt or truncated asset read mid-frame) is treated
   // like a load failure: drop the package and show an error rather than
   // risk repeatedly failing on every subsequent frame.
   uint16_t background = s.display.backgroundEnabled ? s.display.background : engine_.theme().background;
-  if (!smalltv::render(engine_, dirty, *package_, panel, background, s.display.themeOpacityPct)) {
-    dataRequests_.cancel();
-    dataRequests_.take();
+  const bool rendered = smalltv::render(engine_, dirty, *package_, panel, background, s.display.themeOpacityPct);
+  platformMemoryPhaseEnd(PLATFORM_MEM_THEME_RENDER, true);
+  if (!rendered) {
+    // A failed asset read is terminal for this load. Drop the engine's parsed
+    // layers, cached values, package index and file too; keeping only the
+    // error state avoids pinning theme heap while the web UI is used to fix it.
+    unload();
+    loadedId_ = desiredId;
+    attempted_ = true;  // do not retry the same broken package every loop pass
     error_ = "Could not read theme asset";
-    package_.reset();
-    file_.reset();
     messageDrawn_ = false;
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
     if (recoveryMode_) gfxSafeTheme(netIP().c_str(), recoveryCrashCount_);

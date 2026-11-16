@@ -86,6 +86,7 @@ static inline uint32_t platformFreeContStack() { return 0; }   // N/A on ESP32
 extern "C" {
 #include <user_interface.h>   // struct rst_info + REASON_* (reset cause / crash PC)
 }
+#include "CrashRecord.h"      // ESP8266 core software crash reason codes (252-254)
 
 using WebServerClass = ESP8266WebServer;
 using SecureClient   = BearSSL::WiFiClientSecure;
@@ -111,7 +112,10 @@ static inline PlatformReset platformResetInfo() {
   struct rst_info* ri = ESP.getResetInfoPtr();
   if (ri && (ri->reason == REASON_EXCEPTION_RST ||
              ri->reason == REASON_WDT_RST ||
-             ri->reason == REASON_SOFT_WDT_RST)) {
+             ri->reason == REASON_SOFT_WDT_RST ||
+             ri->reason == CRASH_RST_STACK_OVERFLOW ||
+             ri->reason == CRASH_RST_STACK_SMASH ||
+             ri->reason == CRASH_RST_SW_EXC)) {
     r.wasCrash = true;
   }
   if (ri && ri->reason == REASON_EXCEPTION_RST) {
@@ -148,6 +152,8 @@ static inline SecureClient* platformMakeSecureClient(uint16_t rxBuf,
 // Diagnostics for the TLS memory squeeze (largest contiguous heap block the
 // handshake must find, and the separate primary "cont" stack headroom).
 static inline uint32_t platformMaxFreeBlock() { return ESP.getMaxFreeBlockSize(); }
+// ESP8266 core reports the untouched-stack high-water mark since the last
+// repaint, not the instantaneous free bytes at the current point of execution.
 static inline uint32_t platformFreeContStack() { return ESP.getFreeContStack(); }
 
 #endif
@@ -162,11 +168,44 @@ static inline bool platformTimeValid() { return time(nullptr) > 1609459200; }
 // Defined per core in Platform.cpp. Call once, after platformTimeBegin.
 void platformOnTimeSync(void (*cb)());
 
+enum PlatformMemoryPhase : uint8_t {
+  PLATFORM_MEM_THEME_PARSE = 0,
+  PLATFORM_MEM_THEME_RENDER,
+  PLATFORM_MEM_THEME_DATA,
+  PLATFORM_MEM_WEB_REQUEST,
+  PLATFORM_MEM_PHOTO,
+  PLATFORM_MEM_PHASE_COUNT
+};
+struct PlatformMemoryPhaseStats {
+  uint32_t heapBefore = 0, maxBlockBefore = 0, heapAfter = 0, maxBlockAfter = 0;
+};
+// Low-water and phase telemetry uses fixed storage only; it never allocates.
+struct PlatformMemoryStats {
+  uint32_t minHeap = 0, minMaxBlock = 0;
+  PlatformMemoryPhaseStats phases[PLATFORM_MEM_PHASE_COUNT];
+};
+void platformMemorySample(bool force = false);
+void platformMemoryPhaseBegin(PlatformMemoryPhase phase, bool force = false);
+void platformMemoryPhaseEnd(PlatformMemoryPhase phase, bool force = false);
+void platformMemoryStatsGet(PlatformMemoryStats& out);
+class PlatformMemoryPhaseScope {
+ public:
+  explicit PlatformMemoryPhaseScope(PlatformMemoryPhase phase, bool force = false)
+      : phase_(phase), force_(force) { platformMemoryPhaseBegin(phase_, force_); }
+  ~PlatformMemoryPhaseScope() { platformMemoryPhaseEnd(phase_, force_); }
+  PlatformMemoryPhaseScope(const PlatformMemoryPhaseScope&) = delete;
+  PlatformMemoryPhaseScope& operator=(const PlatformMemoryPhaseScope&) = delete;
+ private:
+  PlatformMemoryPhase phase_;
+  bool force_;
+};
+
 // Last abnormal ESP8266 restart, held only in RTC RAM until power loss or clear.
 struct PlatformCrashRecord {
   char reason[24] = {}, fw[16] = {};
   bool hasRegisters = false, uptimeKnown = false;
   uint32_t exccause = 0, epc1 = 0, excvaddr = 0, uptimeS = 0;
+  uint32_t allocCaller = 0, allocSize = 0, stack = 0, stackEnd = 0;
 };
 void platformCrashRecordBegin();
 bool platformCrashRecordGet(PlatformCrashRecord& out);

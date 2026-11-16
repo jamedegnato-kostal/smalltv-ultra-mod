@@ -1318,61 +1318,152 @@ static const char dayShort[6][7][ShortSlot] PROGMEM = {
   {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"},
   {"Son", "Mon", "Die", "Mit", "Don", "Fre", "Sam"},
   {"Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"}};
-static std::string localName(const char* slot, size_t width) {
-  char b[DaySlot];
-  memcpy_P(b, slot, width);
-  b[width - 1] = 0;
-  return std::string(b);
+static size_t copyLocalName(char* out, size_t capacity, const char* slot, size_t width) {
+  if (!capacity || !width) return 0;
+  const size_t count = std::min(width, capacity);
+  memcpy_P(out, slot, count);
+  out[count - 1] = 0;
+  return strlen(out);
 }
-std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device, uint8_t language) {
-  if (language >= 6) language = 0;
-  std::string out;
-  for (size_t i = 0; i < value.size();) {
+static bool tokenIs(const char* source, size_t begin, size_t length, const char* token) {
+  const size_t tokenLength = strlen(token);
+  return length == tokenLength && memcmp(source + begin, token, tokenLength) == 0;
+}
+static const std::string* findTextValue(const std::vector<ThemeValue>& values,
+                                        const char* source, size_t begin, size_t length) {
+  for (const auto& item : values) {
+    if (item.key.size() == length && !memcmp(item.key.data(), source + begin, length)) return &item.value;
+  }
+  return nullptr;
+}
+// Appends expanded text without a formatted intermediate string. The date
+// format is expanded in a nested pass because the original template's HH/SS
+// options are applied before DATE is inserted.
+static void appendExpandedText(std::string& out, const char* value, size_t valueSize, const tm* t,
+                               const std::vector<ThemeValue>& values,
+                               const std::vector<ThemeValue>& device, uint8_t language,
+                               bool use24Hour, bool showSeconds, bool showDate,
+                               const std::string* dateFormat, bool insideDateFormat) {
+  for (size_t i = 0; i < valueSize;) {
     if (value[i] != '{') {
-      out += value[i++];
+      out.push_back(value[i++]);
       continue;
     }
-    size_t end = value.find('}', i);
-    if (end == std::string::npos) {
-      out += value.substr(i);
+    size_t end = i + 1;
+    while (end < valueSize && value[end] != '}') ++end;
+    if (end == valueSize) {
+      out.append(value + i, valueSize - i);
       break;
     }
-    std::string key = value.substr(i + 1, end - i - 1), v = "--";
-    if (t) {
-      char b[16];
-      int n = -1;
-      if (key == "HH") n = t->tm_hour;
-      else if (key == "hh") n = t->tm_hour % 12 ? t->tm_hour % 12 : 12;
-      else if (key == "MM") n = t->tm_min;
-      else if (key == "SS") n = t->tm_sec;
-      else if (key == "DD") n = t->tm_mday;
-      else if (key == "YYYY") n = t->tm_year + 1900;
-      else if (key == "MO" && t->tm_mon >= 0 && t->tm_mon < 12) n = t->tm_mon + 1;
-      if (n >= 0) {
-        snprintf(b, sizeof(b), key == "YYYY" ? "%04d" : "%02d", n);
-        v = b;
-      } else if (key == "H" && t->tm_hour >= 0 && t->tm_hour < 24) {
-        snprintf(b, sizeof(b), "%d", t->tm_hour);
-        v = b;
-      } else if (key == "AMPM" && t->tm_hour >= 0 && t->tm_hour < 24) {
-        v = t->tm_hour < 12 ? "AM" : "PM";
-      } else if ((key == "MON" || key == "MONTH") && t->tm_mon >= 0 && t->tm_mon < 12) {
-        v = key == "MON" ? localName(monthShort[language][t->tm_mon], ShortSlot) : localName(monthNames[language][t->tm_mon], MonthSlot);
-      } else if ((key == "WD" || key == "WEEKDAY") && t->tm_wday >= 0 && t->tm_wday < 7) {
-        v = key == "WD" ? localName(dayShort[language][t->tm_wday], ShortSlot) : localName(dayNames[language][t->tm_wday], DaySlot);
+    const size_t keyBegin = i + 1;
+    const size_t keyLength = end - keyBegin;
+    char buffer[16];
+    const char* replacement = "--";
+    size_t replacementLength = 2;
+    bool fallback = true;
+
+    // These transforms used to allocate a separate formatted std::string.
+    // Apply them while scanning instead, before resolving ordinary tokens.
+    if (!insideDateFormat && !showDate &&
+        (tokenIs(value, keyBegin, keyLength, "DATE") ||
+         tokenIs(value, keyBegin, keyLength, "DD") ||
+         tokenIs(value, keyBegin, keyLength, "MON") ||
+         tokenIs(value, keyBegin, keyLength, "MONTH") ||
+         tokenIs(value, keyBegin, keyLength, "WD") ||
+         tokenIs(value, keyBegin, keyLength, "WEEKDAY") ||
+         tokenIs(value, keyBegin, keyLength, "YYYY") ||
+         tokenIs(value, keyBegin, keyLength, "MO"))) {
+      replacement = "";
+      replacementLength = 0;
+      fallback = false;
+    } else if (!insideDateFormat && !showSeconds && tokenIs(value, keyBegin, keyLength, "SS")) {
+      replacement = "";
+      replacementLength = 0;
+      fallback = false;
+    } else if (!insideDateFormat && tokenIs(value, keyBegin, keyLength, "DATE") && dateFormat) {
+      appendExpandedText(out, dateFormat->data(), dateFormat->size(), t, values, device, language,
+                         true, true, true, nullptr, true);
+      i = end + 1;
+      continue;
+    }
+
+    if (fallback && t) {
+      int number = -1;
+      bool year = false;
+      if (tokenIs(value, keyBegin, keyLength, "HH"))
+        number = !insideDateFormat && !use24Hour
+          ? (t->tm_hour % 12 ? t->tm_hour % 12 : 12) : t->tm_hour;
+      else if (tokenIs(value, keyBegin, keyLength, "hh")) number = t->tm_hour % 12 ? t->tm_hour % 12 : 12;
+      else if (tokenIs(value, keyBegin, keyLength, "MM")) number = t->tm_min;
+      else if (tokenIs(value, keyBegin, keyLength, "SS")) number = t->tm_sec;
+      else if (tokenIs(value, keyBegin, keyLength, "DD")) number = t->tm_mday;
+      else if (tokenIs(value, keyBegin, keyLength, "YYYY")) { number = t->tm_year + 1900; year = true; }
+      else if (tokenIs(value, keyBegin, keyLength, "MO") && t->tm_mon >= 0 && t->tm_mon < 12) number = t->tm_mon + 1;
+
+      if (number >= 0) {
+        const int written = snprintf(buffer, sizeof(buffer), year ? "%04d" : "%02d", number);
+        replacement = buffer;
+        replacementLength = written > 0 ? std::min<size_t>(static_cast<size_t>(written), sizeof(buffer) - 1) : 0;
+        fallback = false;
+      } else if (tokenIs(value, keyBegin, keyLength, "H") && t->tm_hour >= 0 && t->tm_hour < 24) {
+        const int written = snprintf(buffer, sizeof(buffer), "%d", t->tm_hour);
+        replacement = buffer;
+        replacementLength = written > 0 ? std::min<size_t>(static_cast<size_t>(written), sizeof(buffer) - 1) : 0;
+        fallback = false;
+      } else if (tokenIs(value, keyBegin, keyLength, "AMPM") && t->tm_hour >= 0 && t->tm_hour < 24) {
+        replacement = t->tm_hour < 12 ? "AM" : "PM";
+        replacementLength = 2;
+        fallback = false;
+      } else if ((tokenIs(value, keyBegin, keyLength, "MON") || tokenIs(value, keyBegin, keyLength, "MONTH")) &&
+                 t->tm_mon >= 0 && t->tm_mon < 12) {
+        const bool shortName = tokenIs(value, keyBegin, keyLength, "MON");
+        replacementLength = copyLocalName(buffer, sizeof(buffer),
+          shortName ? monthShort[language][t->tm_mon] : monthNames[language][t->tm_mon],
+          shortName ? ShortSlot : MonthSlot);
+        replacement = buffer;
+        fallback = false;
+      } else if ((tokenIs(value, keyBegin, keyLength, "WD") || tokenIs(value, keyBegin, keyLength, "WEEKDAY")) &&
+                 t->tm_wday >= 0 && t->tm_wday < 7) {
+        const bool shortName = tokenIs(value, keyBegin, keyLength, "WD");
+        replacementLength = copyLocalName(buffer, sizeof(buffer),
+          shortName ? dayShort[language][t->tm_wday] : dayNames[language][t->tm_wday],
+          shortName ? ShortSlot : DaySlot);
+        replacement = buffer;
+        fallback = false;
       }
     }
-    if (v == "--") for (const auto& item : values) if (item.key == key) {
-      v = item.value;
-      break;
+
+    if (fallback) {
+      if (const std::string* found = findTextValue(values, value, keyBegin, keyLength)) {
+        replacement = found->data();
+        replacementLength = found->size();
+        fallback = replacementLength == 2 && replacement[0] == '-' && replacement[1] == '-';
+      }
     }
-    if (v == "--") for (const auto& item : device) if (item.key == key) {
-      v = item.value;
-      break;
+    if (fallback) {
+      if (const std::string* found = findTextValue(device, value, keyBegin, keyLength)) {
+        replacement = found->data();
+        replacementLength = found->size();
+      }
     }
-    out += v;
+    out.append(replacement, replacementLength);
     i = end + 1;
   }
+}
+static void expandTextInto(std::string& out, const std::string& value, const tm* t,
+                           const std::vector<ThemeValue>& values,
+                           const std::vector<ThemeValue>& device, uint8_t language,
+                           bool use24Hour = true, bool showSeconds = true, bool showDate = true,
+                           const std::string* dateFormat = nullptr) {
+  if (language >= 6) language = 0;
+  out.clear();
+  appendExpandedText(out, value.data(), value.size(), t, values, device, language,
+                     use24Hour, showSeconds, showDate, dateFormat, false);
+}
+std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values,
+                       const std::vector<ThemeValue>& device, uint8_t language) {
+  std::string out;
+  expandTextInto(out, value, t, values, device, language);
   return out;
 }
 // Maps a layer's logical `source` to the compiled .sti path inside the
@@ -1737,22 +1828,36 @@ static Rect bounds(const Theme& theme, const Layer& l, const ResolvedLayer& reso
 // resolved geometry) from scratch. The next update() reports a full-canvas
 // dirty rectangle, since every layer's previous on-screen footprint is gone.
 void Engine::setTheme(Theme theme, uint32_t now) {
-  // Drop the previous theme's scratch capacity after a package has loaded;
-  // it is reused frame-to-frame, but must not remain pinned while no theme is
-  // running or while a later package is being parsed.
+  // Return retained dirty-rectangle storage when a theme is released.
   std::vector<Rect>().swap(dirty_);
   theme_ = std::move(theme);
-  states_.assign(theme_.layers.size(), LayerState{});
-  for (size_t i = 0; i < states_.size(); ++i) {
-    states_[i].lastMs = now;
-    resolveLayer(i);
+  if (theme_.layers.empty()) {
+    // assign(0) destroys elements but is allowed to retain vector capacity.
+    // swap with an empty vector so the layer-state backing store is released.
+    states_ = BlockList<LayerState>{};
+    // ThemeMode clears values before releasing the engine. Return their vector
+    // storage as well instead of pinning it until the next theme is loaded.
+    std::vector<ThemeValue>().swap(values_);
+  } else {
+    states_.assign(theme_.layers.size(), LayerState{});
+    for (size_t i = 0; i < states_.size(); ++i) {
+      states_[i].lastMs = now;
+      resolveLayer(i);
+    }
   }
   full_ = true;
 }
 void Engine::setClockOptions(const ClockOptions& options) {
-  if (clockOptions_.use24Hour == options.use24Hour && clockOptions_.showSeconds == options.showSeconds &&
-      clockOptions_.showDate == options.showDate && clockOptions_.dateFormat == options.dateFormat) return;
-  clockOptions_ = options;
+  setClockOptions(options.use24Hour, options.showSeconds, options.showDate, options.dateFormat.c_str());
+}
+void Engine::setClockOptions(bool use24Hour, bool showSeconds, bool showDate, const char* dateFormat) {
+  if (!dateFormat) dateFormat = "";
+  if (clockOptions_.use24Hour == use24Hour && clockOptions_.showSeconds == showSeconds &&
+      clockOptions_.showDate == showDate && clockOptions_.dateFormat == dateFormat) return;
+  clockOptions_.use24Hour = use24Hour;
+  clockOptions_.showSeconds = showSeconds;
+  clockOptions_.showDate = showDate;
+  if (clockOptions_.dateFormat != dateFormat) clockOptions_.dateFormat = dateFormat;
   optionsChanged_ = true;
 }
 void Engine::setAnimationOptions(bool enabled, uint8_t speedPct) {
@@ -1767,9 +1872,9 @@ void Engine::setAnimationOptions(bool enabled, uint8_t speedPct) {
 // bindings against. Reinstalling an identical set is a deliberate no-op
 // (including for scroll's "reinstalling the same values must not restart the
 // pause" rule) rather than a wasted resolve pass every call.
-void Engine::setValues(std::vector<ThemeValue> values) {
+void Engine::setValues(const std::vector<ThemeValue>& values) {
   if (values_ == values) return;
-  values_ = std::move(values);
+  values_ = values;
   valuesChanged_ = true;
 }
 // Same as setValues(), for the firmware's `device.*` values.
@@ -1804,6 +1909,18 @@ static void addDirty(std::vector<Rect>& dirty, Rect r) {
 // resolving bindings, expanding text, advancing animation frames, and
 // scheduling scroll all happen here, each only when its own trigger fired, so
 // a static theme with unchanged data produces zero display writes.
+static uint64_t textFingerprint(const std::string& text) {
+  // Compare the previous and newly expanded text without keeping a second
+  // heap-backed output string alive. Include length as well as bytes.
+  uint64_t hash = 14695981039346656037ULL;
+  for (unsigned char c : text) {
+    hash ^= c;
+    hash *= 1099511628211ULL;
+  }
+  hash ^= text.size();
+  hash *= 1099511628211ULL;
+  return hash;
+}
 const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
   std::vector<Rect>& dirty = dirty_;
   dirty.clear();
@@ -1834,41 +1951,50 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
     if (l.type == LayerType::Text && (timeChanged || valuesChanged_ || languageChanged_)) {
       // Only spec 2 reads device.* values: a spec 1 `device` data source with
       // no fetched value shows "--", never what the firmware supplies.
-      std::string formatted = l.value;
+      const std::string* textTemplate = &l.value;
       if (language_ && l.translationCount) {
         for (size_t at = 0; at < l.translationCount; ++at) {
           const LocalizedText& translated = theme_.translations[l.firstTranslation + at];
-          if (translated.language == language_) { formatted = translated.text; break; }
+          if (translated.language == language_) { textTemplate = &translated.text; break; }
         }
       }
-      auto replace = [&](const std::string& token, const std::string& value) {
-        size_t at = 0; const std::string needle = "{" + token + "}";
-        while ((at = formatted.find(needle, at)) != std::string::npos) { formatted.replace(at, needle.size(), value); at += value.size(); }
-      };
-      if (!clockOptions_.use24Hour) replace("HH", "{hh}");
-      if (!clockOptions_.showSeconds) replace("SS", "");
-      if (clockOptions_.showDate) replace("DATE", clockOptions_.dateFormat);
-      else for (const char* token : {"DATE", "DD", "MON", "MONTH", "WD", "WEEKDAY", "YYYY", "MO"}) replace(token, "");
-      std::string text = theme_.spec >= 2 ? expandText(formatted, time, values_, device_, language_) : expandText(formatted, time, values_);
-      if (text != s.text) {
-        s.text = std::move(text);
+      static const std::vector<ThemeValue> noDevice;
+      // Expand directly from the manifest into the retained layer buffer.
+      // A fingerprint detects text changes without a formatted or expanded
+      // scratch string on the constrained ESP8266 heap.
+      const uint64_t previousText = textFingerprint(s.text);
+      if (theme_.spec >= 2)
+        expandTextInto(s.text, *textTemplate, time, values_, device_, language_,
+                       clockOptions_.use24Hour, clockOptions_.showSeconds,
+                       clockOptions_.showDate, &clockOptions_.dateFormat);
+      else
+        expandTextInto(s.text, *textTemplate, time, values_, noDevice, 0,
+                       clockOptions_.use24Hour, clockOptions_.showSeconds,
+                       clockOptions_.showDate, &clockOptions_.dateFormat);
+      if (textFingerprint(s.text) != previousText) {
         changed = true;
         textChanged = true;
       }
-    } else if (l.type == LayerType::Animation && !s.finished && animationsEnabled_) {
-      // Same milli-frame accumulator technique as scroll's ticks: elapsed_ms *
-      // fps accumulates exact whole frames, with the remainder kept in
-      // `phase` so a late update() jumps straight to the due frame instead of
-      // replaying skipped ones.
-      uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ / 100 + s.phase;
-      uint64_t step = ticks / 1000;
-      s.phase = ticks % 1000;
-      s.lastMs = now;
-      uint16_t next = l.loop ? (s.frame + step) % l.frames : std::min<uint64_t>(s.frame + step, l.frames - 1);
-      if (!l.loop && next == l.frames - 1) s.finished = true;
-      if (next != s.frame) {
-        s.frame = next;
-        changed = true;
+    } else if (l.type == LayerType::Animation && !s.finished) {
+      if (!animationsEnabled_) {
+        // Disabling animations pauses them; don't accumulate elapsed time and
+        // jump several frames when the setting is enabled again.
+        s.lastMs = now;
+        s.phase = 0;
+      } else {
+        // Fixed-point accumulator: elapsed_ms * fps * speedPct / 100000
+        // gives whole frames, with the remainder retained so small updates
+        // do not lose fractional progress.
+        const uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ + s.phase;
+        const uint64_t step = ticks / 100000;
+        s.phase = static_cast<uint32_t>(ticks % 100000);
+        s.lastMs = now;
+        uint16_t next = l.loop ? (s.frame + step) % l.frames : std::min<uint64_t>(s.frame + step, l.frames - 1);
+        if (!l.loop && next == l.frames - 1) s.finished = true;
+        if (next != s.frame) {
+          s.frame = next;
+          changed = true;
+        }
       }
     }
     if (l.type == LayerType::Text && l.scroll.enabled) {
@@ -2001,8 +2127,11 @@ static bool scrollContentColumn(const Layer& l, const LayerState& s, int textWid
 // disjoint dirty regions (or several rows of the same region) still resolves
 // its asset exactly once.
 bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Display& display, uint16_t background, uint8_t opacityPct) {
-  uint16_t pixels[240], colors[240];
-  uint8_t alpha[240];
+  // Render 120-pixel strips: the working buffers use about 600 B of stack
+  // instead of 1.2 KiB, without permanently taking that RAM from the heap.
+  constexpr int RenderChunkWidth = 120;
+  uint16_t pixels[RenderChunkWidth], colors[RenderChunkWidth];
+  uint8_t alpha[RenderChunkWidth];
   if (opacityPct > 100) opacityPct = 100;
   if (e.theme().layers.size() > MaxLayers || e.states().size() != e.theme().layers.size()) return false;
   AssetHandle handles[MaxLayers];
@@ -2010,143 +2139,149 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
   for (Rect region : dirty) {
     region = intersect(region, Rect(0, 0, 240, 240));
     for (int y = region.y; y < region.y + region.h; ++y) {
-      std::fill(pixels, pixels + region.w, background);
-      for (size_t i = 0; i < e.theme().layers.size(); ++i) {
-        const auto& l = e.theme().layers[i];
-        const auto& s = e.states()[i];
-        Rect r = intersect(s.bounds, Rect(region.x, y, region.w, 1));
-        if (r.empty()) continue;
-        if (l.type == LayerType::Image || l.type == LayerType::Animation) {
-          // Assets stream by row too: only the `r.w` pixels this dirty region
-          // actually needs are ever read, never a whole image or frame.
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(assetPath(l, s.frame));
-          if (handles[i] == InvalidAsset || !assets.row(handles[i], y - s.resolved.y, r.x - s.resolved.x, r.w, colors, alpha)) return false;
-          for (int x = 0; x < r.w; ++x) {
-            const uint8_t effectiveAlpha = uint8_t((uint16_t(alpha[x]) * opacityPct + 50) / 100);
-            const int at = r.x - region.x + x;
-            pixels[at] = blend(pixels[at], colors[x], effectiveAlpha);
+      for (int chunkX = region.x; chunkX < region.x + region.w; chunkX += RenderChunkWidth) {
+        const int chunkWidth = std::min(RenderChunkWidth, region.x + region.w - chunkX);
+        std::fill(pixels, pixels + chunkWidth, background);
+        for (size_t i = 0; i < e.theme().layers.size(); ++i) {
+          const auto& l = e.theme().layers[i];
+          const auto& s = e.states()[i];
+          Rect r = intersect(s.bounds, Rect(chunkX, y, chunkWidth, 1));
+          if (r.empty()) continue;
+          if (l.type == LayerType::Image || l.type == LayerType::Animation) {
+            // Assets stream by row too: only the `r.w` pixels this dirty region
+            // actually needs are ever read, never a whole image or frame.
+            if (handles[i] == InvalidAsset) handles[i] = assets.resolve(assetPath(l, s.frame));
+            if (handles[i] == InvalidAsset || !assets.row(handles[i], y - s.resolved.y, r.x - s.resolved.x, r.w, colors, alpha)) return false;
+            for (int x = 0; x < r.w; ++x) {
+              const uint8_t effectiveAlpha = uint8_t((uint16_t(alpha[x]) * opacityPct + 50) / 100);
+              const int at = r.x - chunkX + x;
+              pixels[at] = blend(pixels[at], colors[x], effectiveAlpha);
+            }
+            continue;
           }
-          continue;
-        }
-        AssetHandle fontHandle = InvalidAsset;
-        if (l.type == LayerType::Text && (l.stfFont || !l.source.empty())) {
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.source + ".sti");
-          if (handles[i] == InvalidAsset) return false;
-          fontHandle = handles[i];
-        }
-        // The rotation shapes' per-row setup: one sine for a whole row of
-        // pixels instead of one per pixel.
-        int tickIndex = -1;
-        int cachedFontRow = -1;
-        ArcWedge wedge{};
-        Segment hand{}, tick{};
-        if (l.type == LayerType::Shape && l.shape == Shape::Arc) wedge = arcWedge(s.resolved);
-        if (l.type == LayerType::Shape && l.shape == Shape::Hand) hand = handSegment(l, s.resolved);
-        for (int x = r.x; x < r.x + r.w; ++x) {
-          uint16_t c = 0;
-          uint8_t drawAlpha = 255;
-          bool draw = false;
-          if (l.type == LayerType::Text) {
-            // `local` is the pixel's position within the viewport (s.bounds);
-            // scrollContentColumn maps it to `contentX`, its position within
-            // the full expanded text, or reports "no ink here" for a loop
-            // mode's inter-copy gap. From there it is an ordinary glyph-cell
-            // lookup: which character (charIndex), which column within its
-            // 6-wide cell (col, with column 5 always blank as spacing), and
-            // which row within the glyph (scaled from pixel row to the font's
-            // fixed 8-row bitmap by `resolved.size`).
-            const int local = x - s.bounds.x;
-            const bool stf = l.stfFont != 0;
-            const int textWidth = textPixelWidth(e.theme(), l, s.resolved.size, s.text);
-            int contentX = 0;
-            if (scrollContentColumn(l, s, textWidth, local, contentX)) {
-              if (stf) {
-                const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
-                while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
-                if(index<s.text.size()) { int left=0,width=0; uint8_t coverage[240];
-                  if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,coverage,left,width)) return false;
-                  int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=coverage[col];draw=drawAlpha!=0;}
-                }
-                c=s.resolved.color;
-              } else {
-              const int cell = (s.resolved.size * 6 + 7) / 8;
-              const int col = (contentX % cell) * 6 / cell, charIndex = contentX / cell;
-              const int row = (y - s.bounds.y) * 8 / s.resolved.size;
-              if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
-                const uint8_t character = static_cast<uint8_t>(s.text[charIndex]);
-                if (l.source.empty()) {
-                  draw = (display.glyphColumn(character, col) & (1 << row)) != 0;
-                } else if (character >= 32 && character <= 126) {
-                  const int glyph = character - 32;
-                  const int atlasRow = (glyph / 16) * 8 + row;
-                  if (cachedFontRow != atlasRow) {
-                    if (!assets.row(fontHandle, atlasRow, 0, 80, colors, alpha)) return false;
-                    cachedFontRow = atlasRow;
+          AssetHandle fontHandle = InvalidAsset;
+          if (l.type == LayerType::Text && (l.stfFont || !l.source.empty())) {
+            if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.source + ".sti");
+            if (handles[i] == InvalidAsset) return false;
+            fontHandle = handles[i];
+          }
+          // The rotation shapes' per-row setup: one sine for a whole row of
+          // pixels instead of one per pixel.
+          int tickIndex = -1;
+          int cachedFontRow = -1;
+          ArcWedge wedge{};
+          Segment hand{}, tick{};
+          if (l.type == LayerType::Shape && l.shape == Shape::Arc) wedge = arcWedge(s.resolved);
+          if (l.type == LayerType::Shape && l.shape == Shape::Hand) hand = handSegment(l, s.resolved);
+          // Font width is invariant across a scanline; computing it per pixel
+          // made long text layers perform the same full-string scan hundreds of times.
+          const int textWidth = l.type == LayerType::Text
+            ? textPixelWidth(e.theme(), l, s.resolved.size, s.text) : 0;
+          for (int x = r.x; x < r.x + r.w; ++x) {
+            uint16_t c = 0;
+            uint8_t drawAlpha = 255;
+            bool draw = false;
+            if (l.type == LayerType::Text) {
+              // `local` is the pixel's position within the viewport (s.bounds);
+              // scrollContentColumn maps it to `contentX`, its position within
+              // the full expanded text, or reports "no ink here" for a loop
+              // mode's inter-copy gap. From there it is an ordinary glyph-cell
+              // lookup: which character (charIndex), which column within its
+              // 6-wide cell (col, with column 5 always blank as spacing), and
+              // which row within the glyph (scaled from pixel row to the font's
+              // fixed 8-row bitmap by `resolved.size`).
+              const int local = x - s.bounds.x;
+              const bool stf = l.stfFont != 0;
+              int contentX = 0;
+              if (scrollContentColumn(l, s, textWidth, local, contentX)) {
+                if (stf) {
+                  const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
+                  while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
+                  if(index<s.text.size()) { int left=0,width=0; // Reuse the existing alpha scanline buffer instead of consuming another 120 B of loop stack.
+                    if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,alpha,left,width)) return false;
+                    int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=alpha[col];draw=drawAlpha!=0;}
                   }
-                  const int atlasX = (glyph % 16) * 5 + col;
-                  drawAlpha = alpha[atlasX];
-                  draw = drawAlpha != 0;
+                  c=s.resolved.color;
+                } else {
+                const int cell = (s.resolved.size * 6 + 7) / 8;
+                const int col = (contentX % cell) * 6 / cell, charIndex = contentX / cell;
+                const int row = (y - s.bounds.y) * 8 / s.resolved.size;
+                if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
+                  const uint8_t character = static_cast<uint8_t>(s.text[charIndex]);
+                  if (l.source.empty()) {
+                    draw = (display.glyphColumn(character, col) & (1 << row)) != 0;
+                  } else if (character >= 32 && character <= 126) {
+                    const int glyph = character - 32;
+                    const int atlasRow = (glyph / 16) * 8 + row;
+                    if (cachedFontRow != atlasRow) {
+                      if (!assets.row(fontHandle, atlasRow, 0, 80, colors, alpha)) return false;
+                      cachedFontRow = atlasRow;
+                    }
+                    const int atlasX = (glyph % 16) * 5 + col;
+                    drawAlpha = alpha[atlasX];
+                    draw = drawAlpha != 0;
+                  }
+                }
+                c = s.resolved.color;
                 }
               }
-              c = s.resolved.color;
-              }
-            }
-          } else if (rotationShape(l.shape)) {
-            const int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy;
-            if (l.shape == Shape::Arc) {
-              const int outer = s.resolved.radius, inner = std::max(0, outer - s.resolved.strokeWidth);
-              draw = s.resolved.y2 != 0 && dist <= outer * outer && (inner == 0 || dist > inner * inner) &&
-                inWedge(wedge, dx, dy);
-            } else if (l.shape == Shape::Hand) {
-              draw = linePixel(hand.x0, hand.y0, hand.x1, hand.y1, s.resolved.strokeWidth, x, y);
-            } else {
-              // Only the tick nearest in angle can reach this pixel: the
-              // distance to a radial line grows with the angle away from it.
-              const int pad = (s.resolved.strokeWidth + 1) / 2 + 1, near = std::max(0, s.resolved.radius - l.y2 - pad),
-                far = s.resolved.radius + pad;
-              if (dist <= far * far && dist >= near * near) {
-                const int k = ((pixelAngle16(dx, dy) * l.x2 + Turn16 / 2) / Turn16) % l.x2;
-                if (k != tickIndex) {
-                  tickIndex = k;
-                  tick = tickSegment(l, s.resolved, k);
+            } else if (rotationShape(l.shape)) {
+              const int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy;
+              if (l.shape == Shape::Arc) {
+                const int outer = s.resolved.radius, inner = std::max(0, outer - s.resolved.strokeWidth);
+                draw = s.resolved.y2 != 0 && dist <= outer * outer && (inner == 0 || dist > inner * inner) &&
+                  inWedge(wedge, dx, dy);
+              } else if (l.shape == Shape::Hand) {
+                draw = linePixel(hand.x0, hand.y0, hand.x1, hand.y1, s.resolved.strokeWidth, x, y);
+              } else {
+                // Only the tick nearest in angle can reach this pixel: the
+                // distance to a radial line grows with the angle away from it.
+                const int pad = (s.resolved.strokeWidth + 1) / 2 + 1, near = std::max(0, s.resolved.radius - l.y2 - pad),
+                  far = s.resolved.radius + pad;
+                if (dist <= far * far && dist >= near * near) {
+                  const int k = ((pixelAngle16(dx, dy) * l.x2 + Turn16 / 2) / Turn16) % l.x2;
+                  if (k != tickIndex) {
+                    tickIndex = k;
+                    tick = tickSegment(l, s.resolved, k);
+                  }
+                  draw = linePixel(tick.x0, tick.y0, tick.x1, tick.y1, s.resolved.strokeWidth, x, y);
                 }
-                draw = linePixel(tick.x0, tick.y0, tick.x1, tick.y1, s.resolved.strokeWidth, x, y);
               }
-            }
-            c = s.resolved.stroke;
-          } else {
-            bool inside = false, edge = false;
-            if (l.shape == Shape::Rectangle) {
-              roundedRectHit(x, y, s.resolved.x, s.resolved.y, s.resolved.width, s.resolved.height,
-                              s.resolved.cornerRadius, s.resolved.strokeWidth, inside, edge);
-            } else if (l.shape == Shape::Circle) {
-              int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy, inner = std::max(0, s.resolved.radius - s.resolved.strokeWidth);
-              inside = dist <= s.resolved.radius * s.resolved.radius;
-              edge = inside && (inner == 0 || dist > inner * inner);
-            } else {
-              inside = edge = linePixel(s.resolved.x, s.resolved.y, s.resolved.x2, s.resolved.y2, s.resolved.strokeWidth, x, y);
-            }
-            // Fill first, stroke second and unconditionally overwriting: a
-            // pixel that is both `inside` and `edge` (the stroke band) ends
-            // up stroke-colored, exactly as if fill were painted first and
-            // the stroke ring painted on top of it.
-            if (inside && l.hasFill) {
-              draw = true;
-              c = s.resolved.fill;
-            }
-            if (edge && l.hasStroke) {
-              draw = true;
               c = s.resolved.stroke;
+            } else {
+              bool inside = false, edge = false;
+              if (l.shape == Shape::Rectangle) {
+                roundedRectHit(x, y, s.resolved.x, s.resolved.y, s.resolved.width, s.resolved.height,
+                                s.resolved.cornerRadius, s.resolved.strokeWidth, inside, edge);
+              } else if (l.shape == Shape::Circle) {
+                int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy, inner = std::max(0, s.resolved.radius - s.resolved.strokeWidth);
+                inside = dist <= s.resolved.radius * s.resolved.radius;
+                edge = inside && (inner == 0 || dist > inner * inner);
+              } else {
+                inside = edge = linePixel(s.resolved.x, s.resolved.y, s.resolved.x2, s.resolved.y2, s.resolved.strokeWidth, x, y);
+              }
+              // Fill first, stroke second and unconditionally overwriting: a
+              // pixel that is both `inside` and `edge` (the stroke band) ends
+              // up stroke-colored, exactly as if fill were painted first and
+              // the stroke ring painted on top of it.
+              if (inside && l.hasFill) {
+                draw = true;
+                c = s.resolved.fill;
+              }
+              if (edge && l.hasStroke) {
+                draw = true;
+                c = s.resolved.stroke;
+              }
             }
-          }
-          if (draw) {
-            const int at = x - region.x;
-            const uint8_t effectiveAlpha = uint8_t((uint16_t(drawAlpha) * opacityPct + 50) / 100);
-            pixels[at] = blend(pixels[at], c, effectiveAlpha);
+            if (draw) {
+              const int at = x - chunkX;
+              const uint8_t effectiveAlpha = uint8_t((uint16_t(drawAlpha) * opacityPct + 50) / 100);
+              pixels[at] = blend(pixels[at], c, effectiveAlpha);
+            }
           }
         }
+        display.row(chunkX, y, pixels, chunkWidth);
       }
-      display.row(region.x, y, pixels, region.w);
     }
   }
   return true;

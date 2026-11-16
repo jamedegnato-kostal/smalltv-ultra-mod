@@ -1,7 +1,9 @@
 #include "ThemeDataClient.h"
 #if WITH_THEME
 #include "Platform.h"
+#include "ThemeMode.h"
 #include <ArduinoJson.h>
+#include <cstring>
 #if !defined(SMALLTV_ESP8266)
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -75,27 +77,39 @@ struct BodyStream {
   void idle() { delay(1); }
 };
 
-std::string jsonValue(JsonVariantConst value) {
-  if (value.isNull()) return "--";
+void jsonValue(JsonVariantConst value, std::string& out) {
+  if (value.isNull()) { out = "--"; return; }
   if (value.is<const char*>()) {
-    std::string s = value.as<const char*>();
-    if (s.size() > 31) s.resize(31);
-    return s;
+    const char* text = value.as<const char*>();
+    if (!text) { out = "--"; return; }
+    out.assign(text, std::min(strlen(text), size_t(31)));
+    return;
   }
-  if (!value.is<bool>() && !value.is<int>() && !value.is<long>() && !value.is<float>() && !value.is<double>()) return "--";
+  if (!value.is<bool>() && !value.is<int>() && !value.is<long>() && !value.is<float>() && !value.is<double>()) {
+    out = "--";
+    return;
+  }
   char encoded[40] = {};
   size_t n = serializeJson(value, encoded, sizeof(encoded) - 1);
-  encoded[n] = 0;
-  if (n >= sizeof(encoded) - 1) return "--";
-  return std::string(encoded);
+  if (n >= sizeof(encoded) - 1) { out = "--"; return; }
+  out.assign(encoded, n);
 }
-JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
+JsonVariantConst jsonPath(JsonVariantConst root, std::string& path) {
   size_t start = 0;
   while (start < path.size()) {
     size_t dot = path.find('.', start);
-    std::string part = path.substr(start, dot == std::string::npos ? std::string::npos : dot - start);
-    if (part.empty() || !root.is<JsonObjectConst>()) return JsonVariantConst();
-    root = root[part.c_str()];
+    if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return JsonVariantConst();
+    if (!root.is<JsonObjectConst>()) return JsonVariantConst();
+    // Temporarily terminate this component in the already-owned path string.
+    // JsonObject lookup consumes the key immediately; restore the delimiter
+    // before the next field/update, without creating a substring allocation.
+    char separator = 0;
+    if (dot != std::string::npos) {
+      separator = path[dot];
+      path[dot] = '\0';
+    }
+    root = root[path.c_str() + start];
+    if (dot != std::string::npos) path[dot] = separator;
     if (dot == std::string::npos) break;
     start = dot + 1;
   }
@@ -103,10 +117,19 @@ JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
 }
 bool fetchThemeSource(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
+  PlatformMemoryPhaseScope dataMemory(PLATFORM_MEM_THEME_DATA, true);
+#if defined(SMALLTV_ESP8266)
+  // Keep external fetches below the same conservative request limits used
+  // by the web portal; the active theme cannot be released while it is the
+  // caller of this fetch.
+  if (ESP.getFreeHeap() < ThemeMode::RequestFreeHeap ||
+      platformMaxFreeBlock() < ThemeMode::RequestLargestBlock) return false;
+#endif
   Deadline deadline(request);
   std::unique_ptr<NetClient> client;
   if (request.source.url.rfind("https://", 0) == 0) {
-    if (ESP.getFreeHeap() < 18000) return false;
+    if (ESP.getFreeHeap() < 18000 ||
+        platformMaxFreeBlock() < ThemeMode::RequestLargestBlock) return false;
     auto secure = new(std::nothrow) BoundedClient<SecureClient>(deadline);
     if (!secure) return false;
     // HTTPS reaches this path only after the manifest explicitly opted in.
@@ -133,17 +156,35 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   if (!http.begin(*client, request.source.url.c_str())) return false;
   http.addHeader("Accept", "application/json");
   if (http.GET() != HTTP_CODE_OK || deadline.expired()) return false;
-  std::string body;
   BodyStream stream{http.getStream(), *client, deadline};
+  // The response is bounded to MaxDataBody and held only for this request.
+  // Parsing the mutable string in place avoids a second copy of every JSON
+  // key/value while returning the body allocation to the heap afterwards.
+  std::string body;
   bool complete = smalltv::readDataBody(stream, http.getSize(), body);
   http.end();
-  if (!complete || request.cancelled()) return false;
+  if (!complete || request.cancelled() || body.empty()) return false;
   JsonDocument doc;
+#if defined(SMALLTV_ESP8266)
+  if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
+#else
   if (deserializeJson(doc, body, DeserializationOption::NestingLimit(8))) return false;
-  request.values.reserve(request.source.fields.size());
-  for (const auto& field : request.source.fields) {
-    request.values.push_back({request.source.id + "." + field.id, jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path))});
+#endif
+  // Sample while the parsed JSON document and retained body buffer are both
+  // live; this is the peak-memory phase of a data refresh.
+  platformMemorySample(true);
+  // Resize preserves existing ThemeValue/string capacities for repeated
+  // polls of the same source; assign() below only grows when a value is longer.
+  request.values.resize(request.source.fields.size());
+  size_t valueIndex = 0;
+  for (auto& field : request.source.fields) {
+    smalltv::ThemeValue& output = request.values[valueIndex++];
+    output.key.assign(request.source.id);
+    output.key += '.';
+    output.key += field.id;
+    jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path), output.value);
   }
+  platformMemorySample(true);
   return !request.cancelled();
 }
 #if !defined(SMALLTV_ESP8266)

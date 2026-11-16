@@ -199,7 +199,7 @@ struct LayerState {
   uint16_t frame = 0;
   Rect bounds;
   ResolvedLayer resolved;
-  uint32_t lastMs = 0, phase = 0;
+  uint32_t lastMs = 0, phase = 0; // Animation remainder in 1/100000-frame units.
   // Loop/bounce scroll schedule. `scrollDirection` is -1 while advancing
   // toward the far edge (or continuously, in loop mode) and +1 on a bounce
   // leg's way back. See advanceScroll() in the .cpp for the timing model.
@@ -216,9 +216,12 @@ class Engine {
  public:
   struct ClockOptions { bool use24Hour = true, showSeconds = true, showDate = true; std::string dateFormat = "{WD}, {DD} {MON} {YYYY}"; };
   void setClockOptions(const ClockOptions& options);
+  // Avoid constructing a temporary ClockOptions/std::string in the firmware's
+  // per-frame path; the stored date format changes only when the setting does.
+  void setClockOptions(bool use24Hour, bool showSeconds, bool showDate, const char* dateFormat);
   void setAnimationOptions(bool enabled, uint8_t speedPct);
   void setTheme(Theme theme, uint32_t now);
-  void setValues(std::vector<ThemeValue> values);
+  void setValues(const std::vector<ThemeValue>& values);
   // Values a firmware provides for `device.*` sources, keyed "device.<name>".
   // A name that is not set leaves its bindings on the layer's static value,
   // like a fetched field that is missing.
@@ -240,6 +243,7 @@ class Engine {
   BlockList<LayerState> states_;
   std::vector<Rect> dirty_;
   std::vector<ThemeValue> values_, device_;
+  // Expanded text lives only in each LayerState::text; no per-frame scratch string.
   ClockOptions clockOptions_;
   bool animationsEnabled_ = true;
   uint8_t animationSpeedPct_ = 100;
