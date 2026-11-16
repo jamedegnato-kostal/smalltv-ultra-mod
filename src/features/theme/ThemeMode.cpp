@@ -335,7 +335,10 @@ void ThemeMode::service(const Settings& s) {
     } else {
       const uint32_t half = duration / 2 ? duration / 2 : 1;
       const uint32_t level = elapsed < half ? (half - elapsed) * 100 / half : (elapsed - half) * 100 / (duration - half);
-      const uint8_t brightness = uint8_t((uint32_t(s.brightness) * level) / 100);
+      // Fade the effective brightness (night level / button wake override),
+      // not the raw manual setting, so the transition respects those states.
+      const uint8_t targetBrightness = appStatusBrightness();
+      const uint8_t brightness = uint8_t((uint32_t(targetBrightness) * level) / 100);
       gfxSetBrightness(brightness, s.backlightInverted);
     }
   }
