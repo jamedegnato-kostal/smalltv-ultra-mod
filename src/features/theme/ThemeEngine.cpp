@@ -1744,7 +1744,7 @@ void Engine::setTheme(Theme theme, uint32_t now) {
   if (theme_.layers.empty()) {
     // assign(0) destroys elements but is allowed to retain vector capacity.
     // swap with an empty vector so the layer-state backing store is released.
-    std::vector<LayerState>().swap(states_);
+    states_ = BlockList<LayerState>{};
     // ThemeMode clears values before releasing the engine. Return their vector
     // storage as well instead of pinning it until the next theme is loaded.
     std::vector<ThemeValue>().swap(values_);
