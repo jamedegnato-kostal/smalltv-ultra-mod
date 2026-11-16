@@ -1940,23 +1940,19 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
         s.lastMs = now;
         s.phase = 0;
       } else {
-      // Same fixed-point accumulator technique as scroll's ticks: elapsed_ms *
-      // fps accumulates exact whole frames, with the remainder kept in
-      // `phase` so a late update() jumps straight to the due frame instead of
-      // replaying skipped ones.
-      // Keep the percentage remainder too. Dividing by 100 before adding
-      // to the accumulator discarded sub-milli-frame time on every update.
-      // The combined denominator is 100 (speed percent) * 1000 (milliseconds).
-      const uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ + s.phase;
-      const uint64_t step = ticks / 100000;
-      s.phase = static_cast<uint32_t>(ticks % 100000);
-      s.lastMs = now;
-      uint16_t next = l.loop ? (s.frame + step) % l.frames : std::min<uint64_t>(s.frame + step, l.frames - 1);
-      if (!l.loop && next == l.frames - 1) s.finished = true;
-      if (next != s.frame) {
-        s.frame = next;
-        changed = true;
-      }
+        // Fixed-point accumulator: elapsed_ms * fps * speedPct / 100000
+        // gives whole frames, with the remainder retained so small updates
+        // do not lose fractional progress.
+        const uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ + s.phase;
+        const uint64_t step = ticks / 100000;
+        s.phase = static_cast<uint32_t>(ticks % 100000);
+        s.lastMs = now;
+        uint16_t next = l.loop ? (s.frame + step) % l.frames : std::min<uint64_t>(s.frame + step, l.frames - 1);
+        if (!l.loop && next == l.frames - 1) s.finished = true;
+        if (next != s.frame) {
+          s.frame = next;
+          changed = true;
+        }
       }
     }
     if (l.type == LayerType::Text && l.scroll.enabled) {
