@@ -2146,140 +2146,140 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
           const auto& l = e.theme().layers[i];
           const auto& s = e.states()[i];
           Rect r = intersect(s.bounds, Rect(chunkX, y, chunkWidth, 1));
-        if (r.empty()) continue;
-        if (l.type == LayerType::Image || l.type == LayerType::Animation) {
-          // Assets stream by row too: only the `r.w` pixels this dirty region
-          // actually needs are ever read, never a whole image or frame.
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(assetPath(l, s.frame));
-          if (handles[i] == InvalidAsset || !assets.row(handles[i], y - s.resolved.y, r.x - s.resolved.x, r.w, colors, alpha)) return false;
-          for (int x = 0; x < r.w; ++x) {
-            const uint8_t effectiveAlpha = uint8_t((uint16_t(alpha[x]) * opacityPct + 50) / 100);
-            const int at = r.x - chunkX + x;
-            pixels[at] = blend(pixels[at], colors[x], effectiveAlpha);
+          if (r.empty()) continue;
+          if (l.type == LayerType::Image || l.type == LayerType::Animation) {
+            // Assets stream by row too: only the `r.w` pixels this dirty region
+            // actually needs are ever read, never a whole image or frame.
+            if (handles[i] == InvalidAsset) handles[i] = assets.resolve(assetPath(l, s.frame));
+            if (handles[i] == InvalidAsset || !assets.row(handles[i], y - s.resolved.y, r.x - s.resolved.x, r.w, colors, alpha)) return false;
+            for (int x = 0; x < r.w; ++x) {
+              const uint8_t effectiveAlpha = uint8_t((uint16_t(alpha[x]) * opacityPct + 50) / 100);
+              const int at = r.x - chunkX + x;
+              pixels[at] = blend(pixels[at], colors[x], effectiveAlpha);
+            }
+            continue;
           }
-          continue;
-        }
-        AssetHandle fontHandle = InvalidAsset;
-        if (l.type == LayerType::Text && (l.stfFont || !l.source.empty())) {
-          if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.source + ".sti");
-          if (handles[i] == InvalidAsset) return false;
-          fontHandle = handles[i];
-        }
-        // The rotation shapes' per-row setup: one sine for a whole row of
-        // pixels instead of one per pixel.
-        int tickIndex = -1;
-        int cachedFontRow = -1;
-        ArcWedge wedge{};
-        Segment hand{}, tick{};
-        if (l.type == LayerType::Shape && l.shape == Shape::Arc) wedge = arcWedge(s.resolved);
-        if (l.type == LayerType::Shape && l.shape == Shape::Hand) hand = handSegment(l, s.resolved);
-        // Font width is invariant across a scanline; computing it per pixel
-        // made long text layers perform the same full-string scan hundreds of times.
-        const int textWidth = l.type == LayerType::Text
-          ? textPixelWidth(e.theme(), l, s.resolved.size, s.text) : 0;
-        for (int x = r.x; x < r.x + r.w; ++x) {
-          uint16_t c = 0;
-          uint8_t drawAlpha = 255;
-          bool draw = false;
-          if (l.type == LayerType::Text) {
-            // `local` is the pixel's position within the viewport (s.bounds);
-            // scrollContentColumn maps it to `contentX`, its position within
-            // the full expanded text, or reports "no ink here" for a loop
-            // mode's inter-copy gap. From there it is an ordinary glyph-cell
-            // lookup: which character (charIndex), which column within its
-            // 6-wide cell (col, with column 5 always blank as spacing), and
-            // which row within the glyph (scaled from pixel row to the font's
-            // fixed 8-row bitmap by `resolved.size`).
-            const int local = x - s.bounds.x;
-            const bool stf = l.stfFont != 0;
-            int contentX = 0;
-            if (scrollContentColumn(l, s, textWidth, local, contentX)) {
-              if (stf) {
-                const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
-                while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
-                if(index<s.text.size()) { int left=0,width=0; // Reuse the existing alpha scanline buffer instead of consuming another 240 B of loop stack.
-                  if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,alpha,left,width)) return false;
-                  int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=alpha[col];draw=drawAlpha!=0;}
-                }
-                c=s.resolved.color;
-              } else {
-              const int cell = (s.resolved.size * 6 + 7) / 8;
-              const int col = (contentX % cell) * 6 / cell, charIndex = contentX / cell;
-              const int row = (y - s.bounds.y) * 8 / s.resolved.size;
-              if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
-                const uint8_t character = static_cast<uint8_t>(s.text[charIndex]);
-                if (l.source.empty()) {
-                  draw = (display.glyphColumn(character, col) & (1 << row)) != 0;
-                } else if (character >= 32 && character <= 126) {
-                  const int glyph = character - 32;
-                  const int atlasRow = (glyph / 16) * 8 + row;
-                  if (cachedFontRow != atlasRow) {
-                    if (!assets.row(fontHandle, atlasRow, 0, 80, colors, alpha)) return false;
-                    cachedFontRow = atlasRow;
+          AssetHandle fontHandle = InvalidAsset;
+          if (l.type == LayerType::Text && (l.stfFont || !l.source.empty())) {
+            if (handles[i] == InvalidAsset) handles[i] = assets.resolve(l.stfFont ? "fonts/" + e.theme().fonts[l.stfFont - 1].name + ".stf" : l.source + ".sti");
+            if (handles[i] == InvalidAsset) return false;
+            fontHandle = handles[i];
+          }
+          // The rotation shapes' per-row setup: one sine for a whole row of
+          // pixels instead of one per pixel.
+          int tickIndex = -1;
+          int cachedFontRow = -1;
+          ArcWedge wedge{};
+          Segment hand{}, tick{};
+          if (l.type == LayerType::Shape && l.shape == Shape::Arc) wedge = arcWedge(s.resolved);
+          if (l.type == LayerType::Shape && l.shape == Shape::Hand) hand = handSegment(l, s.resolved);
+          // Font width is invariant across a scanline; computing it per pixel
+          // made long text layers perform the same full-string scan hundreds of times.
+          const int textWidth = l.type == LayerType::Text
+            ? textPixelWidth(e.theme(), l, s.resolved.size, s.text) : 0;
+          for (int x = r.x; x < r.x + r.w; ++x) {
+            uint16_t c = 0;
+            uint8_t drawAlpha = 255;
+            bool draw = false;
+            if (l.type == LayerType::Text) {
+              // `local` is the pixel's position within the viewport (s.bounds);
+              // scrollContentColumn maps it to `contentX`, its position within
+              // the full expanded text, or reports "no ink here" for a loop
+              // mode's inter-copy gap. From there it is an ordinary glyph-cell
+              // lookup: which character (charIndex), which column within its
+              // 6-wide cell (col, with column 5 always blank as spacing), and
+              // which row within the glyph (scaled from pixel row to the font's
+              // fixed 8-row bitmap by `resolved.size`).
+              const int local = x - s.bounds.x;
+              const bool stf = l.stfFont != 0;
+              int contentX = 0;
+              if (scrollContentColumn(l, s, textWidth, local, contentX)) {
+                if (stf) {
+                  const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
+                  while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
+                  if(index<s.text.size()) { int left=0,width=0; // Reuse the existing alpha scanline buffer instead of consuming another 120 B of loop stack.
+                    if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,alpha,left,width)) return false;
+                    int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=alpha[col];draw=drawAlpha!=0;}
                   }
-                  const int atlasX = (glyph % 16) * 5 + col;
-                  drawAlpha = alpha[atlasX];
-                  draw = drawAlpha != 0;
+                  c=s.resolved.color;
+                } else {
+                const int cell = (s.resolved.size * 6 + 7) / 8;
+                const int col = (contentX % cell) * 6 / cell, charIndex = contentX / cell;
+                const int row = (y - s.bounds.y) * 8 / s.resolved.size;
+                if (col < 5 && charIndex < static_cast<int>(s.text.size())) {
+                  const uint8_t character = static_cast<uint8_t>(s.text[charIndex]);
+                  if (l.source.empty()) {
+                    draw = (display.glyphColumn(character, col) & (1 << row)) != 0;
+                  } else if (character >= 32 && character <= 126) {
+                    const int glyph = character - 32;
+                    const int atlasRow = (glyph / 16) * 8 + row;
+                    if (cachedFontRow != atlasRow) {
+                      if (!assets.row(fontHandle, atlasRow, 0, 80, colors, alpha)) return false;
+                      cachedFontRow = atlasRow;
+                    }
+                    const int atlasX = (glyph % 16) * 5 + col;
+                    drawAlpha = alpha[atlasX];
+                    draw = drawAlpha != 0;
+                  }
+                }
+                c = s.resolved.color;
                 }
               }
-              c = s.resolved.color;
-              }
-            }
-          } else if (rotationShape(l.shape)) {
-            const int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy;
-            if (l.shape == Shape::Arc) {
-              const int outer = s.resolved.radius, inner = std::max(0, outer - s.resolved.strokeWidth);
-              draw = s.resolved.y2 != 0 && dist <= outer * outer && (inner == 0 || dist > inner * inner) &&
-                inWedge(wedge, dx, dy);
-            } else if (l.shape == Shape::Hand) {
-              draw = linePixel(hand.x0, hand.y0, hand.x1, hand.y1, s.resolved.strokeWidth, x, y);
-            } else {
-              // Only the tick nearest in angle can reach this pixel: the
-              // distance to a radial line grows with the angle away from it.
-              const int pad = (s.resolved.strokeWidth + 1) / 2 + 1, near = std::max(0, s.resolved.radius - l.y2 - pad),
-                far = s.resolved.radius + pad;
-              if (dist <= far * far && dist >= near * near) {
-                const int k = ((pixelAngle16(dx, dy) * l.x2 + Turn16 / 2) / Turn16) % l.x2;
-                if (k != tickIndex) {
-                  tickIndex = k;
-                  tick = tickSegment(l, s.resolved, k);
+            } else if (rotationShape(l.shape)) {
+              const int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy;
+              if (l.shape == Shape::Arc) {
+                const int outer = s.resolved.radius, inner = std::max(0, outer - s.resolved.strokeWidth);
+                draw = s.resolved.y2 != 0 && dist <= outer * outer && (inner == 0 || dist > inner * inner) &&
+                  inWedge(wedge, dx, dy);
+              } else if (l.shape == Shape::Hand) {
+                draw = linePixel(hand.x0, hand.y0, hand.x1, hand.y1, s.resolved.strokeWidth, x, y);
+              } else {
+                // Only the tick nearest in angle can reach this pixel: the
+                // distance to a radial line grows with the angle away from it.
+                const int pad = (s.resolved.strokeWidth + 1) / 2 + 1, near = std::max(0, s.resolved.radius - l.y2 - pad),
+                  far = s.resolved.radius + pad;
+                if (dist <= far * far && dist >= near * near) {
+                  const int k = ((pixelAngle16(dx, dy) * l.x2 + Turn16 / 2) / Turn16) % l.x2;
+                  if (k != tickIndex) {
+                    tickIndex = k;
+                    tick = tickSegment(l, s.resolved, k);
+                  }
+                  draw = linePixel(tick.x0, tick.y0, tick.x1, tick.y1, s.resolved.strokeWidth, x, y);
                 }
-                draw = linePixel(tick.x0, tick.y0, tick.x1, tick.y1, s.resolved.strokeWidth, x, y);
               }
-            }
-            c = s.resolved.stroke;
-          } else {
-            bool inside = false, edge = false;
-            if (l.shape == Shape::Rectangle) {
-              roundedRectHit(x, y, s.resolved.x, s.resolved.y, s.resolved.width, s.resolved.height,
-                              s.resolved.cornerRadius, s.resolved.strokeWidth, inside, edge);
-            } else if (l.shape == Shape::Circle) {
-              int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy, inner = std::max(0, s.resolved.radius - s.resolved.strokeWidth);
-              inside = dist <= s.resolved.radius * s.resolved.radius;
-              edge = inside && (inner == 0 || dist > inner * inner);
-            } else {
-              inside = edge = linePixel(s.resolved.x, s.resolved.y, s.resolved.x2, s.resolved.y2, s.resolved.strokeWidth, x, y);
-            }
-            // Fill first, stroke second and unconditionally overwriting: a
-            // pixel that is both `inside` and `edge` (the stroke band) ends
-            // up stroke-colored, exactly as if fill were painted first and
-            // the stroke ring painted on top of it.
-            if (inside && l.hasFill) {
-              draw = true;
-              c = s.resolved.fill;
-            }
-            if (edge && l.hasStroke) {
-              draw = true;
               c = s.resolved.stroke;
+            } else {
+              bool inside = false, edge = false;
+              if (l.shape == Shape::Rectangle) {
+                roundedRectHit(x, y, s.resolved.x, s.resolved.y, s.resolved.width, s.resolved.height,
+                                s.resolved.cornerRadius, s.resolved.strokeWidth, inside, edge);
+              } else if (l.shape == Shape::Circle) {
+                int dx = x - s.resolved.x, dy = y - s.resolved.y, dist = dx * dx + dy * dy, inner = std::max(0, s.resolved.radius - s.resolved.strokeWidth);
+                inside = dist <= s.resolved.radius * s.resolved.radius;
+                edge = inside && (inner == 0 || dist > inner * inner);
+              } else {
+                inside = edge = linePixel(s.resolved.x, s.resolved.y, s.resolved.x2, s.resolved.y2, s.resolved.strokeWidth, x, y);
+              }
+              // Fill first, stroke second and unconditionally overwriting: a
+              // pixel that is both `inside` and `edge` (the stroke band) ends
+              // up stroke-colored, exactly as if fill were painted first and
+              // the stroke ring painted on top of it.
+              if (inside && l.hasFill) {
+                draw = true;
+                c = s.resolved.fill;
+              }
+              if (edge && l.hasStroke) {
+                draw = true;
+                c = s.resolved.stroke;
+              }
             }
-          }
-          if (draw) {
-            const int at = x - chunkX;
-            const uint8_t effectiveAlpha = uint8_t((uint16_t(drawAlpha) * opacityPct + 50) / 100);
-            pixels[at] = blend(pixels[at], c, effectiveAlpha);
+            if (draw) {
+              const int at = x - chunkX;
+              const uint8_t effectiveAlpha = uint8_t((uint16_t(drawAlpha) * opacityPct + 50) / 100);
+              pixels[at] = blend(pixels[at], c, effectiveAlpha);
+            }
           }
         }
-      }
         display.row(chunkX, y, pixels, chunkWidth);
       }
     }
