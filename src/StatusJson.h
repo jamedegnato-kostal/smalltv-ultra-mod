@@ -41,7 +41,7 @@ struct StatusData {
   bool connected = false, synced = false, night = false, nightHeld = false, clockFresh = false;
   int rssi = 0;
   uint8_t brightness = 0;
-  uint32_t heap = 0, maxblk = 0, contstk = 0, uptime = 0;
+  uint32_t heap = 0, maxblk = 0, heapMin = 0, maxblkMin = 0, contstk = 0, uptime = 0;
   const char* lastCrashReason = "";
   const char* lastCrashFw = "";
   bool lastCrashRegisters = false, lastCrashUptimeKnown = false;
@@ -101,6 +101,8 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
   if (d.wifiFail[0]) member(out, PSTR(",\"wifiFail\":"), d.wifiFail);
   member(out, PSTR(",\"heap\":"), d.heap);
   member(out, PSTR(",\"maxblk\":"), d.maxblk);
+  member(out, PSTR(",\"heapMin\":"), d.heapMin);
+  member(out, PSTR(",\"maxblkMin\":"), d.maxblkMin);
   member(out, PSTR(",\"contstk\":"), d.contstk);
   member(out, PSTR(",\"uptime\":"), d.uptime);
   member(out, PSTR(",\"reset\":"), d.reset);
