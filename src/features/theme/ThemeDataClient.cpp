@@ -103,6 +103,7 @@ JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
 }
 bool fetchThemeSource(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
+  platformMemorySample(true);
   Deadline deadline(request);
   std::unique_ptr<NetClient> client;
   if (request.source.url.rfind("https://", 0) == 0) {
@@ -149,10 +150,14 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   if (!complete || request.cancelled() || body.empty()) return false;
   JsonDocument doc;
   if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
+  // Sample while the parsed JSON document and retained body buffer are both
+  // live; this is the peak-memory phase of a data refresh.
+  platformMemorySample(true);
   request.values.reserve(request.source.fields.size());
   for (const auto& field : request.source.fields) {
     request.values.push_back({request.source.id + "." + field.id, jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path))});
   }
+  platformMemorySample(true);
   return !request.cancelled();
 }
 #if !defined(SMALLTV_ESP8266)
