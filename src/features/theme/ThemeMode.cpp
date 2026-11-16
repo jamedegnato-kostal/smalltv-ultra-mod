@@ -161,6 +161,18 @@ void ThemeMode::refreshData() {
   for (size_t offset = 0; offset < sources.size(); ++offset) {
     size_t i = (dataCursor_ + offset) % sources.size();
     if (dataScheduled_[i] && static_cast<int32_t>(millis() - dataNextMs_[i]) < 0) continue;
+#if defined(SMALLTV_ESP8266)
+    // Check before DataRequests::start(), because its first shared allocation
+    // is itself heap-backed. If memory is too fragmented, defer this source
+    // by its configured interval rather than aborting while creating a request.
+    if (ESP.getFreeHeap() < RequestFreeHeap ||
+        platformMaxFreeBlock() < RequestLargestBlock) {
+      dataScheduled_[i] = true;
+      dataNextMs_[i] = millis() + (sources[i].interval ? sources[i].interval : 60UL) * 1000UL;
+      dataCursor_ = (i + 1) % sources.size();
+      break;
+    }
+#endif
     auto request = dataRequests_.start(sources[i], i);
     if (!startThemeDataFetch(request)) request->finish(false);
     dataScheduled_[i] = true;
