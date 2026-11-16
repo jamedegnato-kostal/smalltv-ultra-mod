@@ -11,12 +11,6 @@
 #include <new>
 
 namespace {
-#if defined(SMALLTV_ESP8266)
-// Static storage is intentional: the ESP8266 has a 4 KiB main-loop stack and
-// a body buffer must not be a local array or a per-request heap allocation.
-char themeDataBody[smalltv::MaxDataBody + 1];
-#endif
-
 struct Deadline {
   smalltv::DataFetch& request;
   uint32_t started = millis();
@@ -154,19 +148,16 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   http.addHeader("Accept", "application/json");
   if (http.GET() != HTTP_CODE_OK || deadline.expired()) return false;
   BodyStream stream{http.getStream(), *client, deadline};
-#if defined(SMALLTV_ESP8266)
-  size_t bodySize = 0;
-  bool complete = smalltv::readDataBody(stream, http.getSize(), themeDataBody,
-                                         sizeof(themeDataBody), bodySize);
-#else
+  // The response is bounded to MaxDataBody and held only for this request.
+  // Parsing the mutable string in place avoids a second copy of every JSON
+  // key/value while returning the body allocation to the heap afterwards.
   std::string body;
   bool complete = smalltv::readDataBody(stream, http.getSize(), body);
-#endif
   http.end();
-  if (!complete || request.cancelled()) return false;
+  if (!complete || request.cancelled() || body.empty()) return false;
   JsonDocument doc;
 #if defined(SMALLTV_ESP8266)
-  if (deserializeJson(doc, themeDataBody, DeserializationOption::NestingLimit(8))) return false;
+  if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
 #else
   if (deserializeJson(doc, body, DeserializationOption::NestingLimit(8))) return false;
 #endif
