@@ -86,6 +86,7 @@ static inline uint32_t platformFreeContStack() { return 0; }   // N/A on ESP32
 extern "C" {
 #include <user_interface.h>   // struct rst_info + REASON_* (reset cause / crash PC)
 }
+#include "CrashRecord.h"      // ESP8266 core software crash reason codes (252-254)
 
 using WebServerClass = ESP8266WebServer;
 using SecureClient   = BearSSL::WiFiClientSecure;
@@ -111,7 +112,10 @@ static inline PlatformReset platformResetInfo() {
   struct rst_info* ri = ESP.getResetInfoPtr();
   if (ri && (ri->reason == REASON_EXCEPTION_RST ||
              ri->reason == REASON_WDT_RST ||
-             ri->reason == REASON_SOFT_WDT_RST)) {
+             ri->reason == REASON_SOFT_WDT_RST ||
+             ri->reason == CRASH_RST_STACK_OVERFLOW ||
+             ri->reason == CRASH_RST_STACK_SMASH ||
+             ri->reason == CRASH_RST_SW_EXC)) {
     r.wasCrash = true;
   }
   if (ri && ri->reason == REASON_EXCEPTION_RST) {

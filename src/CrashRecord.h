@@ -5,7 +5,7 @@
 
 enum CrashReasonCode : uint8_t {
   CRASH_RST_WDT = 1, CRASH_RST_EXCEPTION = 2, CRASH_RST_SOFT_WDT = 3,
-  CRASH_RST_STACK_SMASH = 253, CRASH_RST_SW_EXC = 254,
+  CRASH_RST_STACK_OVERFLOW = 252, CRASH_RST_STACK_SMASH = 253, CRASH_RST_SW_EXC = 254,
 };
 static const uint32_t CRASH_MAGIC = 0x43525348;
 static const uint32_t CRASH_PENDING = 1;
@@ -28,11 +28,14 @@ static inline const char* crashReasonLabel(uint8_t reason) {
     case CRASH_RST_EXCEPTION: return "Exception";
     case CRASH_RST_SOFT_WDT: return "Software watchdog";
     case CRASH_RST_WDT: return "Hardware watchdog";
+    case CRASH_RST_STACK_OVERFLOW: return "Stack overflow";
+    case CRASH_RST_STACK_SMASH: return "Stack smashing";
     case CRASH_RST_SW_EXC: return "Software panic/abort";
-    case CRASH_RST_STACK_SMASH: return "Stack overflow";
     default: return "Unknown";
   }
 }
 static inline bool crashHasRegisters(uint8_t reason) {
-  return reason != CRASH_RST_SW_EXC && reason != CRASH_RST_STACK_SMASH;
+  return reason != CRASH_RST_SW_EXC &&
+         reason != CRASH_RST_STACK_OVERFLOW &&
+         reason != CRASH_RST_STACK_SMASH;
 }

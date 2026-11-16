@@ -102,7 +102,9 @@ void platformCrashRecordBegin() {
   if (!ri) return;
   CrashRtc r{}; const bool have = crashLoad(r);
   if (have && (r.flags & CRASH_PENDING)) { r.flags = 0; crashStore(r); return; }
-  if (ri->reason != REASON_WDT_RST && ri->reason != REASON_EXCEPTION_RST && ri->reason != REASON_SOFT_WDT_RST) return;
+  if (ri->reason != REASON_WDT_RST && ri->reason != REASON_EXCEPTION_RST &&
+      ri->reason != REASON_SOFT_WDT_RST && ri->reason != CRASH_RST_STACK_OVERFLOW &&
+      ri->reason != CRASH_RST_STACK_SMASH && ri->reason != CRASH_RST_SW_EXC) return;
   r.exccause = ri->exccause; r.epc1 = ri->epc1; r.excvaddr = ri->excvaddr;
   r.rstReason = ri->reason; strlcpy(r.fw, FW_VERSION, sizeof(r.fw)); crashStore(r);
 }
