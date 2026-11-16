@@ -188,6 +188,7 @@ String otaTakeBootResult() {
 
 void otaBootUpdate(const Settings& s) {
   LittleFS.remove(OTA_REQ_PATH);            // consume first: one attempt per request
+  LittleFS.remove(OTA_MSG_PATH);            // discard a stale result from an earlier attempt
   if (WiFi.status() != WL_CONNECTED) { otaBootResult(F("no WiFi at boot")); return; }
 
   OtaLatest r = otaCheckLatest(s);          // re-resolve the asset URL fresh
