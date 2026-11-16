@@ -46,6 +46,7 @@ struct StatusData {
   const char* lastCrashFw = "";
   bool lastCrashRegisters = false, lastCrashUptimeKnown = false;
   uint32_t lastCrashCause = 0, lastCrashEpc = 0, lastCrashAddr = 0, lastCrashUptime = 0;
+  uint32_t lastCrashAllocCaller = 0, lastCrashAllocSize = 0, lastCrashStack = 0, lastCrashStackEnd = 0;
   StatusWg wg;
 };
 struct StatusTicker {
@@ -121,6 +122,10 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
       member(out, PSTR(",\"epc1\":"), d.lastCrashEpc);
       member(out, PSTR(",\"excvaddr\":"), d.lastCrashAddr);
     }
+    if (d.lastCrashAllocCaller) member(out, PSTR(",\"lastFailedAllocCaller\":"), d.lastCrashAllocCaller);
+    if (d.lastCrashAllocSize) member(out, PSTR(",\"lastFailedAllocSize\":"), d.lastCrashAllocSize);
+    if (d.lastCrashStack) member(out, PSTR(",\"stack\":"), d.lastCrashStack);
+    if (d.lastCrashStackEnd) member(out, PSTR(",\"stackEnd\":"), d.lastCrashStackEnd);
     member(out, PSTR(",\"uptimeKnown\":"), d.lastCrashUptimeKnown);
     if (d.lastCrashUptimeKnown) member(out, PSTR(",\"uptime\":"), d.lastCrashUptime);
     jsonout::raw(out, PSTR("}"));
