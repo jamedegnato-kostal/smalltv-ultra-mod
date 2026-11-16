@@ -1044,14 +1044,12 @@ void webPortalLoop() {
   if (g_selfUpdate) {
     g_selfUpdate = false;
 #if defined(SMALLTV_FAMILY_ESP8266)
-    // RAM-tight chip: verify there is something to install, then queue the
-    // download for the next boot (otaBootUpdate in setup(), ~45 KB free) and
-    // reboot. A failure there lands back in g_updateMsg via otaTakeBootResult.
-    OtaLatest r = otaCheckLatest(*S);
-    if (!r.ok)         g_updateMsg = "check failed: " + r.error;
-    else if (!r.newer) g_updateMsg = "already up to date (" FW_VERSION ")";
-    else if (otaRequestBootUpdate(r.tag.c_str())) {
-      g_updateMsg = "updating...";
+    // The runtime heap cannot safely hold BearSSL's update-check buffers.
+    // Queue the check and install for setup(), before modes claim RAM; that
+    // path re-resolves the latest release and consumes the request before
+    // attempting the download, so a failure cannot create a reboot loop.
+    if (otaRequestBootUpdate("")) {
+      g_updateMsg = "queued; checking for updates at boot";
       scheduleReboot(400);
     } else {
       g_updateMsg = F("could not queue update (storage error)");
