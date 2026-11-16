@@ -308,6 +308,11 @@ void ThemeMode::service(const Settings& s) {
     }
   }
   if (!package_) {
+    // A cancelled ESP32 data-fetch task may finish after unload(); keep
+    // collecting it here so its shared request buffer is not pinned forever
+    // while the error screen is displayed.
+    dataRequests_.take();
+    dataRequests_.releaseStorage();
     transitionActive_ = false;
     if (!messageDrawn_) {
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
