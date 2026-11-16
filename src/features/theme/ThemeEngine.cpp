@@ -1805,7 +1805,6 @@ void Engine::setTheme(Theme theme, uint32_t now) {
     // storage as well instead of pinning it until the next theme is loaded.
     std::vector<ThemeValue>().swap(values_);
     std::string().swap(formatScratch_);
-    std::string().swap(textScratch_);
   } else {
     states_.assign(theme_.layers.size(), LayerState{});
     for (size_t i = 0; i < states_.size(); ++i) {
@@ -1877,6 +1876,18 @@ static void addDirty(std::vector<Rect>& dirty, Rect r) {
 // resolving bindings, expanding text, advancing animation frames, and
 // scheduling scroll all happen here, each only when its own trigger fired, so
 // a static theme with unchanged data produces zero display writes.
+static uint64_t textFingerprint(const std::string& text) {
+  // Compare the previous and newly expanded text without keeping a second
+  // heap-backed output string alive. Include length as well as bytes.
+  uint64_t hash = 14695981039346656037ULL;
+  for (unsigned char c : text) {
+    hash ^= c;
+    hash *= 1099511628211ULL;
+  }
+  hash ^= text.size();
+  hash *= 1099511628211ULL;
+  return hash;
+}
 const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
   std::vector<Rect>& dirty = dirty_;
   dirty.clear();
@@ -1924,12 +1935,13 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       if (clockOptions_.showDate) replace("DATE", clockOptions_.dateFormat);
       else for (const char* token : {"DATE", "DD", "MON", "MONTH", "WD", "WEEKDAY", "YYYY", "MO"}) replace(token, "");
       static const std::vector<ThemeValue> noDevice;
-      if (theme_.spec >= 2) expandTextInto(textScratch_, formatted, time, values_, device_, language_);
-      else expandTextInto(textScratch_, formatted, time, values_, noDevice, 0);
-      if (textScratch_ != s.text) {
-        // Swap rather than move-assign: the previous state buffer becomes
-        // the next expansion buffer instead of being freed on every tick.
-        s.text.swap(textScratch_);
+      // Expand straight into the layer's retained buffer. A 64-bit
+      // fingerprint tells us whether text really changed without holding a
+      // second expanded copy on the constrained ESP8266 heap.
+      const uint64_t previousText = textFingerprint(s.text);
+      if (theme_.spec >= 2) expandTextInto(s.text, formatted, time, values_, device_, language_);
+      else expandTextInto(s.text, formatted, time, values_, noDevice, 0);
+      if (textFingerprint(s.text) != previousText) {
         changed = true;
         textChanged = true;
       }
