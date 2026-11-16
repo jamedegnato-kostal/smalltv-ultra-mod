@@ -216,9 +216,13 @@ class Engine {
  public:
   struct ClockOptions { bool use24Hour = true, showSeconds = true, showDate = true; std::string dateFormat = "{WD}, {DD} {MON} {YYYY}"; };
   void setClockOptions(const ClockOptions& options);
+  // Avoid constructing a temporary ClockOptions/std::string in the firmware's
+  // per-frame path; the stored date format changes only when the setting does.
+  void setClockOptions(bool use24Hour, bool showSeconds, bool showDate, const char* dateFormat);
   void setAnimationOptions(bool enabled, uint8_t speedPct);
   void setTheme(Theme theme, uint32_t now);
-  void setValues(std::vector<ThemeValue> values);
+  void setValues(const std::vector<ThemeValue>& values);
+  void setValues(std::vector<ThemeValue>&& values);
   // Values a firmware provides for `device.*` sources, keyed "device.<name>".
   // A name that is not set leaves its bindings on the layer's static value,
   // like a fetched field that is missing.
