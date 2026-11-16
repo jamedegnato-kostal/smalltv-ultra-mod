@@ -509,6 +509,12 @@ static void handleStatus() {
   platformMemoryStatsGet(memory);
   d.heapMin = memory.minHeap;
   d.maxblkMin = memory.minMaxBlock;
+  for (size_t i = 0; i < smalltv::StatusMemoryPhaseCount; ++i) {
+    d.memoryPhases[i].heapBefore = memory.phases[i].heapBefore;
+    d.memoryPhases[i].maxblkBefore = memory.phases[i].maxBlockBefore;
+    d.memoryPhases[i].heapAfter = memory.phases[i].heapAfter;
+    d.memoryPhases[i].maxblkAfter = memory.phases[i].maxBlockAfter;
+  }
   d.contstk = platformFreeContStack();   // ESP8266 stack high-water: minimum bytes never touched since boot
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
