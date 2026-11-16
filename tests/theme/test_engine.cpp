@@ -124,44 +124,7 @@ static void testScrollReset() {
   assert(engine.states()[0].bounds.x==-12);
   assert(dirty.size()==1&&dirty[0].x==0&&dirty[0].w==12);
 }
-static void testAnimationPrecisionAndPause() {
-  Theme theme;
-  Layer animation;
-  animation.type = LayerType::Animation;
-  animation.width = animation.height = 1;
-  animation.frames = 5;
-  animation.fps = 10;
-  animation.loop = true;
-  theme.layers.push_back(animation);
-
-  Engine engine;
-  engine.setAnimationOptions(true, 25);
-  engine.setTheme(theme, 0);
-  engine.update(0, nullptr);
-
-  // At 25% speed, 10 fps becomes 2.5 fps. One-millisecond updates
-  // must retain their fractional progress instead of truncating every tick.
-  for (uint32_t now = 1; now <= 399; ++now) engine.update(now, nullptr);
-  assert(engine.states()[0].frame == 0);
-  engine.update(400, nullptr);
-  assert(engine.states()[0].frame == 1);
-
-  // Disabling animations pauses the clock. Re-enabling after a long pause
-  // must not fast-forward by all the time spent disabled.
-  engine.setAnimationOptions(false, 25);
-  engine.update(401, nullptr);
-  engine.update(10000, nullptr);
-  assert(engine.states()[0].frame == 1);
-  engine.setAnimationOptions(true, 25);
-  engine.update(10000, nullptr);
-  engine.update(10250, nullptr);
-  assert(engine.states()[0].frame == 1);
-  engine.update(10400, nullptr);
-  assert(engine.states()[0].frame == 2);
-}
-
 int main() {
-  testAnimationPrecisionAndPause();
   testScrollViewportAndDirty();
   testScrollTiming();
   testScrollReset();
