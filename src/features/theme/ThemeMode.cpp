@@ -16,7 +16,6 @@
 #endif
 
 ThemeMode g_themeMode;
-extern void appApplyBrightness();
 extern uint8_t appStatusBrightness();
 namespace {
 // Adapts the portable engine's Display interface to this device's actual
