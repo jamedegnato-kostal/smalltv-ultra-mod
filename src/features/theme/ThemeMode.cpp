@@ -142,8 +142,10 @@ void ThemeMode::refreshData() {
       // a slow source does not blank fields a fast one already delivered.
       for (auto& value : result->values) {
         auto existing = std::find_if(dataValues_.begin(), dataValues_.end(), [&](const smalltv::ThemeValue& old) { return old.key == value.key; });
-        if (existing == dataValues_.end()) dataValues_.push_back(std::move(value));
-        else existing->value = std::move(value.value);
+        // Keep the request's reusable key/value buffers intact for the next
+        // poll. dataValues_ owns its stable copy used by the engine.
+        if (existing == dataValues_.end()) dataValues_.push_back(value);
+        else existing->value = value.value;
       }
       valuesChanged = true;
     }
