@@ -1779,11 +1779,6 @@ void Engine::setValues(const std::vector<ThemeValue>& values) {
   values_ = values;
   valuesChanged_ = true;
 }
-void Engine::setValues(std::vector<ThemeValue>&& values) {
-  if (values_ == values) return;
-  values_ = std::move(values);
-  valuesChanged_ = true;
-}
 // Same as setValues(), for the firmware's `device.*` values.
 void Engine::setDeviceValues(std::vector<ThemeValue> values) {
   if (device_ == values) return;
