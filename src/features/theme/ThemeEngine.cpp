@@ -1318,61 +1318,117 @@ static const char dayShort[6][7][ShortSlot] PROGMEM = {
   {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"},
   {"Son", "Mon", "Die", "Mit", "Don", "Fre", "Sam"},
   {"Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"}};
-static std::string localName(const char* slot, size_t width) {
-  char b[DaySlot];
-  memcpy_P(b, slot, width);
-  b[width - 1] = 0;
-  return std::string(b);
+static size_t copyLocalName(char* out, size_t capacity, const char* slot, size_t width) {
+  if (!capacity || !width) return 0;
+  const size_t count = std::min(width, capacity);
+  memcpy_P(out, slot, count);
+  out[count - 1] = 0;
+  return strlen(out);
 }
-std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values, const std::vector<ThemeValue>& device, uint8_t language) {
+static bool tokenIs(const std::string& source, size_t begin, size_t length, const char* token) {
+  const size_t tokenLength = strlen(token);
+  return length == tokenLength && memcmp(source.data() + begin, token, tokenLength) == 0;
+}
+static const std::string* findTextValue(const std::vector<ThemeValue>& values,
+                                        const std::string& source,
+                                        size_t begin, size_t length) {
+  for (const auto& item : values) {
+    if (item.key.size() == length &&
+        item.key.compare(0, item.key.size(), source, begin, length) == 0) return &item.value;
+  }
+  return nullptr;
+}
+// Expands into caller-owned storage. Clearing a std::string retains its
+// capacity, and token/value comparisons use source ranges instead of creating
+// temporary std::strings for every placeholder.
+static void expandTextInto(std::string& out, const std::string& value, const tm* t,
+                           const std::vector<ThemeValue>& values,
+                           const std::vector<ThemeValue>& device, uint8_t language) {
   if (language >= 6) language = 0;
-  std::string out;
+  out.clear();
+  if (out.capacity() < value.size()) out.reserve(value.size());
   for (size_t i = 0; i < value.size();) {
     if (value[i] != '{') {
-      out += value[i++];
+      out.push_back(value[i++]);
       continue;
     }
-    size_t end = value.find('}', i);
+    const size_t end = value.find('}', i);
     if (end == std::string::npos) {
-      out += value.substr(i);
+      out.append(value.data() + i, value.size() - i);
       break;
     }
-    std::string key = value.substr(i + 1, end - i - 1), v = "--";
+    const size_t keyBegin = i + 1;
+    const size_t keyLength = end - keyBegin;
+    char buffer[16];
+    const char* replacement = "--";
+    size_t replacementLength = 2;
+    bool fallback = true;
+
     if (t) {
-      char b[16];
-      int n = -1;
-      if (key == "HH") n = t->tm_hour;
-      else if (key == "hh") n = t->tm_hour % 12 ? t->tm_hour % 12 : 12;
-      else if (key == "MM") n = t->tm_min;
-      else if (key == "SS") n = t->tm_sec;
-      else if (key == "DD") n = t->tm_mday;
-      else if (key == "YYYY") n = t->tm_year + 1900;
-      else if (key == "MO" && t->tm_mon >= 0 && t->tm_mon < 12) n = t->tm_mon + 1;
-      if (n >= 0) {
-        snprintf(b, sizeof(b), key == "YYYY" ? "%04d" : "%02d", n);
-        v = b;
-      } else if (key == "H" && t->tm_hour >= 0 && t->tm_hour < 24) {
-        snprintf(b, sizeof(b), "%d", t->tm_hour);
-        v = b;
-      } else if (key == "AMPM" && t->tm_hour >= 0 && t->tm_hour < 24) {
-        v = t->tm_hour < 12 ? "AM" : "PM";
-      } else if ((key == "MON" || key == "MONTH") && t->tm_mon >= 0 && t->tm_mon < 12) {
-        v = key == "MON" ? localName(monthShort[language][t->tm_mon], ShortSlot) : localName(monthNames[language][t->tm_mon], MonthSlot);
-      } else if ((key == "WD" || key == "WEEKDAY") && t->tm_wday >= 0 && t->tm_wday < 7) {
-        v = key == "WD" ? localName(dayShort[language][t->tm_wday], ShortSlot) : localName(dayNames[language][t->tm_wday], DaySlot);
+      int number = -1;
+      bool year = false;
+      if (tokenIs(value, keyBegin, keyLength, "HH")) number = t->tm_hour;
+      else if (tokenIs(value, keyBegin, keyLength, "hh")) number = t->tm_hour % 12 ? t->tm_hour % 12 : 12;
+      else if (tokenIs(value, keyBegin, keyLength, "MM")) number = t->tm_min;
+      else if (tokenIs(value, keyBegin, keyLength, "SS")) number = t->tm_sec;
+      else if (tokenIs(value, keyBegin, keyLength, "DD")) number = t->tm_mday;
+      else if (tokenIs(value, keyBegin, keyLength, "YYYY")) { number = t->tm_year + 1900; year = true; }
+      else if (tokenIs(value, keyBegin, keyLength, "MO") && t->tm_mon >= 0 && t->tm_mon < 12) number = t->tm_mon + 1;
+
+      if (number >= 0) {
+        const int written = snprintf(buffer, sizeof(buffer), year ? "%04d" : "%02d", number);
+        replacement = buffer;
+        replacementLength = written > 0 ? std::min<size_t>(static_cast<size_t>(written), sizeof(buffer) - 1) : 0;
+        fallback = false;
+      } else if (tokenIs(value, keyBegin, keyLength, "H") && t->tm_hour >= 0 && t->tm_hour < 24) {
+        const int written = snprintf(buffer, sizeof(buffer), "%d", t->tm_hour);
+        replacement = buffer;
+        replacementLength = written > 0 ? std::min<size_t>(static_cast<size_t>(written), sizeof(buffer) - 1) : 0;
+        fallback = false;
+      } else if (tokenIs(value, keyBegin, keyLength, "AMPM") && t->tm_hour >= 0 && t->tm_hour < 24) {
+        replacement = t->tm_hour < 12 ? "AM" : "PM";
+        replacementLength = 2;
+        fallback = false;
+      } else if ((tokenIs(value, keyBegin, keyLength, "MON") || tokenIs(value, keyBegin, keyLength, "MONTH")) &&
+                 t->tm_mon >= 0 && t->tm_mon < 12) {
+        const bool shortName = tokenIs(value, keyBegin, keyLength, "MON");
+        replacementLength = copyLocalName(buffer, sizeof(buffer),
+          shortName ? monthShort[language][t->tm_mon] : monthNames[language][t->tm_mon],
+          shortName ? ShortSlot : MonthSlot);
+        replacement = buffer;
+        fallback = false;
+      } else if ((tokenIs(value, keyBegin, keyLength, "WD") || tokenIs(value, keyBegin, keyLength, "WEEKDAY")) &&
+                 t->tm_wday >= 0 && t->tm_wday < 7) {
+        const bool shortName = tokenIs(value, keyBegin, keyLength, "WD");
+        replacementLength = copyLocalName(buffer, sizeof(buffer),
+          shortName ? dayShort[language][t->tm_wday] : dayNames[language][t->tm_wday],
+          shortName ? ShortSlot : DaySlot);
+        replacement = buffer;
+        fallback = false;
       }
     }
-    if (v == "--") for (const auto& item : values) if (item.key == key) {
-      v = item.value;
-      break;
+
+    if (fallback) {
+      if (const std::string* found = findTextValue(values, value, keyBegin, keyLength)) {
+        replacement = found->data();
+        replacementLength = found->size();
+        fallback = replacementLength == 2 && replacement[0] == '-' && replacement[1] == '-';
+      }
     }
-    if (v == "--") for (const auto& item : device) if (item.key == key) {
-      v = item.value;
-      break;
+    if (fallback) {
+      if (const std::string* found = findTextValue(device, value, keyBegin, keyLength)) {
+        replacement = found->data();
+        replacementLength = found->size();
+      }
     }
-    out += v;
+    out.append(replacement, replacementLength);
     i = end + 1;
   }
+}
+std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values,
+                       const std::vector<ThemeValue>& device, uint8_t language) {
+  std::string out;
+  expandTextInto(out, value, t, values, device, language);
   return out;
 }
 // Maps a layer's logical `source` to the compiled .sti path inside the
@@ -1748,6 +1804,8 @@ void Engine::setTheme(Theme theme, uint32_t now) {
     // ThemeMode clears values before releasing the engine. Return their vector
     // storage as well instead of pinning it until the next theme is loaded.
     std::vector<ThemeValue>().swap(values_);
+    std::string().swap(formatScratch_);
+    std::string().swap(textScratch_);
   } else {
     states_.assign(theme_.layers.size(), LayerState{});
     for (size_t i = 0; i < states_.size(); ++i) {
@@ -1849,7 +1907,8 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
     if (l.type == LayerType::Text && (timeChanged || valuesChanged_ || languageChanged_)) {
       // Only spec 2 reads device.* values: a spec 1 `device` data source with
       // no fetched value shows "--", never what the firmware supplies.
-      std::string formatted = l.value;
+      std::string& formatted = formatScratch_;
+      formatted.assign(l.value);
       if (language_ && l.translationCount) {
         for (size_t at = 0; at < l.translationCount; ++at) {
           const LocalizedText& translated = theme_.translations[l.firstTranslation + at];
@@ -1864,9 +1923,13 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       if (!clockOptions_.showSeconds) replace("SS", "");
       if (clockOptions_.showDate) replace("DATE", clockOptions_.dateFormat);
       else for (const char* token : {"DATE", "DD", "MON", "MONTH", "WD", "WEEKDAY", "YYYY", "MO"}) replace(token, "");
-      std::string text = theme_.spec >= 2 ? expandText(formatted, time, values_, device_, language_) : expandText(formatted, time, values_);
-      if (text != s.text) {
-        s.text = std::move(text);
+      static const std::vector<ThemeValue> noDevice;
+      if (theme_.spec >= 2) expandTextInto(textScratch_, formatted, time, values_, device_, language_);
+      else expandTextInto(textScratch_, formatted, time, values_, noDevice, 0);
+      if (textScratch_ != s.text) {
+        // Swap rather than move-assign: the previous state buffer becomes
+        // the next expansion buffer instead of being freed on every tick.
+        s.text.swap(textScratch_);
         changed = true;
         textChanged = true;
       }

@@ -243,6 +243,9 @@ class Engine {
   BlockList<LayerState> states_;
   std::vector<Rect> dirty_;
   std::vector<ThemeValue> values_, device_;
+  // Reused by update(): clock/data text is expanded periodically, so keeping
+  // these buffers here avoids allocating and freeing strings on every tick.
+  std::string formatScratch_, textScratch_;
   ClockOptions clockOptions_;
   bool animationsEnabled_ = true;
   uint8_t animationSpeedPct_ = 100;
