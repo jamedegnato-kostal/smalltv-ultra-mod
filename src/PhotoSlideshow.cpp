@@ -38,11 +38,12 @@ void PhotoSlideshow::begin() {
 }
 
 bool PhotoSlideshow::start(uint8_t photosPerTheme, uint8_t dwellSeconds) {
-  // TJpg_Decoder allocates working buffers while decoding.  Refuse a batch
-  // before entering the decoder when the heap is fragmented rather than
-  // risking an ESP8266 watchdog/exception reset loop.
-  constexpr uint32_t MinFreeHeap = 16UL * 1024UL;
-  constexpr uint32_t MinLargestBlock = 8UL * 1024UL;
+  // TJpg_Decoder's roughly 3.5 KiB workspace is a static member of its
+  // global instance, not a runtime heap allocation. Keep the same conservative
+  // headroom used for web requests, but do not require an impossible 16 KiB
+  // free heap on the ESP8266 after the theme has been released.
+  constexpr uint32_t MinFreeHeap = 8UL * 1024UL;
+  constexpr uint32_t MinLargestBlock = 3UL * 1024UL;
   if (ESP.getFreeHeap() < MinFreeHeap || platformMaxFreeBlock() < MinLargestBlock) return false;
   const uint8_t available = smalltv_photo::count();
   if (!available || !photosPerTheme) return false;
