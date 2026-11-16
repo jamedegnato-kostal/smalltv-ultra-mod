@@ -82,11 +82,14 @@ void ThemeMode::begin(const Settings&) {
 void ThemeMode::unload() {
   dataRequests_.cancel();
   dataRequests_.take();
+  dataRequests_.releaseStorage();
   package_.reset();
   file_.reset();
-  dataNextMs_.clear();
-  dataScheduled_.clear();
-  dataValues_.clear();
+  // clear() destroys elements but keeps the vector's backing allocation.
+  // A theme switch/final unload should return all theme-specific capacity.
+  std::vector<uint32_t>().swap(dataNextMs_);
+  std::vector<bool>().swap(dataScheduled_);
+  std::vector<smalltv::ThemeValue>().swap(dataValues_);
   dataAges_.reset(0);
   dataCursor_ = 0;
   engine_.setValues({});
@@ -120,6 +123,7 @@ void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
   // fetches it again.
   dataRequests_.cancel();
   dataRequests_.take();
+  dataRequests_.releaseStorage();
   package_.reset();
   file_.reset();
   engine_.setValues({});
