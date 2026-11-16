@@ -61,7 +61,9 @@ const char* const WaitingForMemory = "Waiting for free memory";
 // used from service(), which runs on every main-loop pass on the ESP8266.
 bool validThemeId(const char* id) {
   if (!id || !*id) return false;
+  size_t length = 0;
   for (const unsigned char* p = reinterpret_cast<const unsigned char*>(id); *p; ++p) {
+    if (++length > 48) return false;
     if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
           (*p >= '0' && *p <= '9') || *p == '-' || *p == '_')) return false;
   }
