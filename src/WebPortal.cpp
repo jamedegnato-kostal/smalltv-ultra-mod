@@ -231,6 +231,18 @@ void receivePhotoUpload() {
       if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
       LittleFS.remove(PhotoUploadPath); return;
     }
+    // JPEG validation enters TJpg_Decoder, which allocates working
+    // buffers. Release a theme when that decoder's conservative heap budget
+    // is not already available, then refuse safely instead of risking OOM.
+#if WITH_THEME
+    g_themeMode.release(16UL * 1024UL, 8UL * 1024UL);
+#endif
+    if (ESP.getFreeHeap() < 16UL * 1024UL || platformMaxFreeBlock() < 8UL * 1024UL) {
+      photoUploadError = "Zu wenig freier Arbeitsspeicher für die Bildprüfung; Theme-Speicher wurde freigegeben";
+      LittleFS.remove(PhotoUploadPath);
+      LittleFS.remove(PhotoAnimationUploadPath);
+      return;
+    }
     const bool valid = photoUploadAnimated
       ? unpackPhotoAnimation(PhotoAnimationUploadPath, static_cast<uint8_t>(photoUploadSlot))
       : photoValidateJpeg(PhotoUploadPath);
