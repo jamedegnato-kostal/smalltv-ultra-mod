@@ -162,11 +162,20 @@ static inline bool platformTimeValid() { return time(nullptr) > 1609459200; }
 // Defined per core in Platform.cpp. Call once, after platformTimeBegin.
 void platformOnTimeSync(void (*cb)());
 
+// Low-water memory telemetry. Sampling is throttled unless force=true; no
+// dynamic storage is used, so reporting memory pressure cannot allocate heap.
+struct PlatformMemoryStats {
+  uint32_t minHeap = 0, minMaxBlock = 0;
+};
+void platformMemorySample(bool force = false);
+void platformMemoryStatsGet(PlatformMemoryStats& out);
+
 // Last abnormal ESP8266 restart, held only in RTC RAM until power loss or clear.
 struct PlatformCrashRecord {
   char reason[24] = {}, fw[16] = {};
   bool hasRegisters = false, uptimeKnown = false;
   uint32_t exccause = 0, epc1 = 0, excvaddr = 0, uptimeS = 0;
+  uint32_t allocCaller = 0, allocSize = 0, stack = 0, stackEnd = 0;
 };
 void platformCrashRecordBegin();
 bool platformCrashRecordGet(PlatformCrashRecord& out);
