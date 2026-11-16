@@ -101,6 +101,9 @@ class DataRequests {
     return pending_;
   }
   void cancel() { if (pending_) pending_->cancel(); }
+  // Release the reusable request object only when no request is still pending.
+  // A worker on other targets may still own a cancelled in-flight request.
+  void releaseStorage() { if (!pending_) storage_.reset(); }
   // Returns the finished result once, or nothing if still pending or if it
   // was cancelled (a cancelled fetch's values are stale by definition, e.g.
   // from a theme that has since been switched away from).
@@ -121,8 +124,15 @@ class DataRequests {
 class DataAges {
  public:
   void reset(size_t count, bool enabled = true) {
-    ageMs_.assign(enabled ? count : 0, Unknown);
-    published_.assign(count, Unpublished);
+    if (!count) {
+      // assign(0) is permitted to keep vector capacity. A full theme unload
+      // must return the data-age backing stores to the ESP8266 heap.
+      std::vector<uint32_t>().swap(ageMs_);
+      std::vector<int>().swap(published_);
+    } else {
+      ageMs_.assign(enabled ? count : 0, Unknown);
+      published_.assign(count, Unpublished);
+    }
     started_ = false;
   }
   void tick(uint32_t now) {
