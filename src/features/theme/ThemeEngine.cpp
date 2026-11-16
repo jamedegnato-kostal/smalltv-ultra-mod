@@ -1325,36 +1325,34 @@ static size_t copyLocalName(char* out, size_t capacity, const char* slot, size_t
   out[count - 1] = 0;
   return strlen(out);
 }
-static bool tokenIs(const std::string& source, size_t begin, size_t length, const char* token) {
+static bool tokenIs(const char* source, size_t begin, size_t length, const char* token) {
   const size_t tokenLength = strlen(token);
-  return length == tokenLength && memcmp(source.data() + begin, token, tokenLength) == 0;
+  return length == tokenLength && memcmp(source + begin, token, tokenLength) == 0;
 }
 static const std::string* findTextValue(const std::vector<ThemeValue>& values,
-                                        const std::string& source,
-                                        size_t begin, size_t length) {
+                                        const char* source, size_t begin, size_t length) {
   for (const auto& item : values) {
-    if (item.key.size() == length &&
-        item.key.compare(0, item.key.size(), source, begin, length) == 0) return &item.value;
+    if (item.key.size() == length && !memcmp(item.key.data(), source + begin, length)) return &item.value;
   }
   return nullptr;
 }
-// Expands into caller-owned storage. Clearing a std::string retains its
-// capacity, and token/value comparisons use source ranges instead of creating
-// temporary std::strings for every placeholder.
-static void expandTextInto(std::string& out, const std::string& value, const tm* t,
-                           const std::vector<ThemeValue>& values,
-                           const std::vector<ThemeValue>& device, uint8_t language) {
-  if (language >= 6) language = 0;
-  out.clear();
-  if (out.capacity() < value.size()) out.reserve(value.size());
-  for (size_t i = 0; i < value.size();) {
+// Appends expanded text without a formatted intermediate string. The date
+// format is expanded in a nested pass because the original template's HH/SS
+// options are applied before DATE is inserted.
+static void appendExpandedText(std::string& out, const char* value, size_t valueSize, const tm* t,
+                               const std::vector<ThemeValue>& values,
+                               const std::vector<ThemeValue>& device, uint8_t language,
+                               bool use24Hour, bool showSeconds, bool showDate,
+                               const std::string* dateFormat, bool insideDateFormat) {
+  for (size_t i = 0; i < valueSize;) {
     if (value[i] != '{') {
       out.push_back(value[i++]);
       continue;
     }
-    const size_t end = value.find('}', i);
-    if (end == std::string::npos) {
-      out.append(value.data() + i, value.size() - i);
+    size_t end = i + 1;
+    while (end < valueSize && value[end] != '}') ++end;
+    if (end == valueSize) {
+      out.append(value + i, valueSize - i);
       break;
     }
     const size_t keyBegin = i + 1;
@@ -1364,10 +1362,37 @@ static void expandTextInto(std::string& out, const std::string& value, const tm*
     size_t replacementLength = 2;
     bool fallback = true;
 
-    if (t) {
+    // These transforms used to allocate a separate formatted std::string.
+    // Apply them while scanning instead, before resolving ordinary tokens.
+    if (!insideDateFormat && !showDate &&
+        (tokenIs(value, keyBegin, keyLength, "DATE") ||
+         tokenIs(value, keyBegin, keyLength, "DD") ||
+         tokenIs(value, keyBegin, keyLength, "MON") ||
+         tokenIs(value, keyBegin, keyLength, "MONTH") ||
+         tokenIs(value, keyBegin, keyLength, "WD") ||
+         tokenIs(value, keyBegin, keyLength, "WEEKDAY") ||
+         tokenIs(value, keyBegin, keyLength, "YYYY") ||
+         tokenIs(value, keyBegin, keyLength, "MO"))) {
+      replacement = "";
+      replacementLength = 0;
+      fallback = false;
+    } else if (!insideDateFormat && !showSeconds && tokenIs(value, keyBegin, keyLength, "SS")) {
+      replacement = "";
+      replacementLength = 0;
+      fallback = false;
+    } else if (!insideDateFormat && tokenIs(value, keyBegin, keyLength, "DATE") && dateFormat) {
+      appendExpandedText(out, dateFormat->data(), dateFormat->size(), t, values, device, language,
+                         true, true, true, nullptr, true);
+      i = end + 1;
+      continue;
+    }
+
+    if (fallback && t) {
       int number = -1;
       bool year = false;
-      if (tokenIs(value, keyBegin, keyLength, "HH")) number = t->tm_hour;
+      if (tokenIs(value, keyBegin, keyLength, "HH"))
+        number = !insideDateFormat && !use24Hour
+          ? (t->tm_hour % 12 ? t->tm_hour % 12 : 12) : t->tm_hour;
       else if (tokenIs(value, keyBegin, keyLength, "hh")) number = t->tm_hour % 12 ? t->tm_hour % 12 : 12;
       else if (tokenIs(value, keyBegin, keyLength, "MM")) number = t->tm_min;
       else if (tokenIs(value, keyBegin, keyLength, "SS")) number = t->tm_sec;
@@ -1424,6 +1449,16 @@ static void expandTextInto(std::string& out, const std::string& value, const tm*
     out.append(replacement, replacementLength);
     i = end + 1;
   }
+}
+static void expandTextInto(std::string& out, const std::string& value, const tm* t,
+                           const std::vector<ThemeValue>& values,
+                           const std::vector<ThemeValue>& device, uint8_t language,
+                           bool use24Hour = true, bool showSeconds = true, bool showDate = true,
+                           const std::string* dateFormat = nullptr) {
+  if (language >= 6) language = 0;
+  out.clear();
+  appendExpandedText(out, value.data(), value.size(), t, values, device, language,
+                     use24Hour, showSeconds, showDate, dateFormat, false);
 }
 std::string expandText(const std::string& value, const tm* t, const std::vector<ThemeValue>& values,
                        const std::vector<ThemeValue>& device, uint8_t language) {
@@ -1804,7 +1839,6 @@ void Engine::setTheme(Theme theme, uint32_t now) {
     // ThemeMode clears values before releasing the engine. Return their vector
     // storage as well instead of pinning it until the next theme is loaded.
     std::vector<ThemeValue>().swap(values_);
-    std::string().swap(formatScratch_);
   } else {
     states_.assign(theme_.layers.size(), LayerState{});
     for (size_t i = 0; i < states_.size(); ++i) {
@@ -1918,29 +1952,26 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
     if (l.type == LayerType::Text && (timeChanged || valuesChanged_ || languageChanged_)) {
       // Only spec 2 reads device.* values: a spec 1 `device` data source with
       // no fetched value shows "--", never what the firmware supplies.
-      std::string& formatted = formatScratch_;
-      formatted.assign(l.value);
+      const std::string* textTemplate = &l.value;
       if (language_ && l.translationCount) {
         for (size_t at = 0; at < l.translationCount; ++at) {
           const LocalizedText& translated = theme_.translations[l.firstTranslation + at];
-          if (translated.language == language_) { formatted = translated.text; break; }
+          if (translated.language == language_) { textTemplate = &translated.text; break; }
         }
       }
-      auto replace = [&](const std::string& token, const std::string& value) {
-        size_t at = 0; const std::string needle = "{" + token + "}";
-        while ((at = formatted.find(needle, at)) != std::string::npos) { formatted.replace(at, needle.size(), value); at += value.size(); }
-      };
-      if (!clockOptions_.use24Hour) replace("HH", "{hh}");
-      if (!clockOptions_.showSeconds) replace("SS", "");
-      if (clockOptions_.showDate) replace("DATE", clockOptions_.dateFormat);
-      else for (const char* token : {"DATE", "DD", "MON", "MONTH", "WD", "WEEKDAY", "YYYY", "MO"}) replace(token, "");
       static const std::vector<ThemeValue> noDevice;
-      // Expand straight into the layer's retained buffer. A 64-bit
-      // fingerprint tells us whether text really changed without holding a
-      // second expanded copy on the constrained ESP8266 heap.
+      // Expand directly from the manifest into the retained layer buffer.
+      // A fingerprint detects text changes without a formatted or expanded
+      // scratch string on the constrained ESP8266 heap.
       const uint64_t previousText = textFingerprint(s.text);
-      if (theme_.spec >= 2) expandTextInto(s.text, formatted, time, values_, device_, language_);
-      else expandTextInto(s.text, formatted, time, values_, noDevice, 0);
+      if (theme_.spec >= 2)
+        expandTextInto(s.text, *textTemplate, time, values_, device_, language_,
+                       clockOptions_.use24Hour, clockOptions_.showSeconds,
+                       clockOptions_.showDate, &clockOptions_.dateFormat);
+      else
+        expandTextInto(s.text, *textTemplate, time, values_, noDevice, 0,
+                       clockOptions_.use24Hour, clockOptions_.showSeconds,
+                       clockOptions_.showDate, &clockOptions_.dateFormat);
       if (textFingerprint(s.text) != previousText) {
         changed = true;
         textChanged = true;
