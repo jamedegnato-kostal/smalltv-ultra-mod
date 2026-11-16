@@ -502,9 +502,14 @@ static void handleStatus() {
   d.ip = ip.c_str();
   d.rssi = netRSSI();
   d.wifiFail = netFailReason();
+  platformMemorySample(true);
   d.heap = ESP.getFreeHeap();
   d.maxblk = platformMaxFreeBlock();     // largest contiguous block (TLS handshake needs one)
-  d.contstk = platformFreeContStack();   // primary stack headroom (ESP8266)
+  PlatformMemoryStats memory;
+  platformMemoryStatsGet(memory);
+  d.heapMin = memory.minHeap;
+  d.maxblkMin = memory.minMaxBlock;
+  d.contstk = platformFreeContStack();   // ESP8266 stack high-water: minimum bytes never touched since boot
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
   d.synced = clockSynced();
