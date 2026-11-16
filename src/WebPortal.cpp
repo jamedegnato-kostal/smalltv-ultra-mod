@@ -507,6 +507,7 @@ static void handleStatus() {
   d.maxblk = platformMaxFreeBlock();     // largest contiguous block (TLS handshake needs one)
   PlatformMemoryStats memory;
   platformMemoryStatsGet(memory);
+  d.memoryStatsValid = true;
   d.heapMin = memory.minHeap;
   d.maxblkMin = memory.minMaxBlock;
   for (size_t i = 0; i < smalltv::StatusMemoryPhaseCount; ++i) {
