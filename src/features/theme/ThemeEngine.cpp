@@ -1938,9 +1938,12 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       // fps accumulates exact whole frames, with the remainder kept in
       // `phase` so a late update() jumps straight to the due frame instead of
       // replaying skipped ones.
-      uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ / 100 + s.phase;
-      uint64_t step = ticks / 1000;
-      s.phase = ticks % 1000;
+      // Keep the percentage remainder too. Dividing by 100 before adding
+      // to the accumulator discarded sub-milli-frame time on every update.
+      // The combined denominator is 100 (speed percent) * 1000 (milliseconds).
+      const uint64_t ticks = uint64_t(uint32_t(now - s.lastMs)) * l.fps * animationSpeedPct_ + s.phase;
+      const uint64_t step = ticks / 100000;
+      s.phase = static_cast<uint32_t>(ticks % 100000);
       s.lastMs = now;
       uint16_t next = l.loop ? (s.frame + step) % l.frames : std::min<uint64_t>(s.frame + step, l.frames - 1);
       if (!l.loop && next == l.frames - 1) s.finished = true;
@@ -2079,8 +2082,10 @@ static bool scrollContentColumn(const Layer& l, const LayerState& s, int textWid
 // disjoint dirty regions (or several rows of the same region) still resolves
 // its asset exactly once.
 bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Display& display, uint16_t background, uint8_t opacityPct) {
-  uint16_t pixels[240], colors[240];
-  uint8_t alpha[240];
+  // Rendering is serial in the firmware. Keep these scanline buffers in
+  // static storage instead of consuming roughly 1.2 KiB of ESP8266 loop stack.
+  static uint16_t pixels[240], colors[240];
+  static uint8_t alpha[240];
   if (opacityPct > 100) opacityPct = 100;
   if (e.theme().layers.size() > MaxLayers || e.states().size() != e.theme().layers.size()) return false;
   AssetHandle handles[MaxLayers];
@@ -2120,6 +2125,10 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
         Segment hand{}, tick{};
         if (l.type == LayerType::Shape && l.shape == Shape::Arc) wedge = arcWedge(s.resolved);
         if (l.type == LayerType::Shape && l.shape == Shape::Hand) hand = handSegment(l, s.resolved);
+        // Font width is invariant across a scanline; computing it per pixel
+        // made long text layers perform the same full-string scan hundreds of times.
+        const int textWidth = l.type == LayerType::Text
+          ? textPixelWidth(e.theme(), l, s.resolved.size, s.text) : 0;
         for (int x = r.x; x < r.x + r.w; ++x) {
           uint16_t c = 0;
           uint8_t drawAlpha = 255;
@@ -2135,7 +2144,6 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
             // fixed 8-row bitmap by `resolved.size`).
             const int local = x - s.bounds.x;
             const bool stf = l.stfFont != 0;
-            const int textWidth = textPixelWidth(e.theme(), l, s.resolved.size, s.text);
             int contentX = 0;
             if (scrollContentColumn(l, s, textWidth, local, contentX)) {
               if (stf) {
