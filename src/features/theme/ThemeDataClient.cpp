@@ -9,6 +9,12 @@
 #include <new>
 
 namespace {
+#if defined(SMALLTV_ESP8266)
+// Static storage is intentional: the ESP8266 has a 4 KiB main-loop stack and
+// a body buffer must not be a local array or a per-request heap allocation.
+char themeDataBody[smalltv::MaxDataBody + 1];
+#endif
+
 struct Deadline {
   smalltv::DataFetch& request;
   uint32_t started = millis();
@@ -134,22 +140,23 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   if (!http.begin(*client, request.source.url.c_str())) return false;
   http.addHeader("Accept", "application/json");
   if (http.GET() != HTTP_CODE_OK || deadline.expired()) return false;
+  BodyStream stream{http.getStream(), *client, deadline};
 #if defined(SMALLTV_ESP8266)
-  // The ESP8266 executes one theme-data fetch synchronously and DataRequests
-  // permits only one request at a time. Reuse the response buffer between
-  // polls: allocating/freeing up to 2 KiB for every refresh fragments the
-  // small heap over long uptimes. ArduinoJson parses this mutable buffer
-  // in-place, avoiding a second copy of every JSON key and string.
-  static std::string body;
+  size_t bodySize = 0;
+  bool complete = smalltv::readDataBody(stream, http.getSize(), themeDataBody,
+                                         sizeof(themeDataBody), bodySize);
 #else
   std::string body;
-#endif
-  BodyStream stream{http.getStream(), *client, deadline};
   bool complete = smalltv::readDataBody(stream, http.getSize(), body);
+#endif
   http.end();
-  if (!complete || request.cancelled() || body.empty()) return false;
+  if (!complete || request.cancelled()) return false;
   JsonDocument doc;
-  if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
+#if defined(SMALLTV_ESP8266)
+  if (deserializeJson(doc, themeDataBody, DeserializationOption::NestingLimit(8))) return false;
+#else
+  if (deserializeJson(doc, body, DeserializationOption::NestingLimit(8))) return false;
+#endif
   // Sample while the parsed JSON document and retained body buffer are both
   // live; this is the peak-memory phase of a data refresh.
   platformMemorySample(true);
