@@ -1750,9 +1750,16 @@ void Engine::setTheme(Theme theme, uint32_t now) {
   full_ = true;
 }
 void Engine::setClockOptions(const ClockOptions& options) {
-  if (clockOptions_.use24Hour == options.use24Hour && clockOptions_.showSeconds == options.showSeconds &&
-      clockOptions_.showDate == options.showDate && clockOptions_.dateFormat == options.dateFormat) return;
-  clockOptions_ = options;
+  setClockOptions(options.use24Hour, options.showSeconds, options.showDate, options.dateFormat.c_str());
+}
+void Engine::setClockOptions(bool use24Hour, bool showSeconds, bool showDate, const char* dateFormat) {
+  if (!dateFormat) dateFormat = "";
+  if (clockOptions_.use24Hour == use24Hour && clockOptions_.showSeconds == showSeconds &&
+      clockOptions_.showDate == showDate && clockOptions_.dateFormat == dateFormat) return;
+  clockOptions_.use24Hour = use24Hour;
+  clockOptions_.showSeconds = showSeconds;
+  clockOptions_.showDate = showDate;
+  if (clockOptions_.dateFormat != dateFormat) clockOptions_.dateFormat = dateFormat;
   optionsChanged_ = true;
 }
 void Engine::setAnimationOptions(bool enabled, uint8_t speedPct) {
@@ -1767,7 +1774,12 @@ void Engine::setAnimationOptions(bool enabled, uint8_t speedPct) {
 // bindings against. Reinstalling an identical set is a deliberate no-op
 // (including for scroll's "reinstalling the same values must not restart the
 // pause" rule) rather than a wasted resolve pass every call.
-void Engine::setValues(std::vector<ThemeValue> values) {
+void Engine::setValues(const std::vector<ThemeValue>& values) {
+  if (values_ == values) return;
+  values_ = values;
+  valuesChanged_ = true;
+}
+void Engine::setValues(std::vector<ThemeValue>&& values) {
   if (values_ == values) return;
   values_ = std::move(values);
   valuesChanged_ = true;
@@ -2063,9 +2075,9 @@ bool render(const Engine& e, const std::vector<Rect>& dirty, Assets& assets, Dis
               if (stf) {
                 const ThemeFont& font = e.theme().fonts[l.stfFont - 1]; int pen=0; size_t index=0;
                 while(index<s.text.size() && contentX>=pen+font.advance(static_cast<uint8_t>(s.text[index]))) pen+=font.advance(static_cast<uint8_t>(s.text[index++]));
-                if(index<s.text.size()) { int left=0,width=0; uint8_t coverage[240];
-                  if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,coverage,left,width)) return false;
-                  int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=coverage[col];draw=drawAlpha!=0;}
+                if(index<s.text.size()) { int left=0,width=0; // Reuse the existing alpha scanline buffer instead of consuming another 240 B of loop stack.
+                  if(!assets.glyphRow(fontHandle,font.glyph(static_cast<uint8_t>(s.text[index])),y-s.bounds.y,alpha,left,width)) return false;
+                  int col=contentX-pen-left; if(col>=0&&col<width){drawAlpha=alpha[col];draw=drawAlpha!=0;}
                 }
                 c=s.resolved.color;
               } else {
