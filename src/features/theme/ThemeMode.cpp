@@ -333,14 +333,14 @@ void ThemeMode::service(const Settings& s) {
   engine_.setLanguage(language);
   engine_.setAnimationOptions(s.display.animationsEnabled, s.display.animationSpeedPct);
   Panel panel;
-  platformMemoryPhaseBegin(PLATFORM_MEM_THEME_RENDER, false);
+  platformMemoryPhaseBegin(PLATFORM_MEM_THEME_RENDER, true);
   const auto& dirty = engine_.update(millis(), valid ? &t : nullptr);
   // A render failure (a corrupt or truncated asset read mid-frame) is treated
   // like a load failure: drop the package and show an error rather than
   // risk repeatedly failing on every subsequent frame.
   uint16_t background = s.display.backgroundEnabled ? s.display.background : engine_.theme().background;
   const bool rendered = smalltv::render(engine_, dirty, *package_, panel, background, s.display.themeOpacityPct);
-  platformMemoryPhaseEnd(PLATFORM_MEM_THEME_RENDER, false);
+  platformMemoryPhaseEnd(PLATFORM_MEM_THEME_RENDER, true);
   if (!rendered) {
     dataRequests_.cancel();
     dataRequests_.take();
