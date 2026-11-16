@@ -1828,8 +1828,7 @@ static Rect bounds(const Theme& theme, const Layer& l, const ResolvedLayer& reso
 // resolved geometry) from scratch. The next update() reports a full-canvas
 // dirty rectangle, since every layer's previous on-screen footprint is gone.
 void Engine::setTheme(Theme theme, uint32_t now) {
-  // Scratch buffers are useful while a theme is running, but must be returned
-  // to the ESP8266 heap when the engine is released before a web/data request.
+  // Return retained dirty-rectangle storage when a theme is released.
   std::vector<Rect>().swap(dirty_);
   theme_ = std::move(theme);
   if (theme_.layers.empty()) {
