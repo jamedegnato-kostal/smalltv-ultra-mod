@@ -2,6 +2,7 @@
 #include "ThemeEngine.h"
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <memory>
 
 namespace smalltv {
@@ -153,12 +154,28 @@ class DataAges {
       bool own = false;
       for (const auto& field : sources[i].fields) own = own || field.id == "age";
       if (own) continue;
-      const std::string key = sources[i].id + ".age";
-      auto it = std::find_if(values.begin(), values.end(), [&](const ThemeValue& v) { return v.key == key; });
+      const std::string& id = sources[i].id;
+      auto it = std::find_if(values.begin(), values.end(), [&](const ThemeValue& v) {
+        return v.key.size() == id.size() + 4 &&
+               v.key.compare(0, id.size(), id) == 0 &&
+               v.key.compare(id.size(), 4, ".age", 4) == 0;
+      });
       if (age < 0) { if (it != values.end()) { values.erase(it); changed = true; } continue; }
-      const std::string text = std::to_string(age);
-      if (it == values.end()) { values.push_back({key, text}); changed = true; }
-      else if (it->value != text) { it->value = text; changed = true; }
+      char ageText[12];
+      snprintf(ageText, sizeof(ageText), "%d", age);
+      if (it == values.end()) {
+        // Reserve once for the small bounded number of source-age values.
+        if (values.size() == values.capacity()) values.reserve(values.size() + sources.size() - i);
+        ThemeValue value;
+        value.key = id;
+        value.key += ".age";
+        value.value = ageText;
+        values.push_back(std::move(value));
+        changed = true;
+      } else if (it->value != ageText) {
+        it->value = ageText;
+        changed = true;
+      }
     }
     return changed;
   }
