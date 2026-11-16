@@ -94,13 +94,22 @@ void jsonValue(JsonVariantConst value, std::string& out) {
   if (n >= sizeof(encoded) - 1) { out = "--"; return; }
   out.assign(encoded, n);
 }
-JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
+JsonVariantConst jsonPath(JsonVariantConst root, std::string& path) {
   size_t start = 0;
   while (start < path.size()) {
     size_t dot = path.find('.', start);
-    std::string part = path.substr(start, dot == std::string::npos ? std::string::npos : dot - start);
-    if (part.empty() || !root.is<JsonObjectConst>()) return JsonVariantConst();
-    root = root[part.c_str()];
+    if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return JsonVariantConst();
+    if (!root.is<JsonObjectConst>()) return JsonVariantConst();
+    // Temporarily terminate this component in the already-owned path string.
+    // JsonObject lookup consumes the key immediately; restore the delimiter
+    // before the next field/update, without creating a substring allocation.
+    char separator = 0;
+    if (dot != std::string::npos) {
+      separator = path[dot];
+      path[dot] = '\0';
+    }
+    root = root[path.c_str() + start];
+    if (dot != std::string::npos) path[dot] = separator;
     if (dot == std::string::npos) break;
     start = dot + 1;
   }
@@ -168,7 +177,7 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   // polls of the same source; assign() below only grows when a value is longer.
   request.values.resize(request.source.fields.size());
   size_t valueIndex = 0;
-  for (const auto& field : request.source.fields) {
+  for (auto& field : request.source.fields) {
     smalltv::ThemeValue& output = request.values[valueIndex++];
     output.key.assign(request.source.id);
     output.key += '.';
