@@ -642,6 +642,9 @@ static void handlePostConfig() {
 
 static void handleScan() {
   if (!requireAuth()) return;
+  // Scan results and the JSON reply need temporary heap; release feature
+  // caches first so scanning cannot compete with a loaded theme.
+  appRelease();
   int n = WiFi.scanNetworks();
   JsonDocument doc;
   JsonArray arr = doc.to<JsonArray>();
