@@ -3,6 +3,7 @@
 #include "Platform.h"
 #include "ThemeMode.h"
 #include <ArduinoJson.h>
+#include <cstring>
 #if !defined(SMALLTV_ESP8266)
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
