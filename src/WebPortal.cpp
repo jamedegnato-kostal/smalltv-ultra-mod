@@ -502,11 +502,10 @@ static void handleStatus() {
   d.ip = ip.c_str();
   d.rssi = netRSSI();
   d.wifiFail = netFailReason();
-  platformMemorySample(true);
+  PlatformMemoryStats memory;
+  platformMemoryStatsGet(memory);  // also refreshes the low-water sample once
   d.heap = ESP.getFreeHeap();
   d.maxblk = platformMaxFreeBlock();     // largest contiguous block (TLS handshake needs one)
-  PlatformMemoryStats memory;
-  platformMemoryStatsGet(memory);
   d.memoryStatsValid = true;
   d.heapMin = memory.minHeap;
   d.maxblkMin = memory.minMaxBlock;
