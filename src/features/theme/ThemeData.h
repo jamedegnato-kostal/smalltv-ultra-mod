@@ -124,7 +124,10 @@ class DataRequests {
   // check busy() first; this only guards against a caller that does not.
   std::shared_ptr<DataFetch> start(const ThemeDataSource& source, size_t index) {
     if (pending_) return {};
-    if (!storage_) storage_ = std::make_shared<DataFetch>(source, index);
+    // Do not mutate a completed result while a caller still holds its
+    // shared_ptr. In the normal ThemeMode path it is released before the next
+    // poll, so the same object and its capacities are reused.
+    if (!storage_ || storage_.use_count() > 1) storage_ = std::make_shared<DataFetch>(source, index);
     else storage_->reset(source, index);
     pending_ = storage_;
     return pending_;
