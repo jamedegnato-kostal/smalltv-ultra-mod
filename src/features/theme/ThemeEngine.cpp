@@ -1737,15 +1737,23 @@ static Rect bounds(const Theme& theme, const Layer& l, const ResolvedLayer& reso
 // resolved geometry) from scratch. The next update() reports a full-canvas
 // dirty rectangle, since every layer's previous on-screen footprint is gone.
 void Engine::setTheme(Theme theme, uint32_t now) {
-  // Drop the previous theme's scratch capacity after a package has loaded;
-  // it is reused frame-to-frame, but must not remain pinned while no theme is
-  // running or while a later package is being parsed.
+  // Scratch buffers are useful while a theme is running, but must be returned
+  // to the ESP8266 heap when the engine is released before a web/data request.
   std::vector<Rect>().swap(dirty_);
   theme_ = std::move(theme);
-  states_.assign(theme_.layers.size(), LayerState{});
-  for (size_t i = 0; i < states_.size(); ++i) {
-    states_[i].lastMs = now;
-    resolveLayer(i);
+  if (theme_.layers.empty()) {
+    // assign(0) destroys elements but is allowed to retain vector capacity.
+    // swap with an empty vector so the layer-state backing store is released.
+    std::vector<LayerState>().swap(states_);
+    // ThemeMode clears values before releasing the engine. Return their vector
+    // storage as well instead of pinning it until the next theme is loaded.
+    std::vector<ThemeValue>().swap(values_);
+  } else {
+    states_.assign(theme_.layers.size(), LayerState{});
+    for (size_t i = 0; i < states_.size(); ++i) {
+      states_[i].lastMs = now;
+      resolveLayer(i);
+    }
   }
   full_ = true;
 }
