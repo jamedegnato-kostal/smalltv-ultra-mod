@@ -66,6 +66,7 @@ void PhotoSlideshow::markAttempted(uint8_t id) {
 }
 
 bool PhotoSlideshow::draw(uint8_t id) {
+  PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO);
   if (!smalltv_photo::contains(id)) return false;
   const String path = currentAnimated_ ? smalltv_photo::framePath(id, animationFrame_) : smalltv_photo::path(id);
   File file = LittleFS.open(path, "r");
