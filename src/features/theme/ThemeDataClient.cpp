@@ -82,19 +82,22 @@ struct BodyStream {
   void idle() { delay(1); }
 };
 
-std::string jsonValue(JsonVariantConst value) {
-  if (value.isNull()) return "--";
+void jsonValue(JsonVariantConst value, std::string& out) {
+  if (value.isNull()) { out = "--"; return; }
   if (value.is<const char*>()) {
-    std::string s = value.as<const char*>();
-    if (s.size() > 31) s.resize(31);
-    return s;
+    const char* text = value.as<const char*>();
+    if (!text) { out = "--"; return; }
+    out.assign(text, std::min(strlen(text), size_t(31)));
+    return;
   }
-  if (!value.is<bool>() && !value.is<int>() && !value.is<long>() && !value.is<float>() && !value.is<double>()) return "--";
+  if (!value.is<bool>() && !value.is<int>() && !value.is<long>() && !value.is<float>() && !value.is<double>()) {
+    out = "--";
+    return;
+  }
   char encoded[40] = {};
   size_t n = serializeJson(value, encoded, sizeof(encoded) - 1);
-  encoded[n] = 0;
-  if (n >= sizeof(encoded) - 1) return "--";
-  return std::string(encoded);
+  if (n >= sizeof(encoded) - 1) { out = "--"; return; }
+  out.assign(encoded, n);
 }
 JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
   size_t start = 0;
@@ -169,9 +172,16 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   // Sample while the parsed JSON document and retained body buffer are both
   // live; this is the peak-memory phase of a data refresh.
   platformMemorySample(true);
-  request.values.reserve(request.source.fields.size());
+  // Resize preserves existing ThemeValue/string capacities for repeated
+  // polls of the same source; assign() below only grows when a value is longer.
+  request.values.resize(request.source.fields.size());
+  size_t valueIndex = 0;
   for (const auto& field : request.source.fields) {
-    request.values.push_back({request.source.id + "." + field.id, jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path))});
+    smalltv::ThemeValue& output = request.values[valueIndex++];
+    output.key.assign(request.source.id);
+    output.key += '.';
+    output.key += field.id;
+    jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path), output.value);
   }
   platformMemorySample(true);
   return !request.cancelled();
