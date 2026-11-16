@@ -243,9 +243,7 @@ class Engine {
   BlockList<LayerState> states_;
   std::vector<Rect> dirty_;
   std::vector<ThemeValue> values_, device_;
-  // Reused by update(): the formatted template is kept here; expanded text
-  // is written into each LayerState::text so no second output buffer is needed.
-  std::string formatScratch_;
+  // Expanded text lives only in each LayerState::text; no per-frame scratch string.
   ClockOptions clockOptions_;
   bool animationsEnabled_ = true;
   uint8_t animationSpeedPct_ = 100;
