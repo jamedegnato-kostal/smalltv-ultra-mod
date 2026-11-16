@@ -92,6 +92,16 @@ struct DataFetch {
   std::vector<ThemeValue> values;
   bool success = false;
   DataFetch(const ThemeDataSource& s, size_t i) : source(s), index(i) {}
+  // A single request is in flight at a time. Reinitialize the retained object
+  // after take() rather than allocating a new shared object on every refresh.
+  void reset(const ThemeDataSource& s, size_t i) {
+    source = s;
+    index = i;
+    values.clear();  // vector capacity is retained for the next response
+    success = false;
+    cancelled_.store(false, std::memory_order_relaxed);
+    finished_.store(false, std::memory_order_relaxed);
+  }
   void cancel() { cancelled_.store(true); }
   bool cancelled() const { return cancelled_.load(); }
   void finish(bool ok) {
@@ -113,7 +123,9 @@ class DataRequests {
   // check busy() first; this only guards against a caller that does not.
   std::shared_ptr<DataFetch> start(const ThemeDataSource& source, size_t index) {
     if (pending_) return {};
-    pending_ = std::make_shared<DataFetch>(source, index);
+    if (!storage_) storage_ = std::make_shared<DataFetch>(source, index);
+    else storage_->reset(source, index);
+    pending_ = storage_;
     return pending_;
   }
   void cancel() { if (pending_) pending_->cancel(); }
@@ -126,6 +138,8 @@ class DataRequests {
     return result->cancelled() ? std::shared_ptr<DataFetch>{} : result;
   }
  private:
+  // Keep one allocation alive and reuse it for the next round-robin source.
+  std::shared_ptr<DataFetch> storage_;
   std::shared_ptr<DataFetch> pending_;
 };
 
