@@ -161,6 +161,7 @@ static void testAnimationPrecisionAndPause() {
 }
 
 int main() {
+  testAnimationPrecisionAndPause();
   testScrollViewportAndDirty();
   testScrollTiming();
   testScrollReset();
