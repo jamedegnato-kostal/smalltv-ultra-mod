@@ -362,11 +362,13 @@ void ThemeMode::service(const Settings& s) {
   const bool rendered = smalltv::render(engine_, dirty, *package_, panel, background, s.display.themeOpacityPct);
   platformMemoryPhaseEnd(PLATFORM_MEM_THEME_RENDER, true);
   if (!rendered) {
-    dataRequests_.cancel();
-    dataRequests_.take();
+    // A failed asset read is terminal for this load. Drop the engine's parsed
+    // layers, cached values, package index and file too; keeping only the
+    // error state avoids pinning theme heap while the web UI is used to fix it.
+    unload();
+    loadedId_ = desiredId;
+    attempted_ = true;  // do not retry the same broken package every loop pass
     error_ = "Could not read theme asset";
-    package_.reset();
-    file_.reset();
     messageDrawn_ = false;
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
     if (recoveryMode_) gfxSafeTheme(netIP().c_str(), recoveryCrashCount_);
