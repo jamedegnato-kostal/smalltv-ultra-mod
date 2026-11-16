@@ -5,23 +5,43 @@
 #include "config.h"
 
 namespace {
+struct MemoryPoint { uint32_t heap = 0, maxBlock = 0; };
 uint32_t s_minFreeHeap = 0xffffffffu;
 uint32_t s_minMaxBlock = 0xffffffffu;
 uint32_t s_lastMemorySampleMs = 0;
-}
-void platformMemorySample(bool force) {
+MemoryPoint s_latestMemory;
+MemoryPoint s_phaseStart[PLATFORM_MEM_PHASE_COUNT];
+PlatformMemoryPhaseStats s_phaseStats[PLATFORM_MEM_PHASE_COUNT];
+
+void sampleMemory(bool force) {
   const uint32_t now = millis();
   if (!force && s_lastMemorySampleMs && uint32_t(now - s_lastMemorySampleMs) < 250) return;
   s_lastMemorySampleMs = now;
-  const uint32_t heap = ESP.getFreeHeap();
-  const uint32_t block = platformMaxFreeBlock();
-  if (heap < s_minFreeHeap) s_minFreeHeap = heap;
-  if (block < s_minMaxBlock) s_minMaxBlock = block;
+  s_latestMemory.heap = ESP.getFreeHeap();
+  s_latestMemory.maxBlock = platformMaxFreeBlock();
+  if (s_latestMemory.heap < s_minFreeHeap) s_minFreeHeap = s_latestMemory.heap;
+  if (s_latestMemory.maxBlock < s_minMaxBlock) s_minMaxBlock = s_latestMemory.maxBlock;
+}
+}
+void platformMemorySample(bool force) { sampleMemory(force); }
+void platformMemoryPhaseBegin(PlatformMemoryPhase phase, bool force) {
+  if (phase >= PLATFORM_MEM_PHASE_COUNT) return;
+  sampleMemory(force);
+  s_phaseStart[phase] = s_latestMemory;
+}
+void platformMemoryPhaseEnd(PlatformMemoryPhase phase, bool force) {
+  if (phase >= PLATFORM_MEM_PHASE_COUNT) return;
+  sampleMemory(force);
+  s_phaseStats[phase].heapBefore = s_phaseStart[phase].heap;
+  s_phaseStats[phase].maxBlockBefore = s_phaseStart[phase].maxBlock;
+  s_phaseStats[phase].heapAfter = s_latestMemory.heap;
+  s_phaseStats[phase].maxBlockAfter = s_latestMemory.maxBlock;
 }
 void platformMemoryStatsGet(PlatformMemoryStats& out) {
-  platformMemorySample(true);
-  out.minHeap = s_minFreeHeap == 0xffffffffu ? ESP.getFreeHeap() : s_minFreeHeap;
-  out.minMaxBlock = s_minMaxBlock == 0xffffffffu ? platformMaxFreeBlock() : s_minMaxBlock;
+  sampleMemory(true);
+  out.minHeap = s_minFreeHeap == 0xffffffffu ? s_latestMemory.heap : s_minFreeHeap;
+  out.minMaxBlock = s_minMaxBlock == 0xffffffffu ? s_latestMemory.maxBlock : s_minMaxBlock;
+  for (uint8_t i = 0; i < PLATFORM_MEM_PHASE_COUNT; ++i) out.phases[i] = s_phaseStats[i];
 }
 
 #if defined(SMALLTV_FAMILY_ESP32)
