@@ -1933,8 +1933,14 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
         changed = true;
         textChanged = true;
       }
-    } else if (l.type == LayerType::Animation && !s.finished && animationsEnabled_) {
-      // Same milli-frame accumulator technique as scroll's ticks: elapsed_ms *
+    } else if (l.type == LayerType::Animation && !s.finished) {
+      if (!animationsEnabled_) {
+        // Disabling animations pauses them; don't accumulate elapsed time and
+        // jump several frames when the setting is enabled again.
+        s.lastMs = now;
+        s.phase = 0;
+      } else {
+      // Same fixed-point accumulator technique as scroll's ticks: elapsed_ms *
       // fps accumulates exact whole frames, with the remainder kept in
       // `phase` so a late update() jumps straight to the due frame instead of
       // replaying skipped ones.
@@ -1950,6 +1956,7 @@ const std::vector<Rect>& Engine::update(uint32_t now, const tm* time) {
       if (next != s.frame) {
         s.frame = next;
         changed = true;
+      }
       }
     }
     if (l.type == LayerType::Text && l.scroll.enabled) {
