@@ -515,7 +515,7 @@ static void handleStatus() {
     d.memoryPhases[i].heapAfter = memory.phases[i].heapAfter;
     d.memoryPhases[i].maxblkAfter = memory.phases[i].maxBlockAfter;
   }
-  d.contstk = platformFreeContStack();   // ESP8266 stack high-water: minimum bytes never touched since boot
+  d.contstk = platformFreeContStack();   // ESP8266 continuation-stack high-water (untouched bytes since last repaint)
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
   d.synced = clockSynced();
