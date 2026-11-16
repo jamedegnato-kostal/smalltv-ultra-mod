@@ -524,6 +524,8 @@ static void handleStatus() {
     d.lastCrashRegisters = crash.hasRegisters; d.lastCrashUptimeKnown = crash.uptimeKnown;
     d.lastCrashCause = crash.exccause; d.lastCrashEpc = crash.epc1;
     d.lastCrashAddr = crash.excvaddr; d.lastCrashUptime = crash.uptimeS;
+    d.lastCrashAllocCaller = crash.allocCaller; d.lastCrashAllocSize = crash.allocSize;
+    d.lastCrashStack = crash.stack; d.lastCrashStackEnd = crash.stackEnd;
   }
 
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
