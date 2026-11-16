@@ -45,6 +45,38 @@ bool readDataBody(Stream& stream, int length, std::string& body) {
   }
 }
 
+// Fixed-buffer overload for the ESP8266. Theme data is fetched synchronously,
+// and a 2 KiB static buffer avoids a per-poll std::string allocation as well as
+// the body allocation that would otherwise coexist with ArduinoJson's pool.
+template <class Stream>
+bool readDataBody(Stream& stream, int length, char* body, size_t capacity, size_t& used) {
+  used = 0;
+  if (!body || !capacity || length == 0 || length < -1 ||
+      length > static_cast<int>(MaxDataBody) || capacity <= static_cast<size_t>(length > 0 ? length : MaxDataBody)) return false;
+  const size_t limit = length > 0 ? static_cast<size_t>(length) : std::min(capacity - 1, MaxDataBody);
+  body[0] = 0;
+  const uint32_t started = stream.now();
+  for (;;) {
+    if (stream.cancelled() || uint32_t(stream.now() - started) >= DataTimeoutMs) return false;
+    if (length > 0 && used == static_cast<size_t>(length)) return true;
+    const int available = stream.available();
+    if (available > 0) {
+      if (used == limit) return false;
+      const size_t count = std::min(static_cast<size_t>(available), limit - used);
+      const int read = stream.read(reinterpret_cast<uint8_t*>(body + used), count);
+      if (read > 0) {
+        used += static_cast<size_t>(read);
+        body[used] = 0;
+        continue;
+      }
+    } else if (!stream.connected()) {
+      if (stream.available() > 0) continue;
+      return length < 0 && used > 0;
+    }
+    stream.idle();
+  }
+}
+
 // One in-flight (or just-completed) fetch, shared between the display loop
 // and whatever actually performs the request -- a FreeRTOS task on ESP32, or
 // a direct synchronous call on ESP8266 (see startThemeDataFetch in
