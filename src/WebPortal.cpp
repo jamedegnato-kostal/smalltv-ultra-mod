@@ -235,9 +235,9 @@ void receivePhotoUpload() {
     // buffers. Release a theme when that decoder's conservative heap budget
     // is not already available, then refuse safely instead of risking OOM.
 #if WITH_THEME
-    g_themeMode.release(16UL * 1024UL, 8UL * 1024UL);
+    g_themeMode.release(8UL * 1024UL, 3UL * 1024UL);
 #endif
-    if (ESP.getFreeHeap() < 16UL * 1024UL || platformMaxFreeBlock() < 8UL * 1024UL) {
+    if (ESP.getFreeHeap() < 8UL * 1024UL || platformMaxFreeBlock() < 3UL * 1024UL) {
       photoUploadError = "Zu wenig freier Arbeitsspeicher für die Bildprüfung; Theme-Speicher wurde freigegeben";
       LittleFS.remove(PhotoUploadPath);
       LittleFS.remove(PhotoAnimationUploadPath);
