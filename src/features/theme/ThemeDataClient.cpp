@@ -103,7 +103,7 @@ JsonVariantConst jsonPath(JsonVariantConst root, const std::string& path) {
 }
 bool fetchThemeSource(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
-  platformMemorySample(true);
+  PlatformMemoryPhaseScope dataMemory(PLATFORM_MEM_THEME_DATA, true);
   Deadline deadline(request);
   std::unique_ptr<NetClient> client;
   if (request.source.url.rfind("https://", 0) == 0) {
