@@ -1,123 +1,112 @@
-# SmallTV Ultra Mod
+# SmallTV Settings Firmware
 
-Eigenständige ESP8266-Firmware für **GeekMagic SmallTV und SmallTV Ultra** mit lokaler Weboberfläche, installierbaren Themes und Foto-Wiedergabe.
+Firmwareprojekt für **GeekMagic SmallTV und SmallTV Ultra mit ESP8266**. Die Firmware stellt eine lokale Weboberfläche für Geräteeinstellungen bereit und unterstützt Themes, Playlists, Uhr-Designs und eine lokale Fotobibliothek.
 
 [![Build](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/actions/workflows/build.yml)
+[![Dokumentation](https://img.shields.io/badge/Dokumentation-online-338b4f)](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/)
 [![Latest release](https://img.shields.io/github/v/release/jamedegnato-kostal/smalltv-ultra-mod?display_name=tag)](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases)
 [![License](https://img.shields.io/github/license/jamedegnato-kostal/smalltv-ultra-mod)](LICENSE)
 
+> **Herkunft:** Dieses Projekt basiert auf dem ursprünglichen [giovi321/smalltv-mod](https://github.com/giovi321/smalltv-mod) von **[@giovi321](https://github.com/giovi321)**. Es ist eine eigenständige, settings-orientierte Weiterentwicklung dieses Firmware-Codes. Die ursprüngliche Lizenz und die Herkunftshinweise bleiben erhalten – siehe [NOTICE.md](NOTICE.md) und [LICENSE](LICENSE).
+
+Dies ist ein **Firmware-Repository**, kein Hardware-Shop und kein offizielles Produkt von GeekMagic. Der Quellcode richtet sich an Entwickler und Besitzer kompatibler Geräte.
+
 ---
 
-## Überblick
+## Weboberfläche
 
-SmallTV Ultra Mod erweitert das Gerät um eine browserbasierte Konfiguration und ein flexibles Anzeige-System. Themes lassen sich installieren und organisieren; Fotos können lokal gespeichert und in die Wiedergabe eingebunden werden.
+Die Firmware enthält eine lokal auf dem Gerät gehostete, responsive Weboberfläche. Sie wird im Browser über die IP-Adresse des SmallTV geöffnet. Die folgende Grafik ist eine **schematische Darstellung** der tatsächlichen Navigations- und Statusstruktur; angezeigte Werte sind Platzhalter, keine Live-Gerätedaten.
 
-**Auf einen Blick**
+![Schematische Übersicht der SmallTV Settings Weboberfläche](docs/public/assets/settings-ui-overview.svg)
 
-- **Geräte:** GeekMagic SmallTV / SmallTV Ultra
-- **Plattform:** ESP8266, ST7789, 240 × 240 Pixel
-- **Konfiguration:** lokale, responsive Weboberfläche
-- **Theme-Format:** installierbare `.stheme`-Pakete
-- **Speicher:** LittleFS für Themes, Fotos und Einstellungen
-- **Firmware-Build:** PlatformIO, Umgebung `smalltv_settings`
+Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk, System und erweiterte Einstellungen. Die Oberfläche unterstützt helle und dunkle Darstellung.
 
-## Funktionen
+## Funktionsumfang
 
 | Bereich | Funktionen |
 | --- | --- |
-| **Weboberfläche** | Dashboard, WLAN- und Laufzeitstatus, Hell-/Dunkelmodus, Einstellungen für Anzeige, Uhr, Themes, Fotos, Netzwerk und System |
-| **Display** | Helligkeit, Ausrichtung, Backlight-Polarität, RGB/BGR, Invertierung, RGB-Korrektur, Kontrast, Sättigung und Bildrate |
+| **Geräteübersicht** | WLAN-Status, Geräteadresse, Laufzeit, aktives Theme, Helligkeit und NTP-Status |
+| **Anzeige** | Helligkeit, Rotation, Backlight-Polarität, RGB/BGR, Invertierung, RGB-Korrektur, Kontrast, Sättigung und Panelrate |
 | **Uhr & Zeit** | NTP, Zeitzone, 12-/24-Stunden-Format, Datum, Sekunden und zeitgesteuerter Nachtmodus |
-| **Themes** | `.stheme` installieren, suchen, filtern, Vorschau, Metadaten bearbeiten, Ebenen sortieren und Themes verwalten |
-| **Wiedergabe** | Playlist mit bis zu 8 Einträgen, Zufallsmodus, Zeitfenster und konfigurierbarer Anzeigedauer |
+| **Themes** | Installierbare `.stheme`-Pakete, Suche, Filter, Vorschau, Metadaten, Ebenenreihenfolge und Verwaltung |
+| **Playlist** | Bis zu 8 Einträge, feste oder zufällige Reihenfolge, Zeitfenster und individuelle Laufzeiten |
 | **Fotos** | JPEG- und GIF-Import, Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe |
 | **Renderer** | Text, Bilder, Formen, Animationen, transparente Ebenen und optionale PNG-Schriftatlanten |
-| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionaler Digest-Login, Konfigurations-Backup, Firmware-Upload und Recovery |
+| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionale Digest-Authentifizierung, Konfigurations-Backup, Firmware-Upload und Recovery |
 
-> **Hinweis:** Die Helligkeit wird manuell oder zeitgesteuert geregelt. Eine automatische Sensor-Helligkeitsmessung ist nicht enthalten.
+## Unterstützte Hardware
+
+- **Zielplattform:** ESP8266
+- **Display:** ST7789, 240 × 240 Pixel
+- **WLAN:** 2,4 GHz
+- **PlatformIO-Umgebung:** `smalltv_settings`
+- **Separates Installationshilfsimage:** `smalltv_loader`
+
+Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehen. Die erstmalige Installation auf manchen SmallTV-Ultra-Flashlayouts kann einen gerätespezifischen Installationsweg erfordern. Lies vor dem Flashen die [Installationshinweise](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/getting-started/flashing/).
 
 ## Schnellstart
 
-### Firmware herunterladen
+### Firmware beziehen
 
-Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Firmware-Image herunter. Das veröffentlichte Settings-Image heißt:
+Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
-```text
-smalltv-settings-firmware.bin
-```
+- `smalltv-settings-firmware.bin` – reguläre Settings-Firmware
+- `smalltv-loader.bin` – separates Hilfsimage für bestimmte Erstinstallationswege
 
-Beachte vor dem Flashen die gerätespezifischen Hinweise in der [Firmware-Dokumentation](docs/SETTINGS_FIRMWARE.md). Insbesondere kann die erstmalige Installation auf Ultra-Geräten von der vorhandenen Flash-Aufteilung abhängen.
+Prüfe vor dem Flashen die Hardware- und Flashlayout-Hinweise in der [Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/).
 
-### Selbst bauen
+### Firmware selbst bauen
 
-Voraussetzungen: Python 3, PlatformIO Core und eine Internetverbindung für den erstmaligen Download der Build-Abhängigkeiten.
+Voraussetzungen: Python 3 und PlatformIO Core. PlatformIO kann beispielsweise mit `python -m pip install platformio` installiert werden.
 
 ```bash
 python tools/gzip_webui_settings.py --check
 python -m platformio run -e smalltv_settings
 ```
 
-Das Firmware-Image wird hier abgelegt:
+Das Hauptimage entsteht unter:
 
 ```text
 .pio/build/smalltv_settings/firmware.bin
 ```
 
-Die Weboberfläche wird in `src/webui_settings.html` bearbeitet. Nach Änderungen muss der komprimierte Header aktualisiert werden:
+Die Quell-Weboberfläche liegt in `src/webui_settings.html`. Der komprimierte Header `src/webui_settings.h` ist eine generierte Build-Datei und muss nach Änderungen mit folgendem Befehl aktualisiert werden:
 
 ```bash
 python tools/gzip_webui_settings.py
 ```
 
-### Theme-Pakete erstellen
+## Dokumentation und Entwicklung
 
-```bash
-python -m pip install -r tools/requirements-theme.txt
-python tools/theme_pack.py examples/themes/pixel-room .pio/pixel-room.stheme
-```
-
-## Dokumentation
-
-| Thema | Beschreibung |
-| --- | --- |
-| [Firmware- und Architekturhinweise](docs/SETTINGS_FIRMWARE.md) | Hardware, Speichergrenzen, Theme- und Fotoformate |
-| [API-Referenz](docs/API.md) | HTTP-Endpunkte und Geräteschnittstellen |
-| [Bedienungsdokumentation](docs/src/content/docs/index.mdx) | Einstellungen und Bedienabläufe |
-| [Mitwirken](CONTRIBUTING.md) | Build, Tests und Hinweise für Beiträge |
-| [Änderungsprotokoll](CHANGELOG.md) | Nachvollziehbare Projektänderungen |
-| [Herkunft und Drittanbieter](NOTICE.md) | Ursprünge und Lizenzhinweise |
+- **[Online-Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/)** – Einrichtung, Bedienung, Themes, API und Entwicklung
+- [Firmware- und Architekturhinweise](docs/SETTINGS_FIRMWARE.md)
+- [HTTP-API](docs/API.md)
+- [Code-Audit und bekannte technische Punkte](docs/AUDIT_2026-11.md)
+- [Mitwirken](CONTRIBUTING.md)
+- [Änderungsprotokoll](CHANGELOG.md)
+- [Herkunft und Drittanbieter](NOTICE.md)
 
 ## Repository-Struktur
 
 ```text
-src/                    Firmware und Weboberfläche
-  features/theme/       Theme-Parser, Renderer und Theme-API
-examples/               Beispiel-Themes und Recovery-Theme
-tools/                  Theme-Werkzeuge, UI-Komprimierung und CI-Hilfen
-tools/device_tester/    Windows-Testwerkzeug für ein echtes Gerät
-tests/                  Hosttests für Parser, Speicher, Themes und APIs
-docs/                   Bedienungs- und Entwicklungsdokumentation
-.github/workflows/      Build-, Test- und Release-Automatisierung
+src/                    Firmware und eingebettete Weboberfläche
+  features/theme/       Theme-Parser, Renderer, Paket- und Web-API
+examples/               Recovery-Theme und installierbare Theme-Beispiele
+docs/                   Bedienungs-, Architektur- und API-Dokumentation
+tests/                  Hosttests, Parser-, Speicher- und UI-Prüfungen
+tools/                  Build-, Theme- und Geräte-Testwerkzeuge
+lib/                    lokal angepasste ESP8266-mDNS-Bibliothek
+.github/workflows/      Firmware-, Dokumentations- und Release-CI
 ```
 
-## Hardware- und Speicherhinweise
+## Ressourcen- und Sicherheitshinweise
 
-- Der ESP8266 unterstützt WLAN mit **2,4 GHz**, nicht 5 GHz.
-- Das Ziel-Display ist ein ST7789-Panel mit **240 × 240 Pixeln**.
 - Themes und Fotos teilen sich den begrenzten LittleFS-Speicher.
-- `smalltv_settings` ist das reguläre Settings-Firmware-Image. `smalltv_loader` ist ein separates Installationshilfsimage.
-- Ein erfolgreicher Host-/CI-Build ersetzt keinen vollständigen Test auf echter SmallTV-Ultra-Hardware. Das vorhandene QEMU-Experiment ist kein funktionsfähiger Display-Emulator.
+- Ein erfolgreicher Host-/CI-Build ersetzt keinen vollständigen Test auf echter SmallTV-Ultra-Hardware.
+- Der Webzugriff ist standardmäßig nicht passwortgeschützt. Optionaler Digest-Schutz schützt die Anmeldung, **verschlüsselt aber nicht den HTTP-Datenverkehr**.
+- Konfigurations-Backups können WLAN-Zugangsdaten enthalten. Teile solche Dateien nicht öffentlich.
+- Das Projekt enthält eine Recovery-Ansicht; sie ersetzt keine sorgfältige Prüfung des Flashlayouts vor einer Erstinstallation.
 
-## Sicherheit
+## Lizenz und Anerkennung
 
-Der Webzugriff ist standardmäßig nicht passwortgeschützt. Aktiviere bei Bedarf die Digest-Authentifizierung und betreibe das Gerät in einem vertrauenswürdigen lokalen Netzwerk. **HTTP bleibt unverschlüsselt**; Digest schützt die Anmeldung, aber nicht den gesamten Datenverkehr.
-
-Konfigurations-Backups können WLAN-Zugangsdaten enthalten. Veröffentliche solche Dateien nicht in Issues, Diskussionen oder Support-Anfragen.
-
-## Mitwirken
-
-Fehlerberichte, Verbesserungsvorschläge und Pull Requests sind willkommen. Bitte lies zuerst die [Beitragsrichtlinien](CONTRIBUTING.md) und erstelle für Fehler möglichst einen reproduzierbaren Bericht mit Firmware-Version und relevanten Logs.
-
-## Lizenz und Herkunft
-
-Beachte die im Repository enthaltene [Lizenz](LICENSE) sowie die ergänzenden Hinweise in [NOTICE.md](NOTICE.md). Beispiel-Themes können eigene Autoren- und Lizenzangaben haben.
+Die ursprüngliche Lizenzdatei aus [giovi321/smalltv-mod](https://github.com/giovi321/smalltv-mod) ist im Repository enthalten. Übernommene Copyright- und Lizenzhinweise bleiben bestehen. Zusätzliche Bibliotheken und Beispiel-Themes können eigene Lizenzbedingungen haben; Details stehen in [NOTICE.md](NOTICE.md).
