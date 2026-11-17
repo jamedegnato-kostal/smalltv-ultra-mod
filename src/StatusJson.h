@@ -76,11 +76,36 @@ struct StatusRadar {
   const char* url = "";         // left out when empty
 };
 
+// The status page renders some fields inside HTML fragments. Keep those
+// fields safe at the serialization boundary without allocating another String
+// or a temporary buffer on the ESP8266 heap. Replacing angle brackets with
+// their single-character lookalikes prevents markup from becoming executable
+// when the browser parses the status fragment with innerHTML.
+template <class Out> class HtmlSafeTextWriter {
+ public:
+  explicit HtmlSafeTextWriter(Out& out) : out_(out) {}
+  size_t write(uint8_t c) {
+    static const uint8_t left[]  = {0xe2, 0x80, 0xb9};  // U+2039
+    static const uint8_t right[] = {0xe2, 0x80, 0xba};  // U+203A
+    if (c == '<') out_.write(left, sizeof(left));
+    else if (c == '>') out_.write(right, sizeof(right));
+    else out_.write(c);
+    return 1;
+  }
+  size_t write(const uint8_t* data, size_t count) {
+    for (size_t i = 0; i < count; ++i) write(data[i]);
+    return count;
+  }
+ private:
+  Out& out_;
+};
+
 namespace statusout {
 // `,"key":` (the key is a PSTR literal with its comma and quotes), then the value.
 template <class Out> void member(Out& out, const char* key, const char* v) {
   jsonout::raw(out, key);
-  jsonout::text(out, v);
+  HtmlSafeTextWriter<Out> safe(out);
+  jsonout::text(safe, v);
 }
 template <class Out, class T> void member(Out& out, const char* key, T v) {
   jsonout::raw(out, key);
