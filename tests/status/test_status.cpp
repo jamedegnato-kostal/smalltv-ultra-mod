@@ -104,8 +104,8 @@ static std::string reference(const Case& c) {
   // text field before it reaches the page's legacy innerHTML fragments.
   std::string safe;
   for (char ch : out) {
-    if (ch == '<') safe += "\\xe2\\x80\\xb9";
-    else if (ch == '>') safe += "\\xe2\\x80\\xba";
+    if (ch == '<') safe += "\xe2\x80\xb9";
+    else if (ch == '>') safe += "\xe2\x80\xba";
     else safe += ch;
   }
   return safe;
