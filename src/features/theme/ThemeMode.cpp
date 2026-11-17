@@ -108,7 +108,15 @@ void ThemeMode::useRecoveryTheme(uint8_t crashCount) {
 #if WITH_THEME_PLAYLIST
 void ThemeMode::setPlaylistTheme(const char* id) {
   String next = id ? id : "";
-  if (next == playlistId_) return;
+  if (next == playlistId_) {
+    // The first Showflow step can be a photo while the regular selected theme
+    // is still loaded (playlistId_ is empty). Explicitly unload that package
+    // before TJpg_Decoder is started; the photo path must never share the
+    // theme package's heap allocations, even when the playlist override is
+    // already empty.
+    if (!next.length() && package_) unload();
+    return;
+  }
   playlistId_ = next;
   unload();  // cancels the previous fetch and drops all theme-owned heap state
 }
