@@ -10,7 +10,7 @@ is the source of truth — edit it, then rerun:
 Python 3 stdlib only. Output is deterministic (gzip header mtime=0), so
 re-running without changes leaves webui_settings.h untouched on the same machine.
 Another zlib build (zlib-ng, say) can compress to other bytes, so CI runs
-`python tools/gzip_webui.py --check`, which compares what webui_settings.h
+`python tools/gzip_webui_settings.py --check`, which compares what webui_settings.h
 decompresses to with webui_settings.html instead.
 """
 import gzip
