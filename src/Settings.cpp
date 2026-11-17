@@ -839,6 +839,9 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
         int start = item["startMinute"] | 0, end = item["endMinute"] | 0;
         dst.startMinute = static_cast<uint16_t>(constrain(start, 0, 1439));
         dst.endMinute = static_cast<uint16_t>(constrain(end, 0, 1439));
+        // A zero-length window is disabled. This prevents the UI's default
+        // 00:00..00:00 values from unexpectedly reserving the whole day.
+        if (dst.startMinute == dst.endMinute) dst.scheduled = false;
       }
       if (!s.themePlaylistCount) s.themePlaylistEnabled = false;
     }
