@@ -25,3 +25,7 @@ c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc/features/theme -I"$THEME_JSON_INCL
 # ArduinoJson's malloc calls as well as operator new.
 c++ -m32 -std=c++11 -Wall -Wextra -Werror -g -Isrc/features/theme -I"$THEME_JSON_INCLUDE" -Wl,--wrap=malloc,--wrap=free,--wrap=realloc tests/theme/test_memory.cpp src/features/theme/ThemePackage.cpp src/features/theme/ThemeEngine.cpp -o /tmp/smalltv-theme-memory-tests
 /tmp/smalltv-theme-memory-tests
+
+# Pure daily/overnight schedule semantics; no Arduino runtime required.
+c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc/features/theme tests/theme/test_schedule.cpp -o /tmp/smalltv-theme-schedule-tests
+/tmp/smalltv-theme-schedule-tests

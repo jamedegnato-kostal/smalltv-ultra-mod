@@ -100,7 +100,15 @@ static std::string reference(const Case& c) {
   }
   std::string out;
   serializeJson(doc, out);
-  return out;
+  // The status stream intentionally replaces HTML angle brackets in every
+  // text field before it reaches the page's legacy innerHTML fragments.
+  std::string safe;
+  for (char ch : out) {
+    if (ch == '<') safe += "\xe2\x80\xb9";
+    else if (ch == '>') safe += "\xe2\x80\xba";
+    else safe += ch;
+  }
+  return safe;
 }
 
 struct StringSink : Sink {
@@ -165,7 +173,7 @@ static std::vector<Case> cases() {
   Case full("full", true, true);
   full.d.updateMsg = "update failed: HTTP \"404\"";
   full.d.wifiFail = "wrong password\n(try again)";
-  full.d.ssid = "caf\xc3\xa9 \"WiFi\" \\ 5G";
+  full.d.ssid = "<img src=x onerror=alert(1)>";
   full.d.rssi = -91;
   full.d.heap = 4294967295u;
   full.d.maxblk = 0;
@@ -187,7 +195,7 @@ static std::vector<Case> cases() {
   StatusTicker aapl{}; aapl.symbol = "AAPL"; aapl.valid = true; aapl.price = 189.37f; aapl.hasChange = true; aapl.changePct = -1.25f;
   StatusTicker btc{};  btc.symbol = "BTC-USD"; btc.valid = true; btc.price = 67123.5f; btc.hasChange = true; btc.changePct = 12.5f; btc.onRange = true;
   StatusTicker nochg{}; nochg.symbol = "^GSPC"; nochg.valid = true; nochg.price = 0.0001f;
-  StatusTicker bad{};  bad.symbol = "NOPE"; bad.error = true; bad.retryIn = 45;
+  StatusTicker bad{};  bad.symbol = "<svg/onload=alert(1)>"; bad.error = true; bad.retryIn = 45;
   StatusTicker both{}; both.symbol = "KEPT"; both.valid = true; both.error = true; both.retryIn = 0; both.price = 12.0f; both.hasChange = true; both.changePct = 0.0f;
   StatusTicker wait{}; wait.symbol = "SOON";
   full.tickers = {aapl, btc, nochg, bad, both, wait};
@@ -237,6 +245,10 @@ int main() {
     StringSink big, small;
     const std::string a = streamed<128>(c, big);
     const std::string b = streamed<5>(c, small);   // pieces that split every token
+    if (a.find('<') != std::string::npos || a.find('>') != std::string::npos) {
+      std::fprintf(stderr, "%s: status stream retained HTML angle brackets\\n", c.name);
+      return 1;
+    }
     if (a != want || b != want) {
       std::fprintf(stderr, "%s: bytes differ\n want %s\n got  %s\n 5 B  %s\n", c.name, want.c_str(), a.c_str(), b.c_str());
       return 1;
