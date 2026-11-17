@@ -10,7 +10,7 @@ new vm.Script(script[1], { filename: 'src/webui_settings.html' });
 
 for (const [id, title] of [
   ['status', 'Übersicht'], ['settingsDisplay', 'Anzeige'], ['settingsClock', 'Uhr'],
-  ['settingsThemes', 'Themes'], ['photos', 'Fotos'], ['wifi', 'Netzwerk'],
+  ['settingsThemes', 'Themes'], ['showflow', 'Showflow'], ['photos', 'Fotobibliothek'], ['wifi', 'Netzwerk'],
   ['update', 'System'], ['settingsAdvanced', 'Erweitert']
 ]) {
   assert.match(html, new RegExp(`data-t="${id}"[^>]*>${title}`), `navigation entry: ${title}`);
@@ -23,10 +23,14 @@ assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
 assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs/);
 assert.match(html, /function arrangeSettingsPages\(\)/);
-assert.match(html, /function showThemePane\(id\)/);
-assert.match(html, /Zur Theme-Bibliothek/);
-assert.match(html, /Während des Zeitfensters bleibt das Theme bis zum Ende aktiv/);
-assert.match(html, /greifen Zufallsmodus, Anzeigedauer und Fotoeinblendung nicht/);
+assert.match(html, /id="showflowEnabled"/);
+assert.match(html, /id="showflowRandom"/);
+assert.match(html, /id="showflowPhotoAddMode"[^>]*>[\s\S]*?value="random" selected/);
+assert.match(html, /id="showflowPhotoAddId"/);
+assert.match(html, /Maximal 16 Schritte/);
+assert.match(html, /function renderShowflowSteps\(\)/);
+assert.match(html, /function addShowflowPhoto\(\)/);
+assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
