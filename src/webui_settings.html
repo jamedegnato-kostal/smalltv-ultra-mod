@@ -112,6 +112,12 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
 @media(min-width:900px){.quick-grid{gap:14px}.card{padding:24px}.theme-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
 @media(max-width:600px){body{padding-bottom:92px}header{padding:12px 14px;min-height:58px}header h1{font-size:15px}header .logo{width:25px;height:25px}header .help-toggle{padding:7px 9px}nav{padding:8px 10px;gap:3px}nav button{padding:9px 11px;font-size:13px}main{padding:22px 13px 30px}.quick-grid{grid-template-columns:1fr 1fr;gap:9px}.stat-card{padding:13px}.stat-card strong{font-size:15px}.welcome h2{font-size:21px}.page-intro h2{font-size:23px}.card{padding:17px;border-radius:14px}.savebar{padding:8px 12px}.savebar-inner{gap:8px}.save-status{font-size:11px;line-height:1.3}.savebar button{min-width:0;white-space:nowrap;padding:10px 12px}.row{flex-wrap:wrap}.row>*{min-width:min(100%,220px)}.photo-upload-actions button{flex:1 1 140px}.dialog-actions{position:sticky;bottom:-20px;background:var(--card);padding:12px 0 0}}
+
+/* Keep feedback messages readable in the light theme. */
+.toast{color:var(--fg)}
+body.light .toast{background:var(--card);color:var(--fg);border-color:var(--bd)}
+body.light .status-pill.warn{color:#80520a;border-color:rgba(128,82,10,.28);background:rgba(227,179,65,.15)}
+body.light .save-status.dirty{color:#80520a}
 </style></head>
 <body class="light">
 <header><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="6"/><polyline points="15,38 23,30 30,34 37,22 44,28 50,20"/><path d="M24 51v6M40 51v6M20 57h8M36 57h8"/></g></svg><span id="dot" class="dot"></span><h1>SmallTV · Arbeitsplatz</h1><span id="chip" class="chip" style="display:none"></span><span id="hi" class="muted"></span><span class="spacer"></span><button id="themeMode" class="help-toggle" type="button">Dunkles Design</button><button id="helpToggle" class="help-toggle" type="button" aria-expanded="false">Tipps</button></header>
