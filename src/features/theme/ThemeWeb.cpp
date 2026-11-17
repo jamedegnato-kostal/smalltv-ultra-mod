@@ -802,18 +802,18 @@ void selectTheme() {
   String oldId = settings->themeId;
   uint8_t oldMode = settings->mode;
 #if WITH_THEME_PLAYLIST
-  bool oldPlaylistEnabled = settings->themePlaylistEnabled;
+  bool oldShowflowEnabled = settings->showflowEnabled;
 #endif
   settings->themeId = id;
   settings->mode = MODE_THEME;
 #if WITH_THEME_PLAYLIST
-  settings->themePlaylistEnabled = false;
+  settings->showflowEnabled = false;
 #endif
   if (!saveSettings(*settings)) {
     settings->themeId = oldId;
     settings->mode = oldMode;
 #if WITH_THEME_PLAYLIST
-    settings->themePlaylistEnabled = oldPlaylistEnabled;
+    settings->showflowEnabled = oldShowflowEnabled;
 #endif
     reply(500, "Could not save selection");
     return;
@@ -855,25 +855,29 @@ void deleteTheme() {
   }
   bool settingsChanged = settings->themeId == id;
 #if WITH_THEME_PLAYLIST
-  for (uint8_t i = 0; i < settings->themePlaylistCount; ++i)
-    if (id == settings->themePlaylist[i].id) settingsChanged = true;
+  for (uint8_t i = 0; i < settings->showflowCount; ++i)
+    if (settings->showflow[i].type == Settings::ShowflowTheme &&
+        id == settings->showflow[i].themeId) settingsChanged = true;
 #endif
   if (settingsChanged && !applyAndSaveSettings(*settings, [&](Settings& candidate) {
         if (candidate.themeId == id) candidate.themeId = "";
 #if WITH_THEME_PLAYLIST
-        for (uint8_t i = 0; i < candidate.themePlaylistCount; ++i) {
-          if (id != candidate.themePlaylist[i].id) continue;
-          for (uint8_t j = i + 1; j < candidate.themePlaylistCount; ++j)
-            candidate.themePlaylist[j - 1] = candidate.themePlaylist[j];
-          --candidate.themePlaylistCount;
-          memset(&candidate.themePlaylist[candidate.themePlaylistCount], 0,
-                 sizeof(candidate.themePlaylist[0]));
-          if (!candidate.themePlaylistCount) candidate.themePlaylistEnabled = false;
-          break;
+        for (uint8_t i = 0; i < candidate.showflowCount;) {
+          auto& step = candidate.showflow[i];
+          if (step.type != Settings::ShowflowTheme || id != step.themeId) {
+            ++i;
+            continue;
+          }
+          for (uint8_t j = i + 1; j < candidate.showflowCount; ++j)
+            candidate.showflow[j - 1] = candidate.showflow[j];
+          --candidate.showflowCount;
+          memset(&candidate.showflow[candidate.showflowCount], 0,
+                 sizeof(candidate.showflow[0]));
         }
+        if (!candidate.showflowCount) candidate.showflowEnabled = false;
 #endif
       }, [](const Settings& candidate) { return saveSettings(candidate); })) {
-    reply(500, "Could not save theme selection and playlist changes");
+    reply(500, "Could not save theme selection and Showflow changes");
     return;
   }
   if (settingsChanged) appInvalidate();
