@@ -1043,7 +1043,7 @@ function renderShowflowSteps(){
   list.appendChild(row);
  });
 }
-function themeChoiceChanged(){function themeChoiceChanged(){var select=$('themeSelect');if(!select)return;
+function themeChoiceChanged(){var select=$('themeSelect');if(!select)return;
  var theme=themeEntries.find(function(t){return t.id===select.value});
  $('themeUseBtn').disabled=!theme||theme.valid===false;
  $('themeDetails').textContent=!theme?'Kein Theme ausgewählt':(theme.valid===false?'Ungültiges Paket: '+(theme.error||'Theme konnte nicht gelesen werden')+' — entferne es und installiere eine korrigierte Datei.':theme.name+(theme.version?' · '+theme.version:'')+' · '+Math.ceil(theme.bytes/1024)+' KiB');
