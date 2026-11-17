@@ -15,6 +15,7 @@
 #include "Clock.h"
 #if WITH_THEME
 #include "features/theme/ThemeMode.h"
+#include "features/theme/ThemeSchedule.h"
 #endif
 #if WITH_PHOTOS
 #include "PhotoLibrary.h"
@@ -195,13 +196,8 @@ static void themePlaylistService(const Settings& s) {
       for (uint8_t i = 0; i < s.themePlaylistCount; ++i) {
         const auto& item = s.themePlaylist[i];
         if (!item.scheduled || (g_themePlaylistScheduleFailed & uint8_t(1u << i))) continue;
-        // A zero-length interval is disabled, not an all-day schedule.
-        // This is especially important for newly added entries, whose UI
-        // defaults are 00:00..00:00 until the user chooses a real window.
-        const bool active = item.startMinute != item.endMinute &&
-          (item.startMinute < item.endMinute
-            ? minute >= item.startMinute && minute < item.endMinute
-            : minute >= item.startMinute || minute < item.endMinute);
+        const bool active = smalltv::themeScheduleContains(
+            minute, item.startMinute, item.endMinute);
         if (!active) continue;
         char path[64];
         snprintf(path, sizeof(path), "/themes/%s.stheme", item.id);
