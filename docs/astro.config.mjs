@@ -17,7 +17,7 @@ export default defineConfig({
     starlight({
       title: 'SmallTV Settings Firmware',
       description:
-        'Anleitung und technische Dokumentation zur ESP8266-Firmware für SmallTV und SmallTV Ultra.',
+        'Bedienung und technische Dokumentation zur ESP8266-Firmware für SmallTV und SmallTV Ultra.',
       logo: {
         src: './src/assets/logo.svg',
         replacesTitle: false,

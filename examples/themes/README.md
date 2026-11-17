@@ -1,26 +1,18 @@
-# Source themes
+# Beispiel-Themes
 
-Three examples are ready to install from **Display → Theme clocks** on SmallTV Pro:
+Die folgenden Pakete können mit der SmallTV Settings Firmware über **Themes → Bibliothek** installiert werden:
 
-* [`pixel-room.stheme`](pixel-room.stheme) — pixel-art room with an animated cat;
-* [`terminal-ops.stheme`](terminal-ops.stheme) — dense text and line dashboard;
-* [`live-status.stheme`](live-status.stheme) — dynamic dashboard driven by a
-  fetched JSON status endpoint: a loop-scrolling headline, a bounce-scrolling
-  headline, a threshold-colored rounded progress bar bound to a numeric level,
-  and status text.
-* [`dynamische-uhr.stheme`](dynamische-uhr.stheme) — analog clock with moving
-  hour, minute, and second hands.
-* [`wetter-bellmerei.stheme`](wetter-bellmerei.stheme) — weather theme for
-  Bellmerei, Germany, using current conditions from Open-Meteo.
+- [`pixel-room.stheme`](pixel-room.stheme) — Pixel-Art-Zimmer mit animierter Katze.
+- [`terminal-ops.stheme`](terminal-ops.stheme) — text- und linienbasiertes Dashboard.
+- [`live-status.stheme`](live-status.stheme) — dynamisches Dashboard mit deklarativen Datenbindungen.
+- [`dynamische-uhr.stheme`](dynamische-uhr.stheme) — Analoguhr mit beweglichen Zeigern; als Uhr-Theme unter **Uhr & Zeit** verfügbar.
+- [`wetter-bellmerei.stheme`](wetter-bellmerei.stheme) — Wetter-Theme für Bellmerei mit Daten von Open-Meteo.
 
-Their editable sources are in the matching directories. Open
-[pixel-room-preview.html](pixel-room-preview.html),
-[terminal-ops-preview.html](terminal-ops-preview.html), or
-[live-status-preview.html](live-status-preview.html) for an offline preview.
-SmallTV Studio is maintained separately from this firmware repository.
+Die bearbeitbaren Quellen liegen in den gleichnamigen Verzeichnissen. Öffne die Offline-Vorschauen für [Pixel Room](pixel-room-preview.html), [Terminal Ops](terminal-ops-preview.html) und [Live Status](live-status-preview.html). SmallTV Studio wird separat von dieser Firmware gepflegt.
 
-Validate/rebuild/preview (Python 3.10+, Pillow, C++11 compiler and the project's
-ArduinoJson/GFX headers; see the guide below for setup):
+## Validieren, bauen und Vorschau erzeugen
+
+Voraussetzungen: Python 3.10+, Pillow, ein C++11-Compiler und die ArduinoJson-/GFX-Header. Siehe [Theme-Dokumentation](../../docs/src/content/docs/features/themes.md).
 
 ```sh
 python3 tools/smalltv_theme.py validate examples/themes/pixel-room
@@ -28,13 +20,9 @@ python3 tools/smalltv_theme.py build examples/themes/pixel-room examples/themes/
 python3 tools/smalltv_theme.py preview examples/themes/pixel-room examples/themes/pixel-room-preview.html --time 2026-09-18T10:24:55 --seconds 10 --fps 15
 ```
 
-The original geometric PNGs can be reproduced with
-`python3 examples/themes/make_pixel_room_assets.py`. The desktop script is not
-included in the installed package; the theme contains declarative data only.
-Terminal Ops can be recreated with `python3 tools/create_terminal_theme.py`.
+Die Pixel-Room-PNGs lassen sich mit `python3 examples/themes/make_pixel_room_assets.py` neu erzeugen. Terminal Ops kann mit `python3 tools/create_terminal_theme.py` rekonstruiert werden. Die Desktop-Werkzeuge gehören nicht zum installierten Firmware-Image; die Theme-Pakete enthalten deklarative Daten und keine ausführbaren Skripte.
 
-Live Status has no bundled fetch endpoint, so its preview injects deterministic
-values with `--data`:
+Live Status besitzt keinen mitgelieferten Daten-Endpunkt. Für eine reproduzierbare Offline-Vorschau werden Beispielwerte injiziert:
 
 ```sh
 python3 tools/smalltv_theme.py build examples/themes/live-status examples/themes/live-status.stheme
@@ -45,6 +33,4 @@ python3 tools/smalltv_theme.py preview examples/themes/live-status \
   --data status.level=82 --data status.state=Warning
 ```
 
-
-See the [format and authoring guide](../../docs/src/content/docs/features/themes.md)
-for layer fields, limits, binary formats, and installation APIs.
+Die Endpunkte sind unter [HTTP-API](../../docs/src/content/docs/api.mdx) aufgeführt. Paketprüfungen liegen unter `tests/theme/`.

@@ -1,55 +1,67 @@
 ---
 title: SmallTV Settings Firmware
-description: Bedienung, Themes, Fotos und Entwicklung für die ESP8266-Firmware.
+description: Bedienung und technische Dokumentation zur ESP8266-Firmware für SmallTV und SmallTV Ultra.
 template: splash
 hero:
-  tagline: Geräteeinstellungen im Browser verwalten und eigene .stheme-Layouts auf dem 240×240-Display nutzen.
+  tagline: Lokale Gerätekonfiguration, Theme-Verwaltung und Foto-Wiedergabe über eine responsive Weboberfläche.
   image:
     file: ../../assets/logo.svg
   actions:
     - text: Schnellstart
       link: /manual/quick-start/
       icon: right-arrow
-    - text: Theme-Formate
-      link: /features/themes/
+    - text: Firmware installieren
+      link: /getting-started/flashing/
       icon: external
       variant: minimal
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Diese Firmware richtet sich an SmallTV- und SmallTV-Ultra-Geräte mit ESP8266 und 240 × 240 Pixel großem ST7789-Display. WLAN, Uhr, Anzeige, Themes und Fotos lassen sich über eine lokale Weboberfläche konfigurieren.
+**SmallTV Settings Firmware** ist eine eigenständige, settings-orientierte Weiterentwicklung des ursprünglichen [SmallTV Mod von giovi321](https://github.com/giovi321/smalltv-mod). Die Herkunft und Lizenzhinweise sind im [Repository](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/blob/main/NOTICE.md) dokumentiert.
 
-## Bereiche
+Diese Firmware richtet sich an SmallTV- und SmallTV-Ultra-Geräte mit ESP8266 und 240 × 240 Pixel großem ST7789-Display. WLAN, Uhr, Anzeige, Themes und Fotos lassen sich über eine lokal gehostete Weboberfläche konfigurieren.
+
+## Weboberfläche
+
+<img src={`${import.meta.env.BASE_URL}assets/settings-ui-overview.svg`} alt="Schematische Darstellung der SmallTV Settings Weboberfläche" />
+
+Die Grafik zeigt die reale Navigationsstruktur und Statusbereiche in schematischer Form. Werte sind illustrative Platzhalter; es handelt sich nicht um einen Live-Screenshot eines angeschlossenen Geräts.
+
+## Funktionsbereiche
 
 <CardGrid>
+  <Card title="Geräteübersicht" icon="seti:config">
+    WLAN-Status, Geräteadresse, Laufzeit, aktives Theme, Helligkeit und Uhrstatus.
+  </Card>
   <Card title="Display und Uhr" icon="seti:config">
-    Helligkeit, Farben, Panel-Rate, Zeitzone, Zeitformat und zeitgesteuerte Nachtabsenkung.
+    Helligkeit, Farben, Panelrate, Zeitzone, Zeitformat und zeitgesteuerte Nachtabsenkung.
   </Card>
   <Card title="Themes und Wiedergabe" icon="list-ordered">
     `.stheme`-Pakete verwalten, Uhr-Designs auswählen und bis zu acht Themes als Playlist abspielen.
   </Card>
   <Card title="Foto-Bibliothek" icon="seti:image">
-    JPEGs und GIF-Animationen hochladen, organisieren und nach jedem Playlist-Theme im Foto-Cycle zeigen.
+    JPEGs und GIF-Animationen hochladen, organisieren und zwischen Playlist-Einträgen anzeigen.
   </Card>
-  <Card title="Geräteverwaltung" icon="seti:shield">
-    WLAN einrichten, Einstellungen sichern, Firmware manuell aktualisieren und Recovery nutzen.
+  <Card title="Netzwerk und System" icon="seti:shield">
+    WLAN einrichten, Einstellungen sichern, Firmware aktualisieren und Recovery nutzen.
   </Card>
 </CardGrid>
 
-## Für welches Gerät?
+## Unterstützte Hardware
 
-Der PlatformIO-Build `smalltv_settings` ist für SmallTV und SmallTV Ultra mit ESP8266 vorgesehen. Er ist nicht für ESP32 oder ESP32-C2. Vor einer Erstinstallation auf dem Ultra muss geprüft werden, ob das vorhandene Updateverfahren genügend Platz für das Image bietet; das kann je nach Ausgangsfirmware abweichen.
+Der PlatformIO-Build `smalltv_settings` ist für SmallTV und SmallTV Ultra mit ESP8266 vorgesehen. Er ist **nicht** für ESP32- oder ESP32-C2-Geräte. Vor einer Erstinstallation auf dem Ultra muss geprüft werden, ob das vorhandene Flashlayout genügend Platz für das Image bietet; das kann je nach Ausgangsfirmware abweichen.
 
 ## Dokumentation
 
 <CardGrid>
-  <LinkCard title="Einrichtung" href="./getting-started/setup/" description="Hotspot nutzen und das Gerät mit einem lokalen WLAN verbinden." />
+  <LinkCard title="Einrichtung" href="./getting-started/setup/" description="Setup-Hotspot nutzen und das Gerät mit einem lokalen WLAN verbinden." />
+  <LinkCard title="Firmware installieren" href="./getting-started/flashing/" description="Hauptimage und optionalen Loader unterscheiden." />
   <LinkCard title="Bedienung" href="./manual/settings/" description="Einstellungen, Themes, Uhr und Fotos in der Weboberfläche finden." />
   <LinkCard title="Theme-Entwicklung" href="./features/themes/" description="Paketgrenzen, Assets, Schriften und Renderer kennenlernen." />
   <LinkCard title="Firmware bauen" href="./reference/building/" description="Das Settings-Image und die lokalen Prüfungen ausführen." />
 </CardGrid>
 
-## Was dieses Image nicht tut
+## Abgrenzung
 
-Die Firmware enthält in diesem Profil keine Helligkeitsregelung über einen Lichtsensor. Eine Zeitsteuerung für die Nacht-Helligkeit ist vorhanden. Die Settings-Firmware emuliert außerdem kein komplettes ESP8266-Gerät: QEMU ist kein unterstützter Weg, die Firmware samt Displayoberfläche zu testen.
+Dieses Repository enthält Firmware, Build-Werkzeuge, Tests und Dokumentation – keine Hardware-Verkaufsseite. Die Firmware enthält in diesem Profil keine Helligkeitsregelung über einen Lichtsensor. Eine zeitgesteuerte Nacht-Helligkeit ist vorhanden. Ein erfolgreicher Host-/CI-Build ersetzt keinen Test auf echter SmallTV-Ultra-Hardware.
