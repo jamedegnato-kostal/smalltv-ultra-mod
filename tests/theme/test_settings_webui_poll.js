@@ -1,4 +1,4 @@
-// The web UI's status polling, run with a fake clock and a fake fetch.
+// The Settings UI's status polling, run with a fake clock and a fake fetch.
 // Property: the device never sees a second status request while the first
 // is still unanswered (a woken PC with a few open tabs used to send six at
 // once and crash the ESP8266), a lost reply cannot stop the polling for
@@ -6,10 +6,10 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const html=fs.readFileSync('src/webui.html','utf8');
+const html=fs.readFileSync('src/webui_settings.html','utf8');
 const start=html.indexOf('var STATUS_MS');
 const end=html.indexOf('function showStatus(');
-assert.ok(start>0&&end>start,'status polling code not found in src/webui.html');
+assert.ok(start>0&&end>start,'status polling code not found in src/webui_settings.html');
 const polling=html.slice(start,end);
 const jsonHelper=html.slice(html.indexOf('function j('),html.indexOf('// tabs'));
 

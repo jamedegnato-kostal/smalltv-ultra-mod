@@ -58,8 +58,8 @@ jobs:
           python tools/theme_pack.py examples/themes/live-status /tmp/live-status.stheme
           cmp examples/themes/live-status.stheme /tmp/live-status.stheme
           sh tests/theme/run.sh
-          node tests/theme/test_webui.js
-          node tests/theme/test_webui_poll.js
+          node tests/theme/test_settings_webui.js
+          node tests/theme/test_settings_webui_poll.js
 
       - name: Check untrusted input parsers
         run: sh tests/fuzz/run.sh
