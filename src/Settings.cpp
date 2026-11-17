@@ -505,16 +505,10 @@ void Settings::setDefaults() {
   carouselTheme = false;   // opt in: needs an installed theme, else the slot shows an error
 #endif
 #if WITH_THEME_PLAYLIST
-  themePlaylistEnabled = false;
-  themePlaylistRandom = false;
-  clockThemeDefaultSeconds = 300;
-  themePlaylistCount = 0;
-  memset(themePlaylist, 0, sizeof(themePlaylist));
-#endif
-#if WITH_PHOTOS
-  photosEnabled = true;
-  photosPerTheme = 3;
-  photoDwellSeconds = 10;
+  showflowEnabled = false;
+  showflowRandom = false;
+  showflowCount = 0;
+  memset(showflow, 0, sizeof(showflow));
 #endif
   httpTimeout = DEFAULT_HTTP_TIMEOUT;
 
@@ -654,25 +648,22 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["carouselTheme"]     = s.carouselTheme;
 #endif
 #if WITH_THEME_PLAYLIST
-  JsonObject playlist = root["themePlaylist"].to<JsonObject>();
-  playlist["enabled"] = s.themePlaylistEnabled;
-  playlist["random"] = s.themePlaylistRandom;
-  playlist["clockDefaultSeconds"] = s.clockThemeDefaultSeconds;
-  JsonArray playlistItems = playlist["items"].to<JsonArray>();
-  for (uint8_t i = 0; i < s.themePlaylistCount; ++i) {
-    JsonObject item = playlistItems.add<JsonObject>();
-    item["id"] = s.themePlaylist[i].id;
-    item["seconds"] = s.themePlaylist[i].seconds;
-    item["scheduled"] = s.themePlaylist[i].scheduled;
-    item["startMinute"] = s.themePlaylist[i].startMinute;
-    item["endMinute"] = s.themePlaylist[i].endMinute;
+  JsonObject flow = root["showflow"].to<JsonObject>();
+  flow["enabled"] = s.showflowEnabled;
+  flow["random"] = s.showflowRandom;
+  JsonArray steps = flow["steps"].to<JsonArray>();
+  for (uint8_t i = 0; i < s.showflowCount; ++i) {
+    const auto& step = s.showflow[i];
+    JsonObject item = steps.add<JsonObject>();
+    item["type"] = step.type == Settings::ShowflowPhoto ? "photo" : "theme";
+    item["seconds"] = step.seconds;
+    if (step.type == Settings::ShowflowPhoto) {
+      item["random"] = step.randomPhoto;
+      if (!step.randomPhoto) item["photoId"] = step.photoId;
+    } else {
+      item["id"] = step.themeId;
+    }
   }
-#endif
-#if WITH_PHOTOS
-  JsonObject photos = root["photoPlayback"].to<JsonObject>();
-  photos["enabled"] = s.photosEnabled;
-  photos["perTheme"] = s.photosPerTheme;
-  photos["dwellSeconds"] = s.photoDwellSeconds;
 #endif
   root["httpTimeout"]       = s.httpTimeout;
   root["brightness"]        = s.brightness;
@@ -806,60 +797,43 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
   if (root["carouselTheme"].is<bool>())   s.carouselTheme = root["carouselTheme"];
 #endif
 #if WITH_THEME_PLAYLIST
-  if (root["themePlaylist"].is<JsonObjectConst>()) {
-    JsonObjectConst playlist = root["themePlaylist"].as<JsonObjectConst>();
-    if (playlist["enabled"].is<bool>()) s.themePlaylistEnabled = playlist["enabled"];
-    if (playlist["random"].is<bool>()) s.themePlaylistRandom = playlist["random"];
-    if (playlist["clockDefaultSeconds"].is<int>()) s.clockThemeDefaultSeconds = constrain((int)playlist["clockDefaultSeconds"], 30, 3600);
-    if (playlist["items"].is<JsonArrayConst>()) {
-      s.themePlaylistCount = 0;
-      memset(s.themePlaylist, 0, sizeof(s.themePlaylist));
-      for (JsonObjectConst item : playlist["items"].as<JsonArrayConst>()) {
-        if (s.themePlaylistCount >= Settings::MaxThemePlaylistItems) break;
-        const char* id = item["id"] | "";
-        size_t len = strlen(id);
-        if (!len || len > 48) continue;
-        bool valid = true;
-        for (size_t c = 0; c < len; ++c) {
-          char ch = id[c];
-          if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                (ch >= '0' && ch <= '9') || ch == '-' || ch == '_')) valid = false;
-        }
-        if (!valid) continue;
-        bool duplicate = false;
-        for (uint8_t i = 0; i < s.themePlaylistCount; ++i)
-          if (strcmp(s.themePlaylist[i].id, id) == 0) duplicate = true;
-        if (duplicate) continue;
-        auto& dst = s.themePlaylist[s.themePlaylistCount++];
-        memcpy(dst.id, id, len);
-        dst.id[len] = '\0';
-        int seconds = item["seconds"] | 30;
+  if (root["showflow"].is<JsonObjectConst>()) {
+    JsonObjectConst flow = root["showflow"].as<JsonObjectConst>();
+    if (flow["enabled"].is<bool>()) s.showflowEnabled = flow["enabled"];
+    if (flow["random"].is<bool>()) s.showflowRandom = flow["random"];
+    if (flow["steps"].is<JsonArrayConst>()) {
+      s.showflowCount = 0;
+      memset(s.showflow, 0, sizeof(s.showflow));
+      for (JsonObjectConst item : flow["steps"].as<JsonArrayConst>()) {
+        if (s.showflowCount >= Settings::MaxShowflowSteps) break;
+        const char* type = item["type"] | "";
+        auto& dst = s.showflow[s.showflowCount];
+        if (!strcmp(type, "theme")) {
+          const char* id = item["id"] | "";
+          const size_t len = strlen(id);
+          if (!len || len > 48) continue;
+          bool valid = true;
+          for (size_t c = 0; c < len; ++c) {
+            const char ch = id[c];
+            if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                  (ch >= '0' && ch <= '9') || ch == '-' || ch == '_')) valid = false;
+          }
+          if (!valid) continue;
+          memcpy(dst.themeId, id, len);
+          dst.themeId[len] = '\0';
+          dst.type = Settings::ShowflowTheme;
+        } else if (!strcmp(type, "photo")) {
+          dst.type = Settings::ShowflowPhoto;
+          dst.randomPhoto = item["random"].is<bool>() ? item["random"].as<bool>() : true;
+          const int photoId = item["photoId"] | -1;
+          if (!dst.randomPhoto && (photoId < 0 || photoId >= 240)) continue;
+          dst.photoId = dst.randomPhoto ? 0 : static_cast<uint8_t>(photoId);
+        } else continue;
+        const int seconds = item["seconds"] | 10;
         dst.seconds = static_cast<uint16_t>(constrain(seconds, 5, 3600));
-        dst.scheduled = item["scheduled"].as<bool>();
-        int start = item["startMinute"] | 0, end = item["endMinute"] | 0;
-        dst.startMinute = static_cast<uint16_t>(constrain(start, 0, 1439));
-        dst.endMinute = static_cast<uint16_t>(constrain(end, 0, 1439));
-        // A zero-length window is disabled. This prevents the UI's default
-        // 00:00..00:00 values from unexpectedly reserving the whole day.
-        if (dst.startMinute == dst.endMinute) dst.scheduled = false;
+        ++s.showflowCount;
       }
-      if (!s.themePlaylistCount) s.themePlaylistEnabled = false;
-    }
-  }
-#endif
-#if WITH_PHOTOS
-  if (root["photoPlayback"].is<JsonObjectConst>()) {
-    JsonObjectConst photos = root["photoPlayback"].as<JsonObjectConst>();
-    if (photos["enabled"].is<bool>()) s.photosEnabled = photos["enabled"];
-    if (photos["perTheme"].is<int>()) {
-      const int n = photos["perTheme"];
-      if (n == 1 || n == 2 || n == 3 || n == 4 || n == 5 || n == 6 || n == 8 || n == 10)
-        s.photosPerTheme = static_cast<uint8_t>(n);
-    }
-    if (photos["dwellSeconds"].is<int>()) {
-      const int n = photos["dwellSeconds"];
-      if (n == 0 || n == 5 || n == 10 || n == 15 || n == 20 || n == 30 || n == 60)
-        s.photoDwellSeconds = static_cast<uint8_t>(n);
+      if (!s.showflowCount) s.showflowEnabled = false;
     }
   }
 #endif
