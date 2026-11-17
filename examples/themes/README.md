@@ -5,8 +5,6 @@ Die folgenden Pakete können mit der SmallTV Settings Firmware über **Themes �
 - [`pixel-room.stheme`](pixel-room.stheme) — Pixel-Art-Zimmer mit animierter Katze.
 - [`terminal-ops.stheme`](terminal-ops.stheme) — text- und linienbasiertes Dashboard.
 - [`live-status.stheme`](live-status.stheme) — dynamisches Dashboard mit deklarativen Datenbindungen.
-- [`dynamische-uhr.stheme`](dynamische-uhr.stheme) — Analoguhr mit beweglichen Zeigern; als Uhr-Theme unter **Uhr & Zeit** verfügbar.
-- [`wetter-bellmerei.stheme`](wetter-bellmerei.stheme) — Wetter-Theme für Bellmerei mit Daten von Open-Meteo.
 
 Die bearbeitbaren Quellen liegen in den gleichnamigen Verzeichnissen. Öffne die Offline-Vorschauen für [Pixel Room](pixel-room-preview.html), [Terminal Ops](terminal-ops-preview.html) und [Live Status](live-status-preview.html). SmallTV Studio wird separat von dieser Firmware gepflegt.
 
