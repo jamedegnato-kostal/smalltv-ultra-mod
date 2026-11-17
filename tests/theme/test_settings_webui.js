@@ -32,6 +32,14 @@ assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
+// Animated GIFs must be sampled from a live DOM image, not a detached Image
+// object. They must never be silently downgraded to still JPEG photos.
+assert.match(html, /document\.body\.appendChild\(img\)/);
+assert.match(html, /frames\.length<2\)throw new Error\('Keine unterschiedlichen GIF-Frames erkannt/);
+assert.doesNotMatch(html, /frames\.length<2\)return \{blob:await photoBlob/);
+assert.match(html, /for\(var sample=0;sample<60&&frames\.length<12;sample\+\+\)/);
+
+
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
   '/api/themes/install', '/api/themes/select', '/api/themes/metadata',
