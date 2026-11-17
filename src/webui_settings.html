@@ -120,7 +120,8 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
  <button data-t="settingsDisplay">Anzeige</button>
  <button data-t="settingsClock">Uhr &amp; Zeit</button>
  <button data-t="settingsThemes">Themes</button>
- <button data-t="photos">Fotos</button>
+ <button data-t="showflow">Showflow</button>
+ <button data-t="photos">Fotobibliothek</button>
  <button data-t="wifi">Netzwerk</button>
  <button data-t="update">System</button>
  <button data-t="settingsAdvanced">Erweitert</button>
@@ -130,21 +131,31 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
  <section id="settingsClock" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Uhr &amp; Zeit</h2><p>Zeitzone, Zeitformat und Darstellung deiner Uhr festlegen.</p></div></section>
  <section id="settingsThemes" class="tab">
   <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Themes</h2><p>Themes verwalten und festlegen, wann sie angezeigt werden.</p></div>
-  <div class="theme-subnav" role="tablist" aria-label="Theme-Bereiche">
-   <button type="button" class="active" data-theme-pane-button="themeLibrary">Bibliothek</button>
-   <button type="button" data-theme-pane-button="themeAutomation">Automatik</button>
+  <div id="themeLibrary"></div>
+ </section>
+ <section id="showflow" class="tab">
+  <div class="page-intro"><p class="eyebrow">Wiedergabe</p><h2>Showflow</h2><p>Erstelle eine gemeinsame Abfolge aus Themes und einzelnen Fotos. Jeder Schritt hat seine eigene Anzeigedauer.</p></div>
+  <div class="card"><h2>Wiedergabe</h2>
+   <div class="chk"><input id="showflowEnabled" type="checkbox" onchange="showflowToggle()"><label for="showflowEnabled">Showflow aktivieren</label></div>
+   <div class="chk"><input id="showflowRandom" type="checkbox"><label for="showflowRandom">Zufällige Reihenfolge (keine direkte Wiederholung desselben Schritts)</label></div>
+   <small class="hint">Ohne Zufallsmodus läuft die Liste von oben nach unten. Showflow wird im Theme-Modus abgespielt.</small>
   </div>
-  <div id="themeLibrary" class="themePane active"></div>
-  <div id="themeAutomation" class="themePane"></div>
+  <div class="card"><h2>Schritte</h2>
+   <div class="row" style="align-items:end;margin-top:8px">
+    <div><label for="showflowThemeAdd">Installiertes Theme</label><select id="showflowThemeAdd"></select></div>
+    <button class="btn sec" type="button" onclick="addShowflowTheme()">Theme hinzufügen</button>
+   </div>
+   <div class="row" style="align-items:end;margin-top:12px">
+    <div><label for="showflowPhotoAddMode">Foto-Schritt</label><select id="showflowPhotoAddMode" onchange="showflowPhotoModeChanged()"><option value="random" selected>Zufallsfoto (Standard)</option><option value="fixed">Festes Foto auswählen</option></select></div>
+    <div><label for="showflowPhotoAddId">Foto aus Bibliothek</label><select id="showflowPhotoAddId" disabled></select></div>
+    <button class="btn sec" type="button" onclick="addShowflowPhoto()">Foto hinzufügen</button>
+   </div>
+   <div id="showflowList" style="margin-top:14px"></div>
+   <small class="hint">Maximal 16 Schritte. Pro Schritt 5 bis 3600 Sekunden. Wiederholte Einträge sind erlaubt. Neue Foto-Schritte starten mit Zufallsfoto; feste Fotos lassen sich im Schritt auswählen.</small>
+  </div>
  </section>
  <section id="photos" class="tab">
-  <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Fotos</h2><p>Fotos verwalten und ihre Wiedergabe zwischen Themes konfigurieren.</p></div>
-  <div class="card"><h2>Foto-Wiedergabe</h2>
-   <div class="chk"><input id="photoPlaybackEnabled" type="checkbox"><label for="photoPlaybackEnabled">Fotos nach jedem Theme anzeigen</label></div>
-   <label for="photosPerTheme">Fotos nach jedem Theme</label><select id="photosPerTheme"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select>
-   <label for="photoDwellSeconds">Anzeigedauer pro Foto</label><select id="photoDwellSeconds"><option value="5">5 Sekunden</option><option value="10" selected>10 Sekunden</option><option value="15">15 Sekunden</option><option value="20">20 Sekunden</option><option value="30">30 Sekunden</option><option value="60">60 Sekunden</option><option value="0">Zufällig (5–60 Sekunden)</option></select>
-   <small class="hint">Fotos werden nur zwischen den Themes der aktiven Playlist gezeigt. Die Theme-Reihenfolge bleibt bestehen. Änderungen mit „Einstellungen speichern“ übernehmen.</small>
-  </div>
+  <div class="page-intro"><p class="eyebrow">Bibliothek</p><h2>Fotobibliothek</h2><p>Fotos und vorbereitete GIF-Animationen verwalten. Showflow speichert nur Foto-IDs, keine Bilddaten.</p></div>
   <div class="card"><h2>Foto-Bibliothek</h2>
   <p>Fotos werden auf 240 × 240 Pixel zugeschnitten und als JPEG gespeichert. GIFs laufen im Foto-Cycle als Animation mit bis zu 12 bei etwa 100 ms abgetasteten Frames und maximal 128 KiB.</p>
    <div class="photo-stats"><span><b id="photoCount">0</b> / 240 Fotos</span><span>Fotodaten: <b id="photoBytes">0 B</b></span><span>Für Fotos frei: <b id="photoFree">wird geladen …</b></span><span>LittleFS gesamt: <b id="photoStorageTotal">—</b></span></div>
@@ -207,20 +218,7 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <label>Theme-Datei installieren</label><input id="themeFile" type="file" accept=".stheme">
    <button class="btn" id="themeUploadBtn" onclick="installTheme()">.stheme installieren</button>
    <small class="hint" id="themeStatus">Themes werden geladen …</small>
-   <small class="hint">Installiere ein .stheme-Paket und wähle es hier aus oder füge es der Playlist hinzu.</small>
-  </div>
-  <div class="card" id="themePlaylistCard" style="display:none"><h2>Theme-Playlist</h2>
-   <div class="chk"><input id="themePlaylistEnabled" type="checkbox" onchange="themePlaylistToggle()"><label>Themes automatisch nacheinander anzeigen</label></div>
-   <div class="chk"><input id="themePlaylistRandom" type="checkbox"><label>Zufällige Reihenfolge (ohne direkte Wiederholung)</label></div>
-   <label>Standard-Anzeigedauer für neu hinzugefügte Uhr-Themes: <span id="clockThemeDwellVal"></span> Sekunden</label>
-   <input id="clockThemeDwell" type="range" min="30" max="3600" step="30" oninput="clockThemeDwellVal.textContent=this.value">
-   <button class="btn sec" type="button" onclick="applyClockThemeDwell()">Standarddauer auf alle Uhr-Themes anwenden</button>
-   <div class="row" style="align-items:end;margin-top:12px">
-    <div><label>Installiertes Theme hinzufügen</label><select id="themePlaylistAdd"></select></div>
-    <button class="btn sec" type="button" onclick="themePlaylistAddItem()">Hinzufügen</button>
-   </div>
-   <div id="themePlaylistList" style="margin-top:12px"></div>
-   <small class="hint">Ohne Zeitfenster wechseln die Themes nach Anzeigedauer oder zufällig. Ein Zeitfenster benötigt NTP und hält das erste passende Theme bis zum Ende des Fensters aktiv; in dieser Zeit greifen Zufallsmodus, Anzeigedauer und Fotoeinblendung nicht. Bei überlappenden Fenstern gewinnt der erste Playlist-Eintrag. Außerhalb der Zeitfenster erscheint das Rückfall-Theme. Ohne NTP läuft die Playlist normal weiter. Änderungen mit „Änderungen speichern“ sichern.</small>
+   <small class="hint">Installiere ein .stheme-Paket und wähle es hier aus Die Wiedergabe stellst du im Showflow zusammen.</small>
   </div>
   <div class="card"><h2>Bildschirm</h2>
    <label>Helligkeit: <span id="brVal"></span>%</label>
@@ -404,14 +402,11 @@ function arrangeSettingsPages(){
  var cards=Array.prototype.slice.call(display.querySelectorAll(':scope > .card'));
  cards.forEach(function(card){
   if(card.id==='themeCard'){$('themeLibrary').appendChild(card);return}
-  if(card.id==='themePlaylistCard'){$('themeAutomation').appendChild(card);return}
   var page=$(card.dataset.page||'settingsDisplay');if(page)page.appendChild(card);
  });
  display.classList.remove('active');
 }
 arrangeSettingsPages();
-function showThemePane(id){document.querySelectorAll('.themePane').forEach(function(p){p.classList.toggle('active',p.id===id)});document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.classList.toggle('active',b.dataset.themePaneButton===id)});}
-document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.onclick=function(){showThemePane(b.dataset.themePaneButton)}});
 var themeModeButton=$('themeMode');
 if(themeModeButton){var savedThemeMode=localStorage.getItem('smalltv-ui-theme');if(savedThemeMode==='dark')document.body.classList.remove('light');themeModeButton.textContent=document.body.classList.contains('light')?'Dunkles Design':'Helles Design';themeModeButton.onclick=function(){document.body.classList.toggle('light');var light=document.body.classList.contains('light');localStorage.setItem('smalltv-ui-theme',light?'light':'dark');themeModeButton.textContent=light?'Dunkles Design':'Helles Design'};}
 // null-safe field helpers: a lean build removes some feature tabs entirely
