@@ -37,26 +37,26 @@ void PhotoSlideshow::begin() {
   sequence_.seed(ESP.getCycleCount());
 }
 
-bool PhotoSlideshow::start(uint8_t photosPerTheme, uint8_t dwellSeconds) {
-  // TJpg_Decoder's roughly 3.5 KiB workspace is a static member of its
-  // global instance, not a runtime heap allocation. Keep the same conservative
-  // headroom used for web requests, but do not require an impossible 16 KiB
-  // free heap on the ESP8266 after the theme has been released.
+bool PhotoSlideshow::startOne(uint8_t photoId, bool randomPhoto, uint16_t dwellSeconds) {
+  // Require a contiguous heap block before touching LittleFS/JPEG state.
   constexpr uint32_t MinFreeHeap = 8UL * 1024UL;
   constexpr uint32_t MinLargestBlock = 3UL * 1024UL;
   if (ESP.getFreeHeap() < MinFreeHeap || platformMaxFreeBlock() < MinLargestBlock) return false;
   const uint8_t available = smalltv_photo::count();
-  if (!available || !photosPerTheme) return false;
+  if (!available || (!randomPhoto && !smalltv_photo::contains(photoId))) return false;
   sequence_.setPhotos(smalltv_photo::slots(), available);
-  target_ = smalltv_photo::photosInBatch(available, photosPerTheme);
+  target_ = 1;
   shown_ = 0;
-  dwellSeconds_ = dwellSeconds;
+  requestedPhoto_ = photoId;
+  randomPhoto_ = randomPhoto;
+  dwellSeconds_ = static_cast<uint16_t>(constrain((int)dwellSeconds, 5, 3600));
+  currentDwellSeconds_ = dwellSeconds_;
   memset(attempted_, 0, sizeof(attempted_));
   generation_ = smalltv_photo::generation();
   showing_ = false;
-  currentDwellSeconds_ = dwellSeconds_ ? dwellSeconds_ : 10;
-  active_ = target_ != 0;
-  return active_;
+  currentAnimated_ = false;
+  active_ = true;
+  return true;
 }
 
 bool PhotoSlideshow::wasAttempted(uint8_t id) const {
@@ -80,7 +80,7 @@ bool PhotoSlideshow::draw(uint8_t id) {
 
 bool PhotoSlideshow::service(const Settings& settings) {
   if (!active_) return true;
-  if (!settings.photosEnabled || settings.mode != MODE_THEME || !settings.themePlaylistEnabled) {
+  if (settings.mode != MODE_THEME) {
     active_ = false;
     showing_ = false;
     currentAnimated_ = false;
@@ -89,10 +89,8 @@ bool PhotoSlideshow::service(const Settings& settings) {
 
   if (generation_ != smalltv_photo::generation()) {
     generation_ = smalltv_photo::generation();
-    const uint8_t available = smalltv_photo::count();
-    sequence_.setPhotos(smalltv_photo::slots(), available);
-    const uint8_t newTarget = smalltv_photo::photosInBatch(available, settings.photosPerTheme);
-    if (newTarget < target_) target_ = newTarget;
+    sequence_.setPhotos(smalltv_photo::slots(), smalltv_photo::count());
+    if (!randomPhoto_ && !smalltv_photo::contains(requestedPhoto_)) target_ = 0;
   }
 
   if (showing_) {
@@ -112,25 +110,27 @@ bool PhotoSlideshow::service(const Settings& settings) {
 
   const uint8_t available = smalltv_photo::count();
   for (uint8_t attempt = 0; attempt < available; ++attempt) {
-    uint8_t id;
-    if (!sequence_.next(id)) break;
+    uint8_t id = requestedPhoto_;
+    if (randomPhoto_) {
+      if (!sequence_.next(id)) break;
+    } else if (attempt || shown_ || wasAttempted(requestedPhoto_)) {
+      break;
+    }
     if (wasAttempted(id)) continue;
     markAttempted(id);
     currentPhoto_ = id;
     animationFrameCount_ = smalltv_photo::isAnimation(id) ? smalltv_photo::frameCount(id) : 0;
     currentAnimated_ = animationFrameCount_ > 1;
     animationFrame_ = 0;
-    if (!draw(id)) return false; // retry another ID on the next loop pass
+    if (!draw(id)) { currentAnimated_ = false; continue; }
     ++shown_;
-    if (dwellSeconds_ == 0) {
-      currentDwellSeconds_ = sequence_.randomDwellSeconds();
-    } else currentDwellSeconds_ = dwellSeconds_;
+    currentDwellSeconds_ = dwellSeconds_;
     shownAt_ = millis();
     nextFrameAt_ = shownAt_ + (currentAnimated_ ? smalltv_photo::frameDelayMs(id, 0) : 0);
     showing_ = true;
     return false;
   }
-  active_ = false; // all currently available files were tried once
+  active_ = false; // this step's selected photo could not be displayed
   return true;
 }
 #endif
