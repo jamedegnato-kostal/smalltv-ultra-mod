@@ -3,8 +3,10 @@
 #if WITH_PHOTOS
 #include "Settings.h"
 #include "PhotoShuffle.h"
+#include "PhotoLibrary.h"
 
 bool photoValidateJpeg(const String& path);
+bool photoValidateJpeg(const String& path, uint32_t offset, uint32_t length);
 
 class PhotoSlideshow {
  public:
@@ -26,6 +28,7 @@ class PhotoSlideshow {
   uint16_t generation_ = 0;
   uint32_t shownAt_ = 0, nextFrameAt_ = 0;
   uint8_t attempted_[(smalltv_photo::MaxPhotos + 7) / 8] = {};
+  smalltv_photo::AnimationFrameInfo animationFrames_[smalltv_photo::MaxAnimationFrames] = {};
   smalltv_photo::ShuffleBag sequence_;
 };
 

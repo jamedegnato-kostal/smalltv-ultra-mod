@@ -68,92 +68,41 @@ uint32_t photoUploadBytes = 0, photoUploadBudget = 0;
 int photoUploadSlot = -1;
 uint16_t photoUploadParts = 0;
 uint8_t photoUploadFrameCount = 0;
-uint16_t photoUploadFrameDelays[smalltv_photo::MaxAnimationFrames] = {};
 bool photoUploadAllowed = false, photoUploadEnded = false, photoUploadAnimated = false;
 constexpr uint32_t MaxPhotoBytes = 128UL * 1024UL;
 constexpr char PhotoUploadPath[] = "/photos/.upload";
 constexpr char PhotoAnimationUploadPath[] = "/photos/.anim-upload";
 
-String photoAnimationFramePath(uint8_t slot, uint8_t frame, bool temporary) {
-  char path[32];
-  snprintf(path, sizeof(path), temporary ? "/photos/.p%03uf%02u.tmp" : "/photos/p%03uf%02u.jpg",
-           unsigned(slot), unsigned(frame));
-  return String(path);
-}
-String photoAnimationMetaPath(uint8_t slot, bool temporary) {
-  char path[28];
-  snprintf(path, sizeof(path), temporary ? "/photos/.p%03u.anim.tmp" : "/photos/p%03u.anim", unsigned(slot));
-  return String(path);
-}
-void clearPhotoAnimationStage(uint8_t slot) {
-  LittleFS.remove(photoAnimationMetaPath(slot, true));
-  for (uint8_t i = 0; i < smalltv_photo::MaxAnimationFrames; ++i)
-    LittleFS.remove(photoAnimationFramePath(slot, i, true));
-}
-void clearPhotoAnimationSlot(uint8_t slot) {
-  LittleFS.remove(photoAnimationMetaPath(slot, false));
-  for (uint8_t i = 0; i < smalltv_photo::MaxAnimationFrames; ++i)
-    LittleFS.remove(photoAnimationFramePath(slot, i, false));
-}
-
-bool unpackPhotoAnimation(const String& container, uint8_t slot) {
-  clearPhotoAnimationStage(slot);
+bool validatePhotoAnimation(const String& container) {
   File input = LittleFS.open(container, "r");
   uint8_t header[5];
   if (!input || input.read(header, sizeof(header)) != sizeof(header) || memcmp(header, "PGA1", 4)) return false;
   const uint8_t count = header[4];
   if (count < 2 || count > smalltv_photo::MaxAnimationFrames) return false;
-  uint8_t buffer[512];
-  uint64_t payloadEnd = 5;
+
+  const uint32_t fileSize = input.size();
+  uint32_t cursor = 5;
   for (uint8_t frame = 0; frame < count; ++frame) {
     uint8_t record[6];
-    if (input.read(record, sizeof(record)) != sizeof(record)) { clearPhotoAnimationStage(slot); return false; }
-    const uint16_t delay = record[0] | (uint16_t(record[1]) << 8);
+    if (cursor > fileSize || fileSize - cursor < sizeof(record) ||
+        !input.seek(cursor, SeekSet) || input.read(record, sizeof(record)) != sizeof(record)) return false;
+    const uint16_t delay = uint16_t(record[0]) | (uint16_t(record[1]) << 8);
     const uint32_t length = uint32_t(record[2]) | (uint32_t(record[3]) << 8) |
       (uint32_t(record[4]) << 16) | (uint32_t(record[5]) << 24);
-    if (delay < 20 || delay > 2000 || !length || length > photoUploadBytes ||
-        uint64_t(input.position()) + length > input.size()) { clearPhotoAnimationStage(slot); return false; }
-    File output = LittleFS.open(photoAnimationFramePath(slot, frame, true), "w");
-    if (!output) { clearPhotoAnimationStage(slot); return false; }
-    uint32_t remaining = length;
-    while (remaining) {
-      const size_t take = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-      if (input.read(buffer, take) != static_cast<int>(take) || output.write(buffer, take) != take) {
-        output.close(); clearPhotoAnimationStage(slot); return false;
-      }
-      remaining -= take;
-      yield();
-    }
-    output.close();
-    if (!photoValidateJpeg(photoAnimationFramePath(slot, frame, true))) { clearPhotoAnimationStage(slot); return false; }
-    photoUploadFrameDelays[frame] = delay;
-    payloadEnd += 6 + length;
+    const uint32_t offset = input.position();
+    if (delay < 20 || delay > 2000 || !length || offset > fileSize || length > fileSize - offset ||
+        !photoValidateJpeg(container, offset, length)) return false;
+    cursor = offset + length;
+    yield();
   }
-  if (payloadEnd != input.size() || input.position() != input.size()) { clearPhotoAnimationStage(slot); return false; }
-  File meta = LittleFS.open(photoAnimationMetaPath(slot, true), "w");
-  const uint8_t metaHeader[5] = {'P', 'G', 'A', '1', count};
-  if (!meta || meta.write(metaHeader, sizeof(metaHeader)) != sizeof(metaHeader)) { clearPhotoAnimationStage(slot); return false; }
-  for (uint8_t frame = 0; frame < count; ++frame) {
-    const uint8_t delay[2] = {uint8_t(photoUploadFrameDelays[frame]), uint8_t(photoUploadFrameDelays[frame] >> 8)};
-    if (meta.write(delay, sizeof(delay)) != sizeof(delay)) { meta.close(); clearPhotoAnimationStage(slot); return false; }
-  }
-  meta.close();
+  if (cursor != fileSize) return false;
   photoUploadFrameCount = count;
   return true;
 }
 
 bool commitPhotoAnimation(uint8_t slot) {
-  uint8_t moved = 0;
-  for (; moved < photoUploadFrameCount; ++moved) {
-    if (!LittleFS.rename(photoAnimationFramePath(slot, moved, true), photoAnimationFramePath(slot, moved, false))) {
-      clearPhotoAnimationSlot(slot); clearPhotoAnimationStage(slot); return false;
-    }
-  }
-  if (!LittleFS.rename(photoAnimationMetaPath(slot, true), photoAnimationMetaPath(slot, false))) {
-    clearPhotoAnimationSlot(slot); clearPhotoAnimationStage(slot); return false;
-  }
-  LittleFS.remove(PhotoAnimationUploadPath);
-  return true;
+  const String target = smalltv_photo::animationPath(slot);
+  return !LittleFS.exists(target) && LittleFS.rename(PhotoAnimationUploadPath, target);
 }
 
 uint32_t photoReserveBytes() {
@@ -181,7 +130,6 @@ void abortPhotoUpload(const String& reason) {
   photoUpload.close();
   LittleFS.remove(PhotoUploadPath);
   LittleFS.remove(PhotoAnimationUploadPath);
-  if (photoUploadSlot >= 0) clearPhotoAnimationStage(static_cast<uint8_t>(photoUploadSlot));
   photoUploadError = reason;
   photoUploadEnded = false;
   photoUploadAllowed = false;
@@ -207,8 +155,8 @@ void receivePhotoUpload() {
     const uint32_t free = smalltv_photo::filesystemFreeBytes();
     const uint32_t reserve = photoReserveBytes();
     if (free <= reserve) { photoUploadError = "Zu wenig freier Speicher; lösche zuerst Fotos oder Themes"; return; }
+    // Validate frames from the uploaded PGA1 container without making copies.
     photoUploadBudget = free - reserve;
-    if (photoUploadAnimated) photoUploadBudget /= 2; // container and extracted JPEG frames coexist during validation
     if (photoUploadBudget > MaxPhotoBytes) photoUploadBudget = MaxPhotoBytes;
     LittleFS.remove(PhotoUploadPath);
     LittleFS.remove(PhotoAnimationUploadPath);
@@ -244,11 +192,11 @@ void receivePhotoUpload() {
       return;
     }
     const bool valid = photoUploadAnimated
-      ? unpackPhotoAnimation(PhotoAnimationUploadPath, static_cast<uint8_t>(photoUploadSlot))
+      ? validatePhotoAnimation(PhotoAnimationUploadPath)
       : photoValidateJpeg(PhotoUploadPath);
     if (!valid) {
       photoUploadError = photoUploadAnimated
-        ? "Ungültige GIF-Animation; erwartet werden 2–12 vollständig lesbare 240×240-Frames"
+        ? "Ungültige GIF-Animation; erwartet werden 2–12 vollständig lesbare 240×240-JPEG-Frames"
         : "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
       LittleFS.remove(PhotoUploadPath); return;
     }
@@ -322,6 +270,38 @@ void handlePhotoFile() {
   uint8_t id;
   if (!requestPhotoId(id) || !smalltv_photo::contains(id)) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
   appRelease();
+
+  if (smalltv_photo::isAnimation(id)) {
+    smalltv_photo::AnimationFrameInfo frames[smalltv_photo::MaxAnimationFrames];
+    uint8_t count = 0;
+    if (!smalltv_photo::loadAnimationFrames(id, frames, smalltv_photo::MaxAnimationFrames, count) || !count) {
+      server.send(404, "text/plain", "Foto nicht gefunden"); return;
+    }
+    if (frames[0].embedded) {
+      File file = LittleFS.open(smalltv_photo::animationPath(id), "r");
+      if (!file || !file.seek(frames[0].offset, SeekSet)) {
+        server.send(404, "text/plain", "Foto nicht gefunden"); return;
+      }
+      server.sendHeader("Cache-Control", "no-store");
+      server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      server.send(200, "image/jpeg", "");
+      uint8_t buffer[256];
+      uint32_t remaining = frames[0].length;
+      while (remaining) {
+        const size_t wanted = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+        const int got = file.read(buffer, wanted);
+        if (got <= 0) break;
+        server.sendContent(reinterpret_cast<const char*>(buffer), static_cast<size_t>(got));
+        remaining -= static_cast<uint32_t>(got);
+        if (static_cast<size_t>(got) != wanted) break;
+        yield();
+      }
+      file.close();
+      server.sendContent("", 0);
+      return;
+    }
+  }
+
   const String path = smalltv_photo::isAnimation(id) ? smalltv_photo::framePath(id, 0) : smalltv_photo::path(id);
   File file = LittleFS.open(path, "r");
   if (!file) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
