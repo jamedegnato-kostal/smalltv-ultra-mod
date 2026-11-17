@@ -144,15 +144,25 @@ static void showflowReset() {
   g_themeMode.setPlaylistTheme(nullptr);
 }
 
-static bool showflowSelectNext(const Settings& s) {
+static bool showflowSelectNext(const Settings& s, bool skipCurrent = false) {
   const uint8_t count = s.showflowCount;
   if (!count) return false;
-  const uint8_t start = s.showflowRandom
-    ? static_cast<uint8_t>(random(count))
-    : (g_showflowIndex == 0xff ? 0 : static_cast<uint8_t>((g_showflowIndex + 1) % count));
+  const bool avoidCurrent = skipCurrent && g_showflowIndex < count;
+  if (avoidCurrent && count < 2) return false;
+  uint8_t start = 0;
+  if (s.showflowRandom) {
+    // Pick uniformly from all steps except the last one in random mode.
+    start = avoidCurrent
+      ? static_cast<uint8_t>(random(count - 1))
+      : static_cast<uint8_t>(random(count));
+    if (avoidCurrent && start >= g_showflowIndex) ++start;
+  } else {
+    start = g_showflowIndex == 0xff
+      ? 0 : static_cast<uint8_t>((g_showflowIndex + 1) % count);
+  }
   for (uint8_t hop = 0; hop < count; ++hop) {
     const uint8_t candidate = static_cast<uint8_t>((start + hop) % count);
-    if (count > 1 && candidate == g_showflowIndex) continue;
+    if ((count > 1 || skipCurrent) && candidate == g_showflowIndex) continue;
     const auto& step = s.showflow[candidate];
     if (step.type == Settings::ShowflowTheme) {
       char path[64];
@@ -201,7 +211,7 @@ static void showflowService(const Settings& s) {
   }
   if (g_showflowPhoto) return;
   if (g_themeMode.playlistLoadFailed()) {
-    if (!showflowSelectNext(s)) {
+    if (!showflowSelectNext(s, true)) {
       g_themeMode.setPlaylistTheme(nullptr);
       g_showflowRunning = false;
       g_showflowStopped = true;
