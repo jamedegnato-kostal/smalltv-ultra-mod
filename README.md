@@ -15,7 +15,7 @@ Dies ist ein **Firmware-Repository**, kein Hardware-Shop und kein offizielles Pr
 
 ## Weboberfläche
 
-Die Firmware enthält eine lokal auf dem Gerät gehostete, responsive Weboberfläche. Sie wird im Browser über die IP-Adresse des SmallTV geöffnet. Die folgende Grafik ist eine **schematische Darstellung** der tatsächlichen Navigations- und Statusstruktur; angezeigte Werte sind Platzhalter, keine Live-Gerätedaten.
+Die Firmware enthält eine lokal auf dem Gerät gehostete, responsive Weboberfläche. Sie wird im Browser über die IP-Adresse des SmallTV geöffnet. Der [HTML-Quellcode](src/webui_settings.html) ist direkt im Firmware-Repository enthalten. Die folgende Grafik ist eine **schematische Darstellung** der tatsächlichen Navigations- und Statusstruktur; angezeigte Werte sind Platzhalter, keine Live-Gerätedaten.
 
 ![Schematische Übersicht der SmallTV Settings Weboberfläche](docs/public/assets/settings-ui-overview.svg)
 
