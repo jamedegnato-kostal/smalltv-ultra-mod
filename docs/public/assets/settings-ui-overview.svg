@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">SmallTV Settings – schematische Ansicht der Weboberfläche</title>
+<desc id="desc">Illustrative Darstellung der tatsächlichen Navigationsstruktur und Statuskarten der SmallTV Settings Weboberfläche. Keine Live-Gerätedaten.</desc>
+<defs>
+  <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#f5f8f4"/><stop offset="1" stop-color="#e9f0e8"/></linearGradient>
+  <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#3d9958"/><stop offset="1" stop-color="#277846"/></linearGradient>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#1c3825" flood-opacity=".12"/></filter>
+</defs>
+<rect width="1200" height="760" rx="28" fill="url(#bg)"/>
+<rect x="34" y="28" width="1132" height="704" rx="22" fill="#fff" stroke="#d7e2d6" filter="url(#shadow)"/>
+<rect x="34" y="28" width="1132" height="72" rx="22" fill="#fbfdfb"/>
+<path d="M34 100H1166" stroke="#e1e9e0"/>
+<g transform="translate(62 48)">
+  <rect x="0" y="0" width="34" height="28" rx="6" fill="none" stroke="#338b4f" stroke-width="2.5"/>
+  <path d="M6 19l7-7 6 4 7-10 5 5" fill="none" stroke="#338b4f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="48" y="21" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#1b2b20">SmallTV · Arbeitsplatz</text>
+  <circle cx="398" cy="14" r="5" fill="#d4a63d"/>
+  <text x="414" y="19" font-family="Inter,Arial,sans-serif" font-size="13" fill="#657366">Verbindungsstatus wird vom Gerät geladen</text>
+</g>
+<rect x="62" y="120" width="1076" height="54" rx="12" fill="#f4f8f3" stroke="#e2eae0"/>
+<g font-family="Inter,Arial,sans-serif" font-size="15" font-weight="600">
+  <rect x="72" y="128" width="116" height="38" rx="9" fill="#e1f0e2"/>
+  <text x="130" y="152" text-anchor="middle" fill="#246d3b">Übersicht</text>
+  <text x="236" y="152" fill="#627064">Anzeige</text>
+  <text x="350" y="152" fill="#627064">Uhr &amp; Zeit</text>
+  <text x="480" y="152" fill="#627064">Themes</text>
+  <text x="580" y="152" fill="#627064">Fotos</text>
+  <text x="672" y="152" fill="#627064">Netzwerk</text>
+  <text x="800" y="152" fill="#627064">System</text>
+  <text x="892" y="152" fill="#627064">Erweitert</text>
+</g>
+<text x="72" y="224" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" fill="#398451">SMALLTV · GERÄTEÜBERSICHT</text>
+<text x="72" y="266" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="750" fill="#1b2b20">Gerätestatus</text>
+<text x="72" y="294" font-family="Inter,Arial,sans-serif" font-size="16" fill="#657366">Verbindung, Anzeige und Uhr auf einen Blick.</text>
+<rect x="926" y="232" width="212" height="38" rx="19" fill="#edf6ed" stroke="#cfe3cf"/>
+<circle cx="947" cy="251" r="5" fill="#d4a63d"/>
+<text x="962" y="256" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="600" fill="#55715a">Beispielansicht · offline</text>
+<g filter="url(#shadow)">
+  <rect x="72" y="328" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+  <rect x="422" y="328" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+  <rect x="772" y="328" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+  <rect x="72" y="480" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+  <rect x="422" y="480" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+  <rect x="772" y="480" width="330" height="132" rx="16" fill="#fff" stroke="#dce7dc"/>
+</g>
+<g font-family="Inter,Arial,sans-serif">
+  <g fill="#748174" font-size="12" font-weight="700" letter-spacing="1.2">
+    <text x="96" y="362">WLAN</text><text x="446" y="362">GERÄTEADRESSE</text><text x="796" y="362">LAUFZEIT</text>
+    <text x="96" y="514">AKTIVES THEME</text><text x="446" y="514">HELLIGKEIT</text><text x="796" y="514">UHR / NTP</text>
+  </g>
+  <g fill="#1b2b20" font-size="22" font-weight="700">
+    <text x="96" y="403">Netzwerkstatus</text><text x="446" y="403">Lokale IP</text><text x="796" y="403">Gerätelaufzeit</text>
+    <text x="96" y="555">Ausgewähltes Theme</text><text x="446" y="555">Displaywert</text><text x="796" y="555">Zeitstatus</text>
+  </g>
+  <g fill="#398451" font-size="14" font-weight="600">
+    <text x="96" y="431">WLAN-Details öffnen →</text><text x="446" y="431">Weboberfläche öffnen →</text><text x="796" y="431">Systemdetails →</text>
+    <text x="96" y="583">Themes verwalten →</text><text x="446" y="583">Anzeige konfigurieren →</text><text x="796" y="583">Uhr einstellen →</text>
+  </g>
+</g>
+<rect x="72" y="640" width="330" height="46" rx="11" fill="#eef4ee" stroke="#dce7dc"/>
+<rect x="422" y="640" width="330" height="46" rx="11" fill="#eef4ee" stroke="#dce7dc"/>
+<rect x="772" y="640" width="330" height="46" rx="11" fill="url(#accent)"/>
+<g font-family="Inter,Arial,sans-serif" font-size="14" font-weight="650" text-anchor="middle">
+  <text x="237" y="669" fill="#365640">WLAN einrichten</text>
+  <text x="587" y="669" fill="#365640">Themes öffnen</text>
+  <text x="937" y="669" fill="#fff">System &amp; Firmware</text>
+</g>
+<text x="1138" y="714" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="11" fill="#829082">Schematische Darstellung der Oberfläche · keine Live-Daten</text>
+</svg>
