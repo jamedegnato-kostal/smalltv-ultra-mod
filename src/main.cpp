@@ -699,7 +699,7 @@ void loop() {
           g_showflowRunning = false;
           g_showflowStopped = true;
         }
-        g_themeMode.wake(g_settings);
+        if (!g_showflowPhoto) g_themeMode.wake(g_settings);
       } else {
         showflowReset();
       }
@@ -709,8 +709,11 @@ void loop() {
   }
 #endif
   showflowService(g_settings);
+#if WITH_PHOTOS
+  if (g_photoSlideshow.active()) { delay(5); return; }
 #endif
-  // A playlist may have selected/unloaded a theme above; display dispatch still
+#endif
+  // Showflow may have selected/unloaded a theme above; display dispatch still
   // goes through the normal active-mode registry.
   DisplayMode* m = activeMode(g_settings);
   if (m) {
