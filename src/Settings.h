@@ -236,24 +236,20 @@ struct Settings {
   bool carouselTheme;
 #endif
 #if WITH_THEME_PLAYLIST
-  static constexpr uint8_t MaxThemePlaylistItems = 8;
-  struct ThemePlaylistItem {
-    char id[49];
+  static constexpr uint8_t MaxShowflowSteps = 16;
+  static constexpr uint8_t ShowflowTheme = 0;
+  static constexpr uint8_t ShowflowPhoto = 1;
+  struct ShowflowStep {
+    char themeId[49];
     uint16_t seconds;
-    bool scheduled;
-    uint16_t startMinute;
-    uint16_t endMinute;
+    uint8_t type;
+    uint8_t photoId;
+    bool randomPhoto;
   };
-  bool themePlaylistEnabled;
-  bool themePlaylistRandom;
-  uint16_t clockThemeDefaultSeconds; // suggested dwell when adding a clock theme
-  uint8_t themePlaylistCount;
-  ThemePlaylistItem themePlaylist[MaxThemePlaylistItems];
-#endif
-#if WITH_PHOTOS
-  bool photosEnabled;
-  uint8_t photosPerTheme;
-  uint8_t photoDwellSeconds; // 0 = choose a supported duration for each photo
+  bool showflowEnabled;
+  bool showflowRandom;
+  uint8_t showflowCount;
+  ShowflowStep showflow[MaxShowflowSteps];
 #endif
 
   // --- Shared HTTP / display ---
