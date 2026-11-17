@@ -51,7 +51,8 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
 - `smalltv-settings-firmware.bin` – reguläre Settings-Firmware
-- `smalltv-loader.bin` – separates Hilfsimage für bestimmte Erstinstallationswege
+
+Das Loader-Image wird im normalen Release nicht mitveröffentlicht. Falls der dokumentierte Erstinstallationsweg es erfordert, kann es lokal mit `python -m platformio run -e smalltv_loader` gebaut werden.
 
 Prüfe vor dem Flashen die Hardware- und Flashlayout-Hinweise in der [Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/).
 
