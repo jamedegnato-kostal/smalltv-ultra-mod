@@ -173,7 +173,7 @@ static std::vector<Case> cases() {
   Case full("full", true, true);
   full.d.updateMsg = "update failed: HTTP \"404\"";
   full.d.wifiFail = "wrong password\n(try again)";
-  full.d.ssid = "caf\xc3\xa9 \"WiFi\" \\ 5G";
+  full.d.ssid = "<img src=x onerror=alert(1)>";
   full.d.rssi = -91;
   full.d.heap = 4294967295u;
   full.d.maxblk = 0;
