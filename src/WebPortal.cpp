@@ -446,7 +446,7 @@ static void handleGetConfig() {
   feat["radar"]  = (bool)WITH_RADAR;
   feat["ha"]     = (bool)WITH_HA;
   feat["theme"]  = (bool)WITH_THEME;
-  feat["themePlaylist"] = (bool)WITH_THEME_PLAYLIST;
+  feat["showflow"] = (bool)WITH_THEME_PLAYLIST;
   feat["photos"] = (bool)WITH_PHOTOS;
   // Physical button: only present in some boards, so the UI hides its card otherwise.
 #ifdef BTN_PIN

@@ -120,7 +120,8 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
  <button data-t="settingsDisplay">Anzeige</button>
  <button data-t="settingsClock">Uhr &amp; Zeit</button>
  <button data-t="settingsThemes">Themes</button>
- <button data-t="photos">Fotos</button>
+ <button data-t="showflow">Showflow</button>
+ <button data-t="photos">Fotobibliothek</button>
  <button data-t="wifi">Netzwerk</button>
  <button data-t="update">System</button>
  <button data-t="settingsAdvanced">Erweitert</button>
@@ -130,21 +131,31 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
  <section id="settingsClock" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Uhr &amp; Zeit</h2><p>Zeitzone, Zeitformat und Darstellung deiner Uhr festlegen.</p></div></section>
  <section id="settingsThemes" class="tab">
   <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Themes</h2><p>Themes verwalten und festlegen, wann sie angezeigt werden.</p></div>
-  <div class="theme-subnav" role="tablist" aria-label="Theme-Bereiche">
-   <button type="button" class="active" data-theme-pane-button="themeLibrary">Bibliothek</button>
-   <button type="button" data-theme-pane-button="themeAutomation">Automatik</button>
+  <div id="themeLibrary"></div>
+ </section>
+ <section id="showflow" class="tab">
+  <div class="page-intro"><p class="eyebrow">Wiedergabe</p><h2>Showflow</h2><p>Erstelle eine gemeinsame Abfolge aus Themes und einzelnen Fotos. Jeder Schritt hat seine eigene Anzeigedauer.</p></div>
+  <div class="card"><h2>Wiedergabe</h2>
+   <div class="chk"><input id="showflowEnabled" type="checkbox" onchange="showflowToggle()"><label for="showflowEnabled">Showflow aktivieren</label></div>
+   <div class="chk"><input id="showflowRandom" type="checkbox"><label for="showflowRandom">Zufällige Reihenfolge (keine direkte Wiederholung desselben Schritts)</label></div>
+   <small class="hint">Ohne Zufallsmodus läuft die Liste von oben nach unten. Showflow wird im Theme-Modus abgespielt.</small>
   </div>
-  <div id="themeLibrary" class="themePane active"></div>
-  <div id="themeAutomation" class="themePane"></div>
+  <div class="card"><h2>Schritte</h2>
+   <div class="row" style="align-items:end;margin-top:8px">
+    <div><label for="showflowThemeAdd">Installiertes Theme</label><select id="showflowThemeAdd"></select></div>
+    <button class="btn sec" type="button" onclick="addShowflowTheme()">Theme hinzufügen</button>
+   </div>
+   <div class="row" style="align-items:end;margin-top:12px">
+    <div><label for="showflowPhotoAddMode">Foto-Schritt</label><select id="showflowPhotoAddMode" onchange="showflowPhotoModeChanged()"><option value="random" selected>Zufallsfoto (Standard)</option><option value="fixed">Festes Foto auswählen</option></select></div>
+    <div><label for="showflowPhotoAddId">Foto aus Bibliothek</label><select id="showflowPhotoAddId" disabled></select></div>
+    <button class="btn sec" type="button" onclick="addShowflowPhoto()">Foto hinzufügen</button>
+   </div>
+   <div id="showflowList" style="margin-top:14px"></div>
+   <small class="hint">Maximal 16 Schritte. Pro Schritt 5 bis 3600 Sekunden. Wiederholte Einträge sind erlaubt. Neue Foto-Schritte starten mit Zufallsfoto; feste Fotos lassen sich im Schritt auswählen.</small>
+  </div>
  </section>
  <section id="photos" class="tab">
-  <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Fotos</h2><p>Fotos verwalten und ihre Wiedergabe zwischen Themes konfigurieren.</p></div>
-  <div class="card"><h2>Foto-Wiedergabe</h2>
-   <div class="chk"><input id="photoPlaybackEnabled" type="checkbox"><label for="photoPlaybackEnabled">Fotos nach jedem Theme anzeigen</label></div>
-   <label for="photosPerTheme">Fotos nach jedem Theme</label><select id="photosPerTheme"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select>
-   <label for="photoDwellSeconds">Anzeigedauer pro Foto</label><select id="photoDwellSeconds"><option value="5">5 Sekunden</option><option value="10" selected>10 Sekunden</option><option value="15">15 Sekunden</option><option value="20">20 Sekunden</option><option value="30">30 Sekunden</option><option value="60">60 Sekunden</option><option value="0">Zufällig (5–60 Sekunden)</option></select>
-   <small class="hint">Fotos werden nur zwischen den Themes der aktiven Playlist gezeigt. Die Theme-Reihenfolge bleibt bestehen. Änderungen mit „Einstellungen speichern“ übernehmen.</small>
-  </div>
+  <div class="page-intro"><p class="eyebrow">Bibliothek</p><h2>Fotobibliothek</h2><p>Fotos und vorbereitete GIF-Animationen verwalten. Showflow speichert nur Foto-IDs, keine Bilddaten.</p></div>
   <div class="card"><h2>Foto-Bibliothek</h2>
   <p>Fotos werden auf 240 × 240 Pixel zugeschnitten und als JPEG gespeichert. GIFs laufen im Foto-Cycle als Animation mit bis zu 12 bei etwa 100 ms abgetasteten Frames und maximal 128 KiB.</p>
    <div class="photo-stats"><span><b id="photoCount">0</b> / 240 Fotos</span><span>Fotodaten: <b id="photoBytes">0 B</b></span><span>Für Fotos frei: <b id="photoFree">wird geladen …</b></span><span>LittleFS gesamt: <b id="photoStorageTotal">—</b></span></div>
@@ -207,20 +218,7 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
    <label>Theme-Datei installieren</label><input id="themeFile" type="file" accept=".stheme">
    <button class="btn" id="themeUploadBtn" onclick="installTheme()">.stheme installieren</button>
    <small class="hint" id="themeStatus">Themes werden geladen …</small>
-   <small class="hint">Installiere ein .stheme-Paket und wähle es hier aus oder füge es der Playlist hinzu.</small>
-  </div>
-  <div class="card" id="themePlaylistCard" style="display:none"><h2>Theme-Playlist</h2>
-   <div class="chk"><input id="themePlaylistEnabled" type="checkbox" onchange="themePlaylistToggle()"><label>Themes automatisch nacheinander anzeigen</label></div>
-   <div class="chk"><input id="themePlaylistRandom" type="checkbox"><label>Zufällige Reihenfolge (ohne direkte Wiederholung)</label></div>
-   <label>Standard-Anzeigedauer für neu hinzugefügte Uhr-Themes: <span id="clockThemeDwellVal"></span> Sekunden</label>
-   <input id="clockThemeDwell" type="range" min="30" max="3600" step="30" oninput="clockThemeDwellVal.textContent=this.value">
-   <button class="btn sec" type="button" onclick="applyClockThemeDwell()">Standarddauer auf alle Uhr-Themes anwenden</button>
-   <div class="row" style="align-items:end;margin-top:12px">
-    <div><label>Installiertes Theme hinzufügen</label><select id="themePlaylistAdd"></select></div>
-    <button class="btn sec" type="button" onclick="themePlaylistAddItem()">Hinzufügen</button>
-   </div>
-   <div id="themePlaylistList" style="margin-top:12px"></div>
-   <small class="hint">Ohne Zeitfenster wechseln die Themes nach Anzeigedauer oder zufällig. Ein Zeitfenster benötigt NTP und hält das erste passende Theme bis zum Ende des Fensters aktiv; in dieser Zeit greifen Zufallsmodus, Anzeigedauer und Fotoeinblendung nicht. Bei überlappenden Fenstern gewinnt der erste Playlist-Eintrag. Außerhalb der Zeitfenster erscheint das Rückfall-Theme. Ohne NTP läuft die Playlist normal weiter. Änderungen mit „Änderungen speichern“ sichern.</small>
+   <small class="hint">Installiere ein .stheme-Paket und wähle es hier aus Die Wiedergabe stellst du im Showflow zusammen.</small>
   </div>
   <div class="card"><h2>Bildschirm</h2>
    <label>Helligkeit: <span id="brVal"></span>%</label>
@@ -393,7 +391,7 @@ function $(id){return document.getElementById(id)}
 function markSettingsDirty(){var status=$('saveStatus');if(status){status.textContent='Ungespeicherte Konfigurationsänderungen';status.classList.add('dirty')}}
 function isPersistedSetting(target){
  if(target.closest('dialog')||target.type==='file'||target.type==='search')return false;
- return !['themeSearch','clockThemeSearch','themeCategory','themeSelect','themePlaylistAdd'].includes(target.id);
+ return !['themeSearch','clockThemeSearch','themeCategory','themeSelect'].includes(target.id);
 }
 document.addEventListener('input',function(e){if(isPersistedSetting(e.target))markSettingsDirty()});
 document.addEventListener('change',function(e){if(isPersistedSetting(e.target))markSettingsDirty()});
@@ -404,14 +402,11 @@ function arrangeSettingsPages(){
  var cards=Array.prototype.slice.call(display.querySelectorAll(':scope > .card'));
  cards.forEach(function(card){
   if(card.id==='themeCard'){$('themeLibrary').appendChild(card);return}
-  if(card.id==='themePlaylistCard'){$('themeAutomation').appendChild(card);return}
   var page=$(card.dataset.page||'settingsDisplay');if(page)page.appendChild(card);
  });
  display.classList.remove('active');
 }
 arrangeSettingsPages();
-function showThemePane(id){document.querySelectorAll('.themePane').forEach(function(p){p.classList.toggle('active',p.id===id)});document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.classList.toggle('active',b.dataset.themePaneButton===id)});}
-document.querySelectorAll('[data-theme-pane-button]').forEach(function(b){b.onclick=function(){showThemePane(b.dataset.themePaneButton)}});
 var themeModeButton=$('themeMode');
 if(themeModeButton){var savedThemeMode=localStorage.getItem('smalltv-ui-theme');if(savedThemeMode==='dark')document.body.classList.remove('light');themeModeButton.textContent=document.body.classList.contains('light')?'Dunkles Design':'Helles Design';themeModeButton.onclick=function(){document.body.classList.toggle('light');var light=document.body.classList.contains('light');localStorage.setItem('smalltv-ui-theme',light?'light':'dark');themeModeButton.textContent=light?'Dunkles Design':'Helles Design'};}
 // null-safe field helpers: a lean build removes some feature tabs entirely
@@ -421,13 +416,22 @@ function gv(id){var e=$(id);return e?e.value:''}
 function gc(id){var e=$(id);return e?e.checked:false}
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2200)}
 function j(url,opt){return fetch(url,opt).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Request failed');return d})})}
-var photoUploadXhr=null,photoUploadCancel=false;
+var photoUploadXhr=null,photoUploadCancel=false,photoEntries=[];
 function fmtBytes(n){n=Number(n)||0;if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KiB';return (n/1048576).toFixed(2)+' MiB'}
+function fillShowflowPhotoPicker(){
+ var picker=$('showflowPhotoAddId');if(!picker)return;
+ var current=picker.value;picker.textContent='';
+ photoEntries.forEach(function(p){var o=document.createElement('option');o.value=String(p.id);o.textContent='#'+p.id+' · '+(p.type==='gif'?'GIF':'JPEG');picker.appendChild(o)});
+ if(current&&photoEntries.some(function(p){return String(p.id)===current}))picker.value=current;
+ picker.disabled=gv('showflowPhotoAddMode')!=='fixed'||!photoEntries.length;
+ renderShowflowSteps();
+}
 function loadPhotoLibrary(){var grid=$('photoGrid');if(!grid)return Promise.resolve();grid.innerHTML='<div class="muted">Fotobibliothek wird geladen …</div>';
- return j('/api/photos').then(function(d){$('photoCount').textContent=d.count||0;$('photoBytes').textContent=fmtBytes(d.photoBytes);$('photoFree').textContent=fmtBytes(d.availableForPhotos);$('photoStorageTotal').textContent=fmtBytes(d.totalBytes);
-  if(!d.photos||!d.photos.length){grid.innerHTML='<div class="muted">Noch keine Fotos gespeichert.</div>';return}
-  grid.innerHTML=d.photos.map(function(p){var kind=p.type==='gif'?'GIF · '+p.frames+' Frames':'JPEG';return '<div class="photo-card"><img loading="lazy" src="/api/photos/file?id='+encodeURIComponent(p.id)+'" alt="Foto '+p.id+'"><div class="photo-meta"><span>#'+p.id+' · '+kind+' · '+fmtBytes(p.bytes)+'</span><button class="btn danger" type="button" onclick="deletePhoto('+p.id+')" aria-label="Foto '+p.id+' löschen">Löschen</button></div></div>'}).join('');
- }).catch(function(e){grid.innerHTML='<div class="muted">Fotobibliothek nicht erreichbar: '+esc(e.message)+'</div>'})}
+ return j('/api/photos').then(function(d){photoEntries=d.photos||[];$('photoCount').textContent=d.count||0;$('photoBytes').textContent=fmtBytes(d.photoBytes);$('photoFree').textContent=fmtBytes(d.availableForPhotos);$('photoStorageTotal').textContent=fmtBytes(d.totalBytes);
+  fillShowflowPhotoPicker();
+  if(!photoEntries.length){grid.innerHTML='<div class="muted">Noch keine Fotos gespeichert.</div>';return}
+  grid.innerHTML=photoEntries.map(function(p){var kind=p.type==='gif'?'GIF · '+p.frames+' Frames':'JPEG';return '<div class="photo-card"><img loading="lazy" src="/api/photos/file?id='+encodeURIComponent(p.id)+'" alt="Foto '+p.id+'"><div class="photo-meta"><span>#'+p.id+' · '+kind+' · '+fmtBytes(p.bytes)+'</span><button class="btn danger" type="button" onclick="deletePhoto('+p.id+')" aria-label="Foto '+p.id+' löschen">Löschen</button></div></div>'}).join('');
+ }).catch(function(e){photoEntries=[];fillShowflowPhotoPicker();grid.innerHTML='<div class="muted">Fotobibliothek nicht erreichbar: '+esc(e.message)+'</div>'})}
 function photoToJpeg(file){return new Promise(function(resolve,reject){var src=URL.createObjectURL(file);var done=function(){URL.revokeObjectURL(src)};
  var draw=function(img){try{var c=document.createElement('canvas');c.width=240;c.height=240;var side=Math.min(img.width,img.height),x=(img.width-side)/2,y=(img.height-side)/2;var ctx=c.getContext('2d',{alpha:false});ctx.drawImage(img,x,y,side,side,0,0,240,240);c.toBlob(function(blob){done();if(blob)resolve(blob);else reject(new Error('JPEG konnte nicht erzeugt werden'))},'image/jpeg',0.86)}catch(e){done();reject(e)}};
  if(window.createImageBitmap){createImageBitmap(file).then(function(img){draw(img);if(img.close)img.close()}).catch(function(e){done();reject(new Error('Bild kann nicht gelesen werden: '+e.message))})}
@@ -528,9 +532,9 @@ function resetColors(){setGain('rGain','rgVal',100);setGain('gGain','ggVal',100)
 function loadConfig(){return j('/api/config').then(function(c){C=c;
  var sr=$('storageRecovery');if(sr)sr.style.display=c.storageReady===false?'block':'none';
  var f=c.features||{};
- if(f.theme!==true){['themeCard','themePlaylistCard','clockThemeCard'].forEach(function(id){var card=$(id);if(card)card.remove()})}else{loadThemes()}
- if(f.themePlaylist===true){var pc=$('themePlaylistCard');if(pc)pc.style.display='block'}
- if(f.photos===true){var ph=c.photoPlayback||{};sc('photoPlaybackEnabled',ph.enabled!==false);sv('photosPerTheme',ph.perTheme||3);sv('photoDwellSeconds',ph.dwellSeconds!=null?ph.dwellSeconds:10);loadPhotoLibrary()}
+ if(f.theme!==true){['themeCard','clockThemeCard'].forEach(function(id){var card=$(id);if(card)card.remove()})}else{loadThemes()}
+ if(f.showflow!==true||f.theme!==true){var fn=document.querySelector('nav button[data-t="showflow"]'),fs=$('showflow');if(fn)fn.remove();if(fs)fs.remove()}
+ if(f.photos===true){loadPhotoLibrary()}
  else{var pn=document.querySelector('nav button[data-t="photos"]'),ps=$('photos');if(pn)pn.remove();if(ps)ps.remove()}
  // Physical button card: only on boards that wire one
  if(f.button===true){var bc=$('buttonCard'); if(bc)bc.style.display='block';
@@ -571,11 +575,9 @@ function loadConfig(){return j('/api/config').then(function(c){C=c;
  sv('nightLevel',ck.nightLevel!=null?ck.nightLevel:0); $('nlVal')&&($('nlVal').textContent=(ck.nightLevel!=null?ck.nightLevel:0));
  $('mode').value=f.theme===true?'theme':'';
  C.mode=f.theme===true?'theme':'';
- var tp=c.themePlaylist||{};sc('themePlaylistEnabled',!!tp.enabled);
- sc('themePlaylistRandom',!!tp.random);
- sv('clockThemeDwell',tp.clockDefaultSeconds||300);if($('clockThemeDwellVal'))$('clockThemeDwellVal').textContent=gv('clockThemeDwell');
- themePlaylistItems=Array.isArray(tp.items)?tp.items.map(function(x){return {id:String(x.id||''),seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||30)),scheduled:!!x.scheduled,startMinute:Math.max(0,Math.min(1439,parseInt(x.startMinute,10)||0)),endMinute:Math.max(0,Math.min(1439,parseInt(x.endMinute,10)||0))}}):[];
- renderThemePlaylist();
+ var sf=c.showflow||{};sc('showflowEnabled',!!sf.enabled);sc('showflowRandom',!!sf.random);
+ showflowSteps=Array.isArray(sf.steps)?sf.steps.slice(0,16).map(function(x){return {type:x.type==='photo'?'photo':'theme',id:String(x.id||''),seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||10)),randomPhoto:x.random!==false,photoId:Math.max(0,Math.min(239,parseInt(x.photoId,10)||0))}}):[];
+ renderShowflowSteps();showflowPhotoModeChanged();
  // HA / MQTT slice
  var h=c.ha||{};
  sv('haBrokerHost',h.brokerHost); sv('haBrokerPort',h.brokerPort||1883);
@@ -672,10 +674,7 @@ function collect(){
    contrast:parseInt(gv('contrast'))||0,saturation:parseInt(gv('saturation'))||0,themeOpacityPct:parseInt(gv('themeOpacityPct')),backgroundColor:gv('backgroundColor'),backgroundEnabled:gc('backgroundEnabled'),
    refreshFps:parseInt(gv('refreshFps'))||15,panelRefreshHz:parseInt(gv('panelRefreshHz'))||60,animationsEnabled:gc('animationsEnabled'),animationSpeedPct:parseInt(gv('animationSpeedPct'))||100,themeFadeTransition:gc('themeFadeTransition'),themeTransitionMs:parseInt(gv('themeTransitionMs'))||300},
   wifi:collectWifi()};
- if($('photoPlaybackEnabled'))o.photoPlayback={enabled:gc('photoPlaybackEnabled'),perTheme:parseInt(gv('photosPerTheme'))||3,dwellSeconds:parseInt(gv('photoDwellSeconds'))||0};
- if($('themePlaylistCard')&&$('themePlaylistCard').style.display!=='none'){
-  o.themePlaylist={enabled:gc('themePlaylistEnabled'),random:gc('themePlaylistRandom'),clockDefaultSeconds:parseInt(gv('clockThemeDwell'))||300,items:themePlaylistItems.map(function(x){return {id:x.id,seconds:x.seconds,scheduled:x.scheduled,startMinute:x.startMinute,endMinute:x.endMinute}})};
- }
+ if($('showflow'))o.showflow={enabled:gc('showflowEnabled'),random:gc('showflowRandom'),steps:showflowSteps.slice(0,16).map(function(x){var step={type:x.type,seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||10))};if(x.type==='photo'){step.random=!!x.randomPhoto;if(!x.randomPhoto)step.photoId=x.photoId}else step.id=x.id;return step})};
  // Web UI password: same blank-keeps-stored rule as everywhere else. The
  // firmware refuses to enable it without a stored password to check against.
  if($('authEnabled')){var _a={enabled:gc('authEnabled'), user:gv('authUser')||'admin'};
@@ -984,52 +983,66 @@ function saveThemeLayers(){var button=$('themeLayersSave'),error=$('themeLayersE
  themeRequest('/api/themes/layers/order',{id:editingLayersId,order:editingLayers.map(function(x){return x.id})})
  .then(function(){closeThemeLayers();toast('Ebenenreihenfolge gespeichert');loadThemes()}).catch(function(e){error.textContent=e.message}).finally(function(){button.disabled=false})
 }
-var themePlaylistItems=[];
-function renderThemePlaylist(){
- var add=$('themePlaylistAdd'),list=$('themePlaylistList');if(!add||!list)return;
- add.textContent='';
- var used={};themePlaylistItems.forEach(function(x){used[x.id]=true});
- var blank=document.createElement('option');blank.value='';blank.textContent='Theme auswählen …';add.appendChild(blank);
- themeEntries.forEach(function(t){if(t.valid===false||used[t.id])return;
-  var o=document.createElement('option');o.value=t.id;o.textContent=t.name+(t.version?' — '+t.version:'');add.appendChild(o)});
+var showflowSteps=[];
+function showflowToggle(){
+ if(gc('showflowEnabled')&&!showflowSteps.length){sc('showflowEnabled',false);toast('Füge zuerst mindestens einen Schritt hinzu');return}
+ if(gc('showflowEnabled'))sv('mode','theme');
+}
+function showflowPhotoModeChanged(){
+ var picker=$('showflowPhotoAddId');
+ if(picker)picker.disabled=gv('showflowPhotoAddMode')!=='fixed'||!photoEntries.length;
+}
+function addShowflowTheme(){
+ if(showflowSteps.length>=16){toast('Der Showflow ist auf 16 Schritte begrenzt');return}
+ var id=gv('showflowThemeAdd'),found=themeEntries.find(function(t){return t.id===id&&t.valid!==false});
+ if(!found){toast('Wähle zuerst ein gültiges Theme');return}
+ showflowSteps.push({type:'theme',id:id,seconds:30});
+ renderShowflowSteps();markSettingsDirty();
+}
+function addShowflowPhoto(){
+ if(showflowSteps.length>=16){toast('Der Showflow ist auf 16 Schritte begrenzt');return}
+ if(!photoEntries.length){toast('Die Fotobibliothek enthält noch keine Fotos');return}
+ var random=gv('showflowPhotoAddMode')!=='fixed',id=parseInt(gv('showflowPhotoAddId'),10);
+ if(!random&&(!Number.isInteger(id)||!photoEntries.some(function(p){return p.id===id}))){toast('Wähle ein vorhandenes Foto');return}
+ showflowSteps.push({type:'photo',randomPhoto:random,photoId:random?0:id,seconds:10});
+ renderShowflowSteps();markSettingsDirty();
+}
+function renderShowflowSteps(){
+ var list=$('showflowList'),themeAdd=$('showflowThemeAdd');if(!list)return;
+ if(themeAdd){var selected=themeAdd.value;themeAdd.textContent='';var blank=document.createElement('option');blank.value='';blank.textContent='Theme auswählen …';themeAdd.appendChild(blank);
+  themeEntries.filter(function(t){return t.valid!==false}).forEach(function(t){var o=document.createElement('option');o.value=t.id;o.textContent=t.name||t.id;themeAdd.appendChild(o)});themeAdd.value=selected;}
  list.textContent='';
- if(!themePlaylistItems.length){var empty=document.createElement('div');empty.className='muted';
-  var note=document.createElement('p');note.textContent=themeEntries.length?'Noch keine Themes in der Playlist. Wähle oben ein Theme aus und klicke auf „Hinzufügen“.':'Noch keine Themes installiert. Installiere zuerst ein Theme in der Bibliothek.';empty.appendChild(note);
-  var go=document.createElement('button');go.type='button';go.className='btn sec';go.textContent='Zur Theme-Bibliothek';go.onclick=function(){showThemePane('themeLibrary')};empty.appendChild(go);list.appendChild(empty);return}
- themePlaylistItems.forEach(function(item,index){
-  var row=document.createElement('div');row.className='net';row.style.cursor='default';row.style.alignItems='center';row.style.gap='8px';row.style.flexWrap='wrap';
-  var name=document.createElement('span');name.style.flex='1';name.style.minWidth='100px';
-  var found=themeEntries.find(function(t){return t.id===item.id});
-  name.textContent=(index+1)+'. '+(found?(found.name+(found.valid===false?' — fehlerhaft':'')):item.id);
-  var duration=document.createElement('input');duration.type='number';duration.min='5';duration.max='3600';duration.step='1';duration.value=item.seconds;duration.disabled=!!item.scheduled;duration.title=item.scheduled?'Während des Zeitfensters bleibt das Theme bis zum Ende aktiv.':'Anzeigedauer ohne Zeitfenster';duration.setAttribute('aria-label',item.scheduled?'Anzeigedauer (bei Zeitfenster nicht aktiv)':'Anzeigedauer in Sekunden');duration.style.width='88px';duration.style.flex='0 0 88px';
-  duration.onchange=function(){item.seconds=Math.max(5,Math.min(3600,parseInt(duration.value,10)||30));duration.value=item.seconds};
-  var schedule=document.createElement('input');schedule.type='checkbox';schedule.checked=!!item.scheduled;schedule.title='Zu einer Tageszeit aktivieren; benötigt NTP-Synchronisierung';schedule.setAttribute('aria-label','Zeitplan aktivieren');schedule.onchange=function(){item.scheduled=schedule.checked;renderThemePlaylist()};
-  var from=document.createElement('input');from.type='time';from.value=minutesTime(item.startMinute);from.disabled=!item.scheduled;from.setAttribute('aria-label','Aktiv ab');from.onchange=function(){item.startMinute=timeMinutes(from.value)};
-  var to=document.createElement('input');to.type='time';to.value=minutesTime(item.endMinute);to.disabled=!item.scheduled;to.setAttribute('aria-label','Aktiv bis');to.onchange=function(){item.endMinute=timeMinutes(to.value)};
-  row.appendChild(name);row.appendChild(duration);row.appendChild(schedule);row.appendChild(from);row.appendChild(to);
-  [['↑',-1,'Theme nach oben'],['↓',1,'Theme nach unten'],['×',0,'Theme entfernen']].forEach(function(spec){
-   var b=document.createElement('button');b.type='button';b.className='btn sec';b.textContent=spec[0];b.title=spec[2];b.style.padding='7px 10px';
-   if(spec[1]===-1&&index===0||spec[1]===1&&index===themePlaylistItems.length-1)b.disabled=true;
-   b.onclick=function(){if(spec[1]===0)themePlaylistItems.splice(index,1);else{var target=index+spec[1],swap=themePlaylistItems[target];themePlaylistItems[target]=themePlaylistItems[index];themePlaylistItems[index]=swap}renderThemePlaylist();markSettingsDirty()};
-   row.appendChild(b);
+ if(!showflowSteps.length){var empty=document.createElement('p');empty.className='muted';empty.textContent=themeEntries.length||photoEntries.length?'Noch keine Schritte. Füge oben ein Theme oder Foto hinzu.':'Installiere zuerst Themes oder lade Fotos hoch.';list.appendChild(empty);sc('showflowEnabled',false);return}
+ showflowSteps.forEach(function(step,index){
+  var row=document.createElement('div');row.className='net';row.style.alignItems='center';row.style.gap='8px';row.style.flexWrap='wrap';
+  var label=document.createElement('strong');label.style.minWidth='76px';label.textContent=(index+1)+'. '+(step.type==='photo'?'Foto':'Theme');row.appendChild(label);
+  var asset=document.createElement('select');asset.style.flex='1 1 180px';asset.style.minWidth='150px';
+  if(step.type==='photo'){
+   var random=document.createElement('option');random.value='random';random.textContent='Zufallsfoto';asset.appendChild(random);
+   photoEntries.forEach(function(p){var o=document.createElement('option');o.value=String(p.id);o.textContent='#'+p.id+' · '+(p.type==='gif'?'GIF':'JPEG');asset.appendChild(o)});
+   if(!step.randomPhoto&&!photoEntries.some(function(p){return p.id===step.photoId})){var missing=document.createElement('option');missing.value=String(step.photoId);missing.textContent='#'+step.photoId+' · nicht vorhanden';asset.appendChild(missing)}
+   asset.value=step.randomPhoto?'random':String(step.photoId);
+   asset.setAttribute('aria-label','Foto dieses Schritts');
+   asset.onchange=function(){step.randomPhoto=asset.value==='random';if(!step.randomPhoto)step.photoId=parseInt(asset.value,10)||0;markSettingsDirty()};
+  }else{
+   themeEntries.forEach(function(t){var o=document.createElement('option');o.value=t.id;o.textContent=t.name||t.id;asset.appendChild(o)});
+   if(!themeEntries.some(function(t){return t.id===step.id})){var missing=document.createElement('option');missing.value=step.id;missing.textContent=step.id+' · nicht installiert';asset.appendChild(missing)}
+   asset.value=step.id;asset.setAttribute('aria-label','Theme dieses Schritts');
+   asset.onchange=function(){step.id=asset.value;markSettingsDirty()};
+  }
+  row.appendChild(asset);
+  var duration=document.createElement('input');duration.type='number';duration.min='5';duration.max='3600';duration.step='1';duration.value=step.seconds;duration.style.width='92px';duration.setAttribute('aria-label','Anzeigedauer in Sekunden');
+  duration.onchange=function(){step.seconds=Math.max(5,Math.min(3600,parseInt(duration.value,10)||10));duration.value=step.seconds;markSettingsDirty()};row.appendChild(duration);
+  [['↑',-1],['↓',1],['×',0]].forEach(function(action){
+   var button=document.createElement('button');button.type='button';button.className='btn sec';button.textContent=action[0];button.style.padding='7px 10px';
+   button.title=action[1]===0?'Schritt entfernen':action[1]<0?'Schritt nach oben':'Schritt nach unten';
+   if(action[1]<0&&index===0||action[1]>0&&index===showflowSteps.length-1)button.disabled=true;
+   button.onclick=function(){if(action[1]===0)showflowSteps.splice(index,1);else{var other=index+action[1],swap=showflowSteps[other];showflowSteps[other]=showflowSteps[index];showflowSteps[index]=swap}renderShowflowSteps();markSettingsDirty()};
+   row.appendChild(button);
   });
   list.appendChild(row);
  });
- var enabled=$('themePlaylistEnabled');if(enabled&&!themePlaylistItems.length)enabled.checked=false;
 }
-function minutesTime(value){value=Math.max(0,Math.min(1439,parseInt(value,10)||0));return ('0'+Math.floor(value/60)).slice(-2)+':'+('0'+(value%60)).slice(-2)}
-function timeMinutes(value){var p=(value||'00:00').split(':');return Math.max(0,Math.min(1439,(parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0)))}
-function themePlaylistToggle(){var enabled=$('themePlaylistEnabled');if(!enabled)return;
- if(enabled.checked&&!themePlaylistItems.length){enabled.checked=false;toast('Füge zuerst mindestens ein gültiges Theme hinzu');return}
- if(enabled.checked){sv('mode','theme')}
-}
-function themePlaylistAddItem(){var id=gv('themePlaylistAdd');if(!id)return;
- if(themePlaylistItems.length>=8){toast('Die Playlist kann höchstens 8 Themes enthalten');return}
- if(themePlaylistItems.some(function(x){return x.id===id})){toast('Dieses Theme ist bereits in der Playlist');return}
- var selected=themeEntries.find(function(t){return t.id===id});var defaultSeconds=selected&&selected.category==='clock'?(parseInt(gv('clockThemeDwell'),10)||300):30;
- themePlaylistItems.push({id:id,seconds:defaultSeconds,scheduled:false,startMinute:0,endMinute:0});renderThemePlaylist();markSettingsDirty();
-}
-function applyClockThemeDwell(){var seconds=parseInt(gv('clockThemeDwell'),10)||300;themePlaylistItems.forEach(function(item){var found=themeEntries.find(function(t){return t.id===item.id});if(found&&found.category==='clock')item.seconds=seconds});renderThemePlaylist();markSettingsDirty();toast('Standarddauer für Uhr-Themes übernommen')}
 function themeChoiceChanged(){var select=$('themeSelect');if(!select)return;
  var theme=themeEntries.find(function(t){return t.id===select.value});
  $('themeUseBtn').disabled=!theme||theme.valid===false;
@@ -1041,14 +1054,14 @@ function loadThemes(){return j('/api/themes').then(function(d){
  if(d.selected)select.value=d.selected;
  $('themeStatus').textContent=themeEntries.length+' installiert · '+Math.floor(d.freeBytes/1024)+' KiB frei'+(d.error?' · '+d.error:'');
  themeChoiceChanged();renderThemeCards();renderThemeCards('clock');
- renderThemePlaylist();
+ renderShowflowSteps();
  }).catch(function(e){toast(e.message)})}
 function selectTheme(){var id=$('themeSelect').value;var theme=themeEntries.find(function(t){return t.id===id});
  if(!theme||theme.valid===false){toast('Wähle zuerst ein gültiges installiertes Theme');return}
- themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');sc('themePlaylistEnabled',false);toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
+ themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');sc('showflowEnabled',false);toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
 function deleteTheme(requestedId){var id=requestedId||gv('themeSelect');if(!id)return;var theme=themeEntries.find(function(t){return t.id===id});var displayName=theme?(theme.name||theme.id):id;
  if(!confirm('„'+displayName+'“ endgültig löschen?'))return;
- themeRequest('/api/themes/delete',{id:id}).then(function(){themePlaylistItems=themePlaylistItems.filter(function(x){return x.id!==id});renderThemePlaylist();markSettingsDirty();toast('Theme gelöscht');loadThemes()}).catch(function(e){toast(e.message)})}
+ themeRequest('/api/themes/delete',{id:id}).then(function(){showflowSteps=showflowSteps.filter(function(x){return x.type!=='theme'||x.id!==id});renderShowflowSteps();markSettingsDirty();toast('Theme gelöscht');loadThemes()}).catch(function(e){toast(e.message)})}
 function installTheme(inputId){inputId=inputId||'themeFile';var f=$(inputId).files[0];if(!f){toast('Wähle ein .stheme-Paket aus');return}
  var data=new FormData();data.append('theme',f);$('themeStatus').textContent='Installation läuft …';
  var uploadBtn=$(inputId==='themeFile'?'themeUploadBtn':'clockThemeUploadBtn');if(uploadBtn)uploadBtn.disabled=true;
