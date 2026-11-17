@@ -195,10 +195,13 @@ static void themePlaylistService(const Settings& s) {
       for (uint8_t i = 0; i < s.themePlaylistCount; ++i) {
         const auto& item = s.themePlaylist[i];
         if (!item.scheduled || (g_themePlaylistScheduleFailed & uint8_t(1u << i))) continue;
-        const bool active = item.startMinute == item.endMinute
-          || (item.startMinute < item.endMinute
-                ? minute >= item.startMinute && minute < item.endMinute
-                : minute >= item.startMinute || minute < item.endMinute);
+        // A zero-length interval is disabled, not an all-day schedule.
+        // This is especially important for newly added entries, whose UI
+        // defaults are 00:00..00:00 until the user chooses a real window.
+        const bool active = item.startMinute != item.endMinute &&
+          (item.startMinute < item.endMinute
+            ? minute >= item.startMinute && minute < item.endMinute
+            : minute >= item.startMinute || minute < item.endMinute);
         if (!active) continue;
         char path[64];
         snprintf(path, sizeof(path), "/themes/%s.stheme", item.id);
