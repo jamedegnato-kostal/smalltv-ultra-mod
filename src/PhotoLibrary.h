@@ -11,6 +11,13 @@ constexpr uint8_t MaxPhotos = 240;
 #endif
 constexpr uint8_t MaxAnimationFrames = 12;
 
+struct AnimationFrameInfo {
+  uint32_t offset = 0;
+  uint32_t length = 0;
+  uint16_t delayMs = 100;
+  bool embedded = false;
+};
+
 void begin();
 void refresh();
 uint8_t count();
@@ -22,6 +29,7 @@ String framePath(uint8_t id, uint8_t frame);
 String animationPath(uint8_t id);
 bool isAnimation(uint8_t id);
 uint8_t frameCount(uint8_t id);
+bool loadAnimationFrames(uint8_t id, AnimationFrameInfo* frames, uint8_t capacity, uint8_t& count);
 uint16_t frameDelayMs(uint8_t id, uint8_t frame);
 uint32_t bytes(uint8_t id);
 int nextFreeSlot();

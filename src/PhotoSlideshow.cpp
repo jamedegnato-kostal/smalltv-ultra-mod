@@ -33,6 +33,36 @@ bool photoValidateJpeg(const String& path) {
   return file && TJpgDec.drawFsJpg(0, 0, file) == JDR_OK;
 }
 
+bool photoValidateJpeg(const String& path, uint32_t offset, uint32_t length) {
+  if (length < 4) return false;
+  File marker = LittleFS.open(path, "r");
+  if (!marker || offset > marker.size() || length > marker.size() - offset ||
+      !marker.seek(offset, SeekSet)) return false;
+  uint8_t start[2], end[2];
+  if (marker.read(start, sizeof(start)) != sizeof(start) ||
+      !marker.seek(offset + length - 2, SeekSet) ||
+      marker.read(end, sizeof(end)) != sizeof(end) ||
+      start[0] != 0xFF || start[1] != 0xD8 ||
+      end[0] != 0xFF || end[1] != 0xD9) return false;
+  marker.close();
+
+  // TJpg_Decoder reads from the current file position and stops at JPEG EOI.
+  uint16_t width = 0, height = 0;
+  TJpgDec.setJpgScale(0);
+  TJpgDec.setCallback(validateOutput);
+  File header = LittleFS.open(path, "r");
+  if (!header || !header.seek(offset, SeekSet)) return false;
+  const JRESULT sizeResult = TJpgDec.getFsJpgSize(&width, &height, header);
+  header.close();
+  if (sizeResult != JDR_OK || width != 240 || height != 240) return false;
+
+  File frame = LittleFS.open(path, "r");
+  if (!frame || !frame.seek(offset, SeekSet)) return false;
+  const JRESULT drawResult = TJpgDec.drawFsJpg(0, 0, frame);
+  frame.close();
+  return drawResult == JDR_OK;
+}
+
 void PhotoSlideshow::begin() {
   sequence_.seed(ESP.getCycleCount());
 }
@@ -69,9 +99,21 @@ void PhotoSlideshow::markAttempted(uint8_t id) {
 bool PhotoSlideshow::draw(uint8_t id) {
   PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   if (!smalltv_photo::contains(id)) return false;
-  const String path = currentAnimated_ ? smalltv_photo::framePath(id, animationFrame_) : smalltv_photo::path(id);
-  File file = LittleFS.open(path, "r");
+
+  String filePath;
+  if (currentAnimated_) {
+    if (animationFrame_ >= animationFrameCount_) return false;
+    const smalltv_photo::AnimationFrameInfo& frame = animationFrames_[animationFrame_];
+    filePath = frame.embedded ? smalltv_photo::animationPath(id)
+                              : smalltv_photo::framePath(id, animationFrame_);
+  } else {
+    filePath = smalltv_photo::path(id);
+  }
+  File file = LittleFS.open(filePath, "r");
   if (!file) return false;
+  if (currentAnimated_ && animationFrames_[animationFrame_].embedded &&
+      !file.seek(animationFrames_[animationFrame_].offset, SeekSet)) return false;
+
   TJpgDec.setJpgScale(0);
   TJpgDec.setSwapBytes(false);
   TJpgDec.setCallback(photoOutput);
@@ -98,7 +140,7 @@ bool PhotoSlideshow::service(const Settings& settings) {
     if (uint32_t(now - shownAt_) < uint32_t(currentDwellSeconds_) * 1000UL) {
       if (currentAnimated_ && int32_t(now - nextFrameAt_) >= 0) {
         animationFrame_ = uint8_t((animationFrame_ + 1) % animationFrameCount_);
-        if (draw(currentPhoto_)) nextFrameAt_ = now + smalltv_photo::frameDelayMs(currentPhoto_, animationFrame_);
+        if (draw(currentPhoto_)) nextFrameAt_ = now + animationFrames_[animationFrame_].delayMs;
         else currentAnimated_ = false;
       }
       return false;
@@ -119,14 +161,19 @@ bool PhotoSlideshow::service(const Settings& settings) {
     if (wasAttempted(id)) continue;
     markAttempted(id);
     currentPhoto_ = id;
-    animationFrameCount_ = smalltv_photo::isAnimation(id) ? smalltv_photo::frameCount(id) : 0;
-    currentAnimated_ = animationFrameCount_ > 1;
+    animationFrameCount_ = 0;
+    currentAnimated_ = smalltv_photo::isAnimation(id);
+    if (currentAnimated_ &&
+        !smalltv_photo::loadAnimationFrames(id, animationFrames_, smalltv_photo::MaxAnimationFrames, animationFrameCount_)) {
+      currentAnimated_ = false;
+      continue;
+    }
     animationFrame_ = 0;
     if (!draw(id)) { currentAnimated_ = false; continue; }
     ++shown_;
     currentDwellSeconds_ = dwellSeconds_;
     shownAt_ = millis();
-    nextFrameAt_ = shownAt_ + (currentAnimated_ ? smalltv_photo::frameDelayMs(id, 0) : 0);
+    nextFrameAt_ = shownAt_ + (currentAnimated_ ? animationFrames_[0].delayMs : 0);
     showing_ = true;
     return false;
   }

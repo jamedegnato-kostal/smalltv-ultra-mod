@@ -21,6 +21,11 @@ assert.match(html, /function showTab\(id\)[\s\S]*aria-current/);
 assert.match(html, /id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
 assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
+
+assert.ok(html.includes('body.light .toast{background:var(--card);color:var(--fg);border-color:var(--bd)}'));
+assert.ok(html.includes('body.light .status-pill.warn{color:#80520a'));
+assert.ok(html.includes('body.light .save-status.dirty{color:#80520a}'));
+
 assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs/);
 assert.match(html, /function arrangeSettingsPages\(\)/);
 assert.match(html, /id="showflowEnabled"/);
@@ -31,6 +36,14 @@ assert.match(html, /Maximal 16 Schritte/);
 assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
+
+// Animated GIFs must be sampled from a live DOM image, not a detached Image
+// object. They must never be silently downgraded to still JPEG photos.
+assert.match(html, /document\.body\.appendChild\(img\)/);
+assert.match(html, /frames\.length<2\)throw new Error\('Keine unterschiedlichen GIF-Frames erkannt/);
+assert.doesNotMatch(html, /frames\.length<2\)return \{blob:await photoBlob/);
+assert.match(html, /for\(var sample=0;sample<60&&frames\.length<12;sample\+\+\)/);
+
 
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',

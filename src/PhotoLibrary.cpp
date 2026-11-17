@@ -35,13 +35,33 @@ bool parseAnimationFrameName(const String& name, uint8_t& id) {
   id = static_cast<uint8_t>(value);
   return true;
 }
+bool readAnimationHeader(File& file, uint8_t& frames) {
+  if (!file || file.size() < 5 || !file.seek(0, SeekSet)) return false;
+  uint8_t header[5];
+  if (file.read(header, sizeof(header)) != sizeof(header) || memcmp(header, "PGA1", 4)) return false;
+  frames = header[4];
+  return frames >= 2 && frames <= MaxAnimationFrames;
+}
+
 uint8_t readAnimationFrameCount(uint8_t id) {
-  File meta = LittleFS.open(animationPath(id), "r");
-  if (!meta || meta.size() < 5) return 0;
-  char header[5];
-  if (meta.readBytes(header, sizeof(header)) != sizeof(header) || memcmp(header, "PGA1", 4)) return 0;
-  const uint8_t frames = static_cast<uint8_t>(header[4]);
-  return frames >= 2 && frames <= MaxAnimationFrames && meta.size() == 5 + uint32_t(frames) * 2 ? frames : 0;
+  File file = LittleFS.open(animationPath(id), "r");
+  uint8_t frames = 0;
+  if (!readAnimationHeader(file, frames)) return 0;
+  if (file.size() == 5 + uint32_t(frames) * 2) return frames; // legacy metadata-only layout
+
+  const uint32_t fileSize = file.size();
+  uint32_t cursor = 5;
+  for (uint8_t frame = 0; frame < frames; ++frame) {
+    uint8_t record[6];
+    if (!file.seek(cursor, SeekSet) || file.read(record, sizeof(record)) != sizeof(record)) return 0;
+    const uint16_t delay = uint16_t(record[0]) | (uint16_t(record[1]) << 8);
+    const uint32_t length = uint32_t(record[2]) | (uint32_t(record[3]) << 8) |
+      (uint32_t(record[4]) << 16) | (uint32_t(record[5]) << 24);
+    const uint32_t offset = file.position();
+    if (delay < 20 || delay > 2000 || !length || offset > fileSize || length > fileSize - offset) return 0;
+    cursor = offset + length;
+  }
+  return cursor == fileSize ? frames : 0;
 }
 }
 
@@ -117,22 +137,69 @@ bool isAnimation(uint8_t id) {
 uint8_t frameCount(uint8_t id) {
   return isAnimation(id) ? readAnimationFrameCount(id) : 0;
 }
+bool loadAnimationFrames(uint8_t id, AnimationFrameInfo* out, uint8_t capacity, uint8_t& count) {
+  count = 0;
+  if (!out || !contains(id)) return false;
+
+  File file = LittleFS.open(animationPath(id), "r");
+  uint8_t frames = 0;
+  if (!readAnimationHeader(file, frames) || frames > capacity) return false;
+
+  const uint32_t fileSize = file.size();
+  const bool legacy = fileSize == 5 + uint32_t(frames) * 2;
+  if (legacy) {
+    for (uint8_t frame = 0; frame < frames; ++frame) {
+      uint8_t delay[2];
+      if (!file.seek(5 + uint32_t(frame) * 2, SeekSet) ||
+          file.read(delay, sizeof(delay)) != sizeof(delay) ||
+          !LittleFS.exists(framePath(id, frame))) return false;
+      const uint16_t value = uint16_t(delay[0]) | (uint16_t(delay[1]) << 8);
+      out[frame].offset = 0;
+      out[frame].length = 0;
+      out[frame].delayMs = value >= 20 && value <= 2000 ? value : 100;
+      out[frame].embedded = false;
+    }
+    count = frames;
+    return true;
+  }
+
+  uint32_t cursor = 5;
+  for (uint8_t frame = 0; frame < frames; ++frame) {
+    uint8_t record[6];
+    if (!file.seek(cursor, SeekSet) || file.read(record, sizeof(record)) != sizeof(record)) return false;
+    const uint16_t delay = uint16_t(record[0]) | (uint16_t(record[1]) << 8);
+    const uint32_t length = uint32_t(record[2]) | (uint32_t(record[3]) << 8) |
+      (uint32_t(record[4]) << 16) | (uint32_t(record[5]) << 24);
+    const uint32_t offset = file.position();
+    if (delay < 20 || delay > 2000 || !length || offset > fileSize || length > fileSize - offset) return false;
+    out[frame].offset = offset;
+    out[frame].length = length;
+    out[frame].delayMs = delay;
+    out[frame].embedded = true;
+    cursor = offset + length;
+  }
+  if (cursor != fileSize) return false;
+  count = frames;
+  return true;
+}
+
 uint16_t frameDelayMs(uint8_t id, uint8_t frame) {
-  const uint8_t frames = frameCount(id);
-  if (frame >= frames) return 100;
-  File meta = LittleFS.open(animationPath(id), "r");
-  if (!meta || !meta.seek(5 + uint32_t(frame) * 2, SeekSet)) return 100;
-  uint8_t delay[2];
-  if (meta.read(delay, 2) != 2) return 100;
-  const uint16_t value = delay[0] | (uint16_t(delay[1]) << 8);
-  return value >= 20 && value <= 2000 ? value : 100;
+  AnimationFrameInfo frames[MaxAnimationFrames];
+  uint8_t count = 0;
+  return loadAnimationFrames(id, frames, MaxAnimationFrames, count) && frame < count
+      ? frames[frame].delayMs : 100;
 }
 uint32_t bytes(uint8_t id) {
   if (isAnimation(id)) {
-    uint32_t total = 0;
     File meta = LittleFS.open(animationPath(id), "r");
-    if (meta) total += meta.size();
-    for (uint8_t i = 0; i < frameCount(id); ++i) {
+    if (!meta) return 0;
+    const uint32_t metaBytes = meta.size();
+    const uint8_t frames = readAnimationFrameCount(id);
+    // Compact PGA1 containers include every JPEG payload; legacy metadata
+    // files keep their separate frame files, which must be counted too.
+    if (!frames || metaBytes != 5 + uint32_t(frames) * 2) return metaBytes;
+    uint32_t total = metaBytes;
+    for (uint8_t i = 0; i < frames; ++i) {
       File frame = LittleFS.open(framePath(id, i), "r");
       if (frame) total += frame.size();
     }
