@@ -1,6 +1,6 @@
 # Mitwirken
 
-Danke für dein Interesse an SmallTV Ultra Mod. Beiträge sollten nachvollziehbar, eng umrissen und mit der bestehenden Firmware kompatibel sein.
+Danke für dein Interesse an SmallTV Settings Firmware. Beiträge sollten nachvollziehbar, eng umrissen und mit der bestehenden Firmware kompatibel sein.
 
 ## Vor einer Änderung
 
@@ -11,7 +11,13 @@ Danke für dein Interesse an SmallTV Ultra Mod. Beiträge sollten nachvollziehba
 
 ## Entwicklungsumgebung
 
-Benötigt werden Python 3 und PlatformIO Core. Der erste Build lädt Framework und Bibliotheken aus dem Internet. Für Änderungen an der Weboberfläche können zusätzliche Node.js-Prüfungen erforderlich sein.
+Benötigt werden Python 3 und PlatformIO Core. Installiere PlatformIO bei Bedarf mit:
+
+```bash
+python -m pip install platformio
+```
+
+Der erste Build benötigt Internetzugang, damit PlatformIO Framework und Bibliotheken herunterladen kann. Für die Dokumentationsseite wird Node.js 22 verwendet.
 
 ## Build und Prüfungen
 
@@ -22,13 +28,20 @@ python tools/gzip_webui_settings.py --check
 python -m platformio run -e smalltv_settings
 ```
 
-Die Hosttests und zusätzlichen CI-Prüfungen sind im Workflow unter `.github/workflows/build.yml` definiert. Wenn du die Weboberfläche änderst, prüfe außerdem, ob der generierte Header aktualisiert werden muss:
+Die Hosttests und zusätzlichen CI-Prüfungen sind im Workflow unter `.github/workflows/build.yml` definiert. Änderungen an der Dokumentationsseite lassen sich so prüfen:
+
+```bash
+cd docs
+npm ci
+npm run build
+```
+
+Wenn du die Weboberfläche änderst, muss der komprimierte Header aktualisiert werden:
 
 ```bash
 python tools/gzip_webui_settings.py
+python tools/gzip_webui_settings.py --check
 ```
-
-Führe anschließend den Build-Check erneut aus.
 
 ## Hinweise für Firmware-Änderungen
 
@@ -54,4 +67,4 @@ Bitte mische keine unabhängigen Refactorings mit funktionalen Änderungen. Das 
 
 ## Lizenz und Herkunft
 
-Beiträge unterliegen der Repository-Lizenz. Bestehende Lizenz- und Copyright-Hinweise in übernommenen Dateien müssen erhalten bleiben.
+Dieses Projekt basiert auf [giovi321/smalltv-mod](https://github.com/giovi321/smalltv-mod). Beiträge müssen bestehende Copyright- und Lizenzhinweise erhalten und die Repository-Lizenz beachten. Details stehen in [NOTICE.md](NOTICE.md) und [LICENSE](LICENSE).
