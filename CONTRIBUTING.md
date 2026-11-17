@@ -1,39 +1,57 @@
 # Mitwirken
 
-Danke, dass du die SmallTV Settings Firmware verbessern möchtest. Änderungen
-sollen zum ESP8266-Ziel, zum begrenzten Gerätespeicher und zu den Funktionen
-passen, die in [der technischen Übersicht](docs/SETTINGS_FIRMWARE.md) beschrieben
-sind.
+Danke für dein Interesse an SmallTV Ultra Mod. Beiträge sollten nachvollziehbar, eng umrissen und mit der bestehenden Firmware kompatibel sein.
 
-## Lokal bauen
+## Vor einer Änderung
 
-Benötigt werden PlatformIO, Python 3 und Node.js. Der Hauptbuild lautet:
+1. Prüfe vorhandene Issues und Dokumentation, damit keine Arbeit doppelt entsteht.
+2. Beschreibe größere Änderungen zuerst in einem Issue.
+3. Arbeite möglichst auf einem eigenen Branch.
+4. Halte Änderungen thematisch zusammen und vermeide unnötige Umformatierungen großer Firmware-Dateien.
 
-```sh
-pio run -e smalltv_settings
+## Entwicklungsumgebung
+
+Benötigt werden Python 3 und PlatformIO Core. Der erste Build lädt Framework und Bibliotheken aus dem Internet. Für Änderungen an der Weboberfläche können zusätzliche Node.js-Prüfungen erforderlich sein.
+
+## Build und Prüfungen
+
+Vor einem Pull Request mindestens die zur Änderung passenden Prüfungen ausführen:
+
+```bash
+python tools/gzip_webui_settings.py --check
+python -m platformio run -e smalltv_settings
 ```
 
-Der optionale Loader wird separat gebaut:
+Die Hosttests und zusätzlichen CI-Prüfungen sind im Workflow unter `.github/workflows/build.yml` definiert. Wenn du die Weboberfläche änderst, prüfe außerdem, ob der generierte Header aktualisiert werden muss:
 
-```sh
-pio run -e smalltv_loader
+```bash
+python tools/gzip_webui_settings.py
 ```
 
-## Änderungen prüfen
+Führe anschließend den Build-Check erneut aus.
 
-- Nach Änderungen an `src/webui_settings.html` den eingebetteten Stand mit
-  `python tools/gzip_webui_settings.py` neu erzeugen.
-- Neue Konfigurationswerte sowohl beim Laden als auch beim Speichern und beim
-  Import berücksichtigen.
-- Eingaben, Dateigrößen und Schleifen begrenzen; lange Abläufe müssen dem
-  ESP8266 Gelegenheit geben, Netzwerk und Watchdog zu bedienen.
-- Keine Passwörter, Gerätekonfigurationen oder persönlichen WLAN-Daten
-  einchecken.
-- Bei Firmwareänderungen den Settings-Build und die betroffenen vorhandenen
-  Prüfungen ausführen. Hardwareabhängiges Verhalten zusätzlich auf einem
-  SmallTV Ultra verifizieren, wenn das Gerät verfügbar ist.
+## Hinweise für Firmware-Änderungen
+
+- Behalte die begrenzten Flash-, RAM- und LittleFS-Ressourcen des ESP8266 im Blick.
+- Vermeide lange blockierende Operationen, insbesondere bei Datei-Uploads und Display-Rendering.
+- Berücksichtige Konfigurationswerte beim Laden, Speichern und Importieren.
+- Ändere Theme-, Foto- oder Konfigurationsformate nicht ohne Dokumentation und passende Tests.
+- Prüfe Auswirkungen auf `smalltv_settings` und `smalltv_loader`; nicht jede Build-Option ist in beiden Umgebungen aktiv.
+- Checke keine Passwörter, Gerätekonfigurationen oder WLAN-Zugangsdaten ein.
+- Behaupte keinen Hardwaretest, wenn nur ein Host- oder CI-Build ausgeführt wurde.
+
+## Pull Requests
+
+Ein guter Pull Request enthält:
+
+- eine kurze Problembeschreibung und Motivation,
+- eine Zusammenfassung der technischen Änderung,
+- Angaben zu ausgeführten Builds und Tests,
+- bei Änderungen an der Weboberfläche möglichst Vorher-/Nachher-Screenshots,
+- bekannte Einschränkungen oder erforderliche Hardwaretests.
+
+Bitte mische keine unabhängigen Refactorings mit funktionalen Änderungen. Das erleichtert Review, Fehlersuche und Rücknahme.
 
 ## Lizenz und Herkunft
 
-Der Beitrag unterliegt der Repository-Lizenz. Bestehende Lizenz- und
-Copyright-Hinweise in übernommenen Dateien müssen erhalten bleiben.
+Beiträge unterliegen der Repository-Lizenz. Bestehende Lizenz- und Copyright-Hinweise in übernommenen Dateien müssen erhalten bleiben.
