@@ -125,156 +125,97 @@ static DisplayMode* activeMode(const Settings& s) {
 }
 
 #if WITH_THEME_PLAYLIST
-// Playlist state stays small and transient; only the ordered IDs/durations
-// live in Settings and survive reboot.
-static uint8_t  g_themePlaylistIndex = 0;
-static uint8_t  g_themePlaylistVisited = 0;
-static uint8_t  g_themePlaylistScheduleFailed = 0;
-static uint32_t g_themePlaylistSince = 0;
-static bool     g_themePlaylistRunning = false;
-static bool     g_themePlaylistStopped = false;
-static bool     g_themePhotosChecked = false;
+// Transient Showflow state. Only IDs, step types and durations are persisted.
+static uint8_t g_showflowIndex = 0xff;
+static uint32_t g_showflowSince = 0;
+static bool g_showflowRunning = false;
+static bool g_showflowStopped = false;
+static bool g_showflowPhoto = false;
 
-static void themePlaylistReset() {
-  g_themePlaylistIndex = 0;
-  g_themePlaylistVisited = 0;
-  g_themePlaylistScheduleFailed = 0;
-  g_themePlaylistSince = 0;
-  g_themePlaylistRunning = false;
-  g_themePlaylistStopped = false;
-  g_themePhotosChecked = false;
+static void showflowReset() {
+  g_showflowIndex = 0xff;
+  g_showflowSince = 0;
+  g_showflowRunning = false;
+  g_showflowStopped = false;
+  g_showflowPhoto = false;
 #if WITH_PHOTOS
   g_photoSlideshow.cancel();
 #endif
   g_themeMode.setPlaylistTheme(nullptr);
 }
 
-static bool themePlaylistSelectNext(const Settings& s, bool skipVisited) {
-  const uint8_t count = s.themePlaylistCount;
+static bool showflowSelectNext(const Settings& s) {
+  const uint8_t count = s.showflowCount;
   if (!count) return false;
-  const uint8_t randomStart = s.themePlaylistRandom ? static_cast<uint8_t>(random(count)) : 0;
+  const uint8_t start = s.showflowRandom
+    ? static_cast<uint8_t>(random(count))
+    : (g_showflowIndex == 0xff ? 0 : static_cast<uint8_t>((g_showflowIndex + 1) % count));
   for (uint8_t hop = 0; hop < count; ++hop) {
-    uint8_t candidate;
-    if (s.themePlaylistRandom) {
-      candidate = (randomStart + hop) % count;
-      if (!skipVisited && count > 1 && candidate == g_themePlaylistIndex) continue;
-    } else {
-      candidate = (g_themePlaylistIndex + hop + 1) % count;
-    }
-    uint8_t bit = uint8_t(1u << candidate);
-    if (skipVisited && (g_themePlaylistVisited & bit)) continue;
-    char path[64];
-    snprintf(path, sizeof(path), "/themes/%s.stheme", s.themePlaylist[candidate].id);
-    if (!LittleFS.exists(path)) {
-      g_themePlaylistVisited |= bit;
+    const uint8_t candidate = static_cast<uint8_t>((start + hop) % count);
+    if (count > 1 && candidate == g_showflowIndex) continue;
+    const auto& step = s.showflow[candidate];
+    if (step.type == Settings::ShowflowTheme) {
+      char path[64];
+      snprintf(path, sizeof(path), "/themes/%s.stheme", step.themeId);
+      if (!step.themeId[0] || !LittleFS.exists(path)) continue;
+#if WITH_PHOTOS
+      g_photoSlideshow.cancel();
+#endif
+      g_showflowPhoto = false;
+      g_showflowSince = 0;
+      g_themeMode.setPlaylistTheme(step.themeId);
+    } else if (step.type == Settings::ShowflowPhoto) {
+#if WITH_PHOTOS
+      if (step.randomPhoto ? smalltv_photo::count() == 0 : !smalltv_photo::contains(step.photoId)) continue;
+      // Drop the theme package before decoding a single JPEG frame.
+      g_themeMode.setPlaylistTheme(nullptr);
+      if (!g_photoSlideshow.startOne(step.photoId, step.randomPhoto, step.seconds)) continue;
+      g_showflowPhoto = true;
+      g_showflowSince = millis();
+#else
       continue;
-    }
-    g_themePlaylistIndex = candidate;
-    g_themePlaylistVisited |= bit;
-    g_themePlaylistSince = 0;  // dwell starts only after the theme loads
-    g_themePlaylistRunning = true;
-    g_themePhotosChecked = false;
-    g_themeMode.setPlaylistTheme(s.themePlaylist[candidate].id);
+#endif
+    } else continue;
+    g_showflowIndex = candidate;
+    g_showflowRunning = true;
+    g_showflowStopped = false;
     return true;
   }
   return false;
 }
 
-static void themePlaylistService(const Settings& s) {
-  bool enabled = s.mode == MODE_THEME && s.themePlaylistEnabled && s.themePlaylistCount;
+static void showflowService(const Settings& s) {
+  const bool enabled = s.mode == MODE_THEME && s.showflowEnabled && s.showflowCount;
   if (!enabled) {
-    if (g_themePlaylistRunning || g_themePlaylistStopped) themePlaylistReset();
+    if (g_showflowRunning || g_showflowStopped) showflowReset();
     return;
   }
-  bool hasTimedTheme = false;
-  for (uint8_t i = 0; i < s.themePlaylistCount; ++i) hasTimedTheme |= s.themePlaylist[i].scheduled;
-  if (hasTimedTheme) {
-    struct tm localNow;
-    if (clockNow(localNow)) {
-      const uint16_t minute = uint16_t(localNow.tm_hour * 60 + localNow.tm_min);
-      int selected = -1;
-      for (uint8_t i = 0; i < s.themePlaylistCount; ++i) {
-        const auto& item = s.themePlaylist[i];
-        if (!item.scheduled || (g_themePlaylistScheduleFailed & uint8_t(1u << i))) continue;
-        const bool active = smalltv::themeScheduleContains(
-            minute, item.startMinute, item.endMinute);
-        if (!active) continue;
-        char path[64];
-        snprintf(path, sizeof(path), "/themes/%s.stheme", item.id);
-        if (!LittleFS.exists(path)) continue;
-        selected = i;
-        break;
-      }
-      if (selected < 0) {
-        if (g_themePlaylistRunning) g_themeMode.setPlaylistTheme(nullptr);
-        g_themePlaylistRunning = false;
-        g_themePlaylistStopped = true;
-        return;
-      }
-      if (!g_themePlaylistRunning || g_themePlaylistIndex != selected) {
-        g_themePlaylistIndex = uint8_t(selected);
-        g_themePlaylistVisited |= uint8_t(1u << selected);
-        g_themePlaylistSince = millis();
-        g_themePlaylistRunning = true;
-        g_themePlaylistStopped = false;
-        g_themePhotosChecked = true; // scheduled themes stay in control until their window changes
-        g_themeMode.setPlaylistTheme(s.themePlaylist[selected].id);
-        return;
-      }
-      // A scheduled theme stays selected for the whole configured time
-      // window. With overlapping windows the first configured eligible item
-      // wins; outside all windows the selected fallback theme is shown.
-      if (g_themeMode.playlistLoadFailed()) {
-        g_themePlaylistScheduleFailed |= uint8_t(1u << selected);
-        g_themeMode.setPlaylistTheme(nullptr);
-        g_themePlaylistRunning = false;
-      }
-      return;
-    }
-  }
-  if (g_themePlaylistStopped) return;
-  if (!g_themePlaylistRunning) {
-    // Start at the beginning on enable, after leaving another display mode,
-    // or after a settings save.
-    g_themePlaylistIndex = s.themePlaylistCount - 1;
-    g_themePlaylistVisited = 0;
-    if (!themePlaylistSelectNext(s, true)) {
+  if (g_showflowStopped) return;
+  if (!g_showflowRunning) {
+    g_showflowIndex = 0xff;
+    if (!showflowSelectNext(s)) {
+      g_showflowStopped = true;
       g_themeMode.setPlaylistTheme(nullptr);
-      g_themePlaylistStopped = true;
     }
     return;
   }
+  if (g_showflowPhoto) return;
   if (g_themeMode.playlistLoadFailed()) {
-    // A corrupt package is skipped immediately. If every remaining entry is
-    // missing or invalid, stop the playlist and fall back to the chosen theme.
-    if (!themePlaylistSelectNext(s, true)) {
+    if (!showflowSelectNext(s)) {
       g_themeMode.setPlaylistTheme(nullptr);
-      g_themePlaylistRunning = false;
-      g_themePlaylistStopped = true;
+      g_showflowRunning = false;
+      g_showflowStopped = true;
     }
     return;
   }
-  if (!g_themeMode.playlistReady()) return;  // wait for memory or package load
-  g_themePlaylistVisited = uint8_t(1u << g_themePlaylistIndex);
-  if (!g_themePlaylistSince) g_themePlaylistSince = millis();
-  uint32_t dwell = (uint32_t)s.themePlaylist[g_themePlaylistIndex].seconds * 1000UL;
-  if (millis() - g_themePlaylistSince < dwell) return;
-#if WITH_PHOTOS
-  if (!g_themePhotosChecked) {
-    g_themePhotosChecked = true;
-    if (s.photosEnabled) {
-      // Free the current package before asking TJpg_Decoder for a photo batch.
-      // Testing memory first while the package was still loaded left the
-      // decoder competing with a large theme and could reset an ESP8266.
-      g_themeMode.setPlaylistTheme(nullptr);
-      if (g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) return;
-    }
-  }
-#endif
-  if (!themePlaylistSelectNext(s, false)) {
+  if (!g_themeMode.playlistReady()) return;
+  if (!g_showflowSince) g_showflowSince = millis();
+  const uint32_t dwell = uint32_t(s.showflow[g_showflowIndex].seconds) * 1000UL;
+  if (uint32_t(millis() - g_showflowSince) < dwell) return;
+  if (!showflowSelectNext(s)) {
     g_themeMode.setPlaylistTheme(nullptr);
-    g_themePlaylistRunning = false;
-    g_themePlaylistStopped = true;
+    g_showflowRunning = false;
+    g_showflowStopped = true;
   }
 }
 #endif
@@ -392,8 +333,9 @@ uint8_t appStatusBrightness() { return appEffectiveBrightness(); }
 
 const char* appActiveThemeId() {
 #if WITH_THEME_PLAYLIST
-  if (g_themePlaylistRunning && g_themePlaylistIndex < g_settings.themePlaylistCount)
-    return g_settings.themePlaylist[g_themePlaylistIndex].id;
+  if (g_showflowRunning && !g_showflowPhoto && g_showflowIndex < g_settings.showflowCount &&
+      g_settings.showflow[g_showflowIndex].type == Settings::ShowflowTheme)
+    return g_settings.showflow[g_showflowIndex].themeId;
 #endif
   return g_settings.themeId.c_str();
 }
@@ -527,7 +469,7 @@ const char* appResetReason() { return g_resetReason.c_str(); }
 // force a fresh repaint so a mode/URL/symbol change takes effect immediately.
 void appInvalidate() {
 #if WITH_THEME_PLAYLIST
-  themePlaylistReset();
+  showflowReset();
 #endif
   for (size_t i = 0; i < kModeCount; i++) kModes[i]->invalidate(g_settings);
 }
@@ -750,22 +692,23 @@ void loop() {
 #if WITH_PHOTOS
   if (g_photoSlideshow.active()) {
     if (g_photoSlideshow.service(g_settings)) {
-      if (g_settings.mode == MODE_THEME && g_settings.themePlaylistEnabled && g_settings.themePlaylistCount) {
-        if (!themePlaylistSelectNext(g_settings, false)) {
+      if (g_settings.mode == MODE_THEME && g_settings.showflowEnabled && g_settings.showflowCount) {
+        g_showflowPhoto = false;
+        if (!showflowSelectNext(g_settings)) {
           g_themeMode.setPlaylistTheme(nullptr);
-          g_themePlaylistRunning = false;
-          g_themePlaylistStopped = true;
+          g_showflowRunning = false;
+          g_showflowStopped = true;
         }
         g_themeMode.wake(g_settings);
       } else {
-        themePlaylistReset();
+        showflowReset();
       }
     }
     delay(5);
-    return; // the photo renderer owns the panel until this batch ends
+    return; // the photo renderer owns the panel until this step ends
   }
 #endif
-  themePlaylistService(g_settings);
+  showflowService(g_settings);
 #endif
   // A playlist may have selected/unloaded a theme above; display dispatch still
   // goes through the normal active-mode registry.
