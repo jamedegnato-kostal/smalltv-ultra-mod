@@ -21,6 +21,11 @@ assert.match(html, /function showTab\(id\)[\s\S]*aria-current/);
 assert.match(html, /id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
 assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
+
+assert.ok(html.includes('body.light .toast{background:var(--card);color:var(--fg);border-color:var(--bd)}'));
+assert.ok(html.includes('body.light .status-pill.warn{color:#80520a'));
+assert.ok(html.includes('body.light .save-status.dirty{color:#80520a}'));
+
 assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs/);
 assert.match(html, /function arrangeSettingsPages\(\)/);
 assert.match(html, /id="showflowEnabled"/);
