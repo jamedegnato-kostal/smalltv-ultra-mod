@@ -1058,7 +1058,7 @@ function loadThemes(){return j('/api/themes').then(function(d){
  }).catch(function(e){toast(e.message)})}
 function selectTheme(){var id=$('themeSelect').value;var theme=themeEntries.find(function(t){return t.id===id});
  if(!theme||theme.valid===false){toast('Wähle zuerst ein gültiges installiertes Theme');return}
- themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
+ themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');sc('showflowEnabled',false);toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
 function deleteTheme(requestedId){var id=requestedId||gv('themeSelect');if(!id)return;var theme=themeEntries.find(function(t){return t.id===id});var displayName=theme?(theme.name||theme.id):id;
  if(!confirm('„'+displayName+'“ endgültig löschen?'))return;
  themeRequest('/api/themes/delete',{id:id}).then(function(){showflowSteps=showflowSteps.filter(function(x){return x.type!=='theme'||x.id!==id});renderShowflowSteps();markSettingsDirty();toast('Theme gelöscht');loadThemes()}).catch(function(e){toast(e.message)})}
