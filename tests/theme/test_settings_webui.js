@@ -37,13 +37,19 @@ assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
-// Animated GIFs must be sampled from a live DOM image, not a detached Image
-// object. They must never be silently downgraded to still JPEG photos.
-assert.match(html, /document\.body\.appendChild\(img\)/);
+// GIF capture must snapshot at display cadence before asynchronous JPEG encoding.
+// The gallery preview must fetch each stored frame instead of always showing frame zero.
+assert.match(html, /for\(var sample=0;sample<375&&frames\.length<12;sample\+\+\)/);
+assert.match(html, /photoDelay\(16\)/);
+assert.match(html, /ctx\.getImageData\(0,0,240,240\)/);
+assert.match(html, /Math\.imul\(hash\^pixels\[q\+2\],16777619\)/);
 assert.match(html, /frames\.length<2\)throw new Error\('Keine unterschiedlichen GIF-Frames erkannt/);
 assert.doesNotMatch(html, /frames\.length<2\)return \{blob:await photoBlob/);
-assert.match(html, /for\(var sample=0;sample<60&&frames\.length<12;sample\+\+\)/);
-
+assert.match(html, /data-animation-frames/);
+assert.match(html, /\/api\/photos\/frame\?id=/);
+const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
+assert.match(portal, /server\.on\("\/api\/photos\/frame", HTTP_GET, handlePhotoFrame\)/);
+assert.match(portal, /void handlePhotoFrame\(\)/);
 
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
