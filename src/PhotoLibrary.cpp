@@ -135,12 +135,10 @@ void refresh() {
 
 void begin() {
   LittleFS.mkdir("/photos");
-  Dir dir = LittleFS.openDir("/photos");
-  while (dir.next()) {
-    if (!dir.isFile()) continue;
-    const String name = dir.fileName();
-    if (name.length() && name[0] == '.') LittleFS.remove(String("/photos/") + name);
-  }
+  // Do not delete hidden files on boot: they may be the only surviving
+  // copy of an interrupted upload or another user-owned payload. Stale
+  // upload temps are reported in /api/status and replaced only when a new
+  // upload is explicitly started.
   refresh();
 }
 uint8_t count() { return installedCount; }

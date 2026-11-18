@@ -185,8 +185,10 @@ formatieren, wird aber nicht beim normalen Mount verwendet.
   Fotobibliotheksgröße, verwaiste Frame-Bytes, laufende Upload-Temp-Dateien,
   Konfigurationsgröße und die Größe einer vorhandenen
   config.json.tmp.
-- Beim Start werden nur unvollständige, versteckte Upload-Temp-Dateien
-  bereinigt. Installierte Foto-/GIF-Dateien werden dadurch nicht gelöscht.
+- Beim Start werden keine versteckten Dateien automatisch entfernt.
+  Übriggebliebene Upload-Temp-Dateien bleiben erhalten und werden in
+  /api/status gezählt. Erst wenn der Nutzer einen neuen Upload startet,
+  werden die dafür vorgesehenen Temp-Pfade ersetzt.
 
 ## 5. Speicherdiagnose
 
