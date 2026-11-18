@@ -693,6 +693,12 @@ static void handlePostConfig() {
     return;
   }
 
+  // Parsing itself consumes heap. Re-check the thresholds after parsing,
+  // while the JSON document is still alive, so a theme whose release was not
+  // needed before deserializeJson() is dropped if the remaining contiguous
+  // block is now too small for the Settings staging copy.
+  appRelease();
+
   const uint64_t oldNet = netFingerprint(*S);
 
   // The request is freed once applied, before saveSettings() builds its own
