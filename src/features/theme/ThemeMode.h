@@ -65,8 +65,12 @@ class ThemeMode : public DisplayMode {
   // 2.4 KB settings document. On the ESP8266 with a
   // theme running that is not free, so the theme is released; on the ESP32
   // boards it always is, and the theme stays.
-  static constexpr uint32_t RequestFreeHeap = 8192;
-  static constexpr uint32_t RequestLargestBlock = 3072;
+  static constexpr uint32_t RequestFreeHeap =
+      (sizeof(Settings) + 4096UL > 8192UL) ? sizeof(Settings) + 4096UL : 8192UL;
+  // applyAndSaveSettings() allocates one complete Settings object before any
+  // String member copies. Keep enough contiguous space for that exact object,
+  // plus allocator overhead; a fixed 3 KiB floor can be smaller than Settings.
+  static constexpr uint32_t RequestLargestBlock = sizeof(Settings) + 256UL;
   void freeForRequest() override { release(RequestFreeHeap, RequestLargestBlock); }
  private:
   void unload();

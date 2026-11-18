@@ -288,6 +288,7 @@ bool saveSettings(const Settings& s);
 void factoryReset(Settings& s);             // set defaults; persist via saveSettings()
 size_t settingsStoredSize();                // bytes of the last load or save
 const char* settingsSaveError();             // detailed atomic-save failure, empty on success
+bool settingsCopyValid(const Settings& source, const Settings& candidate);
 
 // JSON <-> struct. `includeSecrets=false` masks passwords for the web API.
 void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets);

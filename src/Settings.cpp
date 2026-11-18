@@ -638,6 +638,37 @@ bool saveSettings(const Settings& s) {
 
 const char* settingsSaveError() { return g_settingsSaveError; }
 
+// Arduino String copy constructors can fail their internal malloc without
+// making the containing Settings allocation return nullptr. Verify every
+// persisted String before allowing a staged copy to be mutated or saved.
+bool settingsCopyValid(const Settings& source, const Settings& candidate) {
+  for (uint8_t i = 0; i < MAX_WIFI_NETS; ++i) {
+    if (source.wifi[i].ssid != candidate.wifi[i].ssid ||
+        source.wifi[i].pass != candidate.wifi[i].pass) return false;
+  }
+  if (source.apSsid != candidate.apSsid || source.apPass != candidate.apPass ||
+      source.hostname != candidate.hostname || source.themeId != candidate.themeId ||
+      source.clock.tz != candidate.clock.tz || source.clock.tzPosix != candidate.clock.tzPosix ||
+      source.clock.dateFormat != candidate.clock.dateFormat || source.clock.lang != candidate.clock.lang ||
+      source.auth.user != candidate.auth.user || source.auth.pass != candidate.auth.pass) return false;
+#if WITH_TICKER
+  if (source.ticker.webhookUrl != candidate.ticker.webhookUrl ||
+      source.ticker.range != candidate.ticker.range) return false;
+#endif
+#if WITH_USAGE
+  if (source.usage.usageUrl != candidate.usage.usageUrl) return false;
+#endif
+#if WITH_RADAR
+  if (source.radar.webhookUrl != candidate.radar.webhookUrl) return false;
+#endif
+#if WITH_HA
+  if (source.ha.brokerHost != candidate.ha.brokerHost ||
+      source.ha.brokerUser != candidate.ha.brokerUser ||
+      source.ha.brokerPass != candidate.ha.brokerPass) return false;
+#endif
+  return true;
+}
+
 void factoryReset(Settings& s) {
   // Keep the persisted file intact until the caller has successfully written
   // the defaults. saveSettings() publishes through an atomic temp-file rename.
