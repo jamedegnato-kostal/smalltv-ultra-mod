@@ -2,6 +2,7 @@
 #include "AtomicJson.h"
 #include "Platform.h"   // platformChipId() for the unique default hostname
 #include <LittleFS.h>
+#include <stdio.h>
 #include <string.h>
 
 static const char* CONFIG_PATH = "/config.json";
@@ -9,6 +10,7 @@ static bool g_storageReady = false;
 // Bytes in CONFIG_PATH as last read or written: what the next save needs on
 // the filesystem, known without building the settings document again.
 static size_t g_storedSize = 0;
+static char g_settingsSaveError[176] = "";
 
 // ===========================================================================
 // Ticker slice
@@ -536,7 +538,20 @@ void Settings::setDefaults() {
 
 // ---------------------------------------------------------------------------
 bool settingsBegin() {
+#if defined(SMALLTV_FAMILY_ESP8266)
+  // ESP8266 LittleFS defaults to autoFormat=true. A transient mount failure
+  // must never erase the user's photo, theme and settings partition.
+  if (!LittleFS.setConfig(LittleFSConfig(false))) {
+    g_storageReady = false;
+    return false;
+  }
   g_storageReady = LittleFS.begin();
+#elif defined(SMALLTV_FAMILY_ESP32)
+  // ESP32 exposes formatOnFail directly; keep it disabled as well.
+  g_storageReady = LittleFS.begin(false);
+#else
+  g_storageReady = LittleFS.begin();
+#endif
   return g_storageReady;
 }
 
@@ -545,9 +560,10 @@ bool settingsStorageReady() {
 }
 
 bool settingsFormatStorage() {
+  // This path is intentionally explicit/destructive and only called by the
+  // user-requested recovery endpoint. Mount itself still never auto-formats.
   if (g_storageReady || !LittleFS.format()) return false;
-  g_storageReady = LittleFS.begin();
-  return g_storageReady;
+  return settingsBegin();
 }
 
 bool loadSettings(Settings& s) {
@@ -566,16 +582,104 @@ bool loadSettings(Settings& s) {
   return true;
 }
 
+namespace {
+uint32_t settingsFilesystemFreeBytes() {
+#if defined(SMALLTV_ESP8266)
+  FSInfo info;
+  if (!LittleFS.info(info) || info.totalBytes < info.usedBytes) return UINT32_MAX;
+  return info.totalBytes - info.usedBytes;
+#else
+  const uint32_t total = LittleFS.totalBytes();
+  const uint32_t used = LittleFS.usedBytes();
+  return total >= used ? total - used : UINT32_MAX;
+#endif
+}
+void setSettingsSaveError(AtomicJsonResult result, size_t expected, uint32_t freeBytes) {
+  if (result == AtomicJsonResult::DocumentOverflow) {
+    strlcpy(g_settingsSaveError, "not enough heap to build the complete settings JSON", sizeof(g_settingsSaveError));
+    return;
+  }
+  if (result == AtomicJsonResult::TemporaryOpenFailed || result == AtomicJsonResult::ShortWrite) {
+    if (freeBytes != UINT32_MAX && freeBytes < expected) {
+      snprintf(g_settingsSaveError, sizeof(g_settingsSaveError),
+               "LittleFS space too low for atomic save: %lu B free, %lu B JSON",
+               (unsigned long)freeBytes, (unsigned long)expected);
+    } else if (result == AtomicJsonResult::TemporaryOpenFailed) {
+      strlcpy(g_settingsSaveError, "cannot create /config.json.tmp; check LittleFS capacity and I/O", sizeof(g_settingsSaveError));
+    } else {
+      strlcpy(g_settingsSaveError, "short write to /config.json.tmp; check LittleFS capacity and flash I/O", sizeof(g_settingsSaveError));
+    }
+    return;
+  }
+  switch (result) {
+    case AtomicJsonResult::FlushFailed:
+      strlcpy(g_settingsSaveError, "LittleFS flush failed; flash write error", sizeof(g_settingsSaveError));
+      break;
+    case AtomicJsonResult::SizeMismatch:
+      strlcpy(g_settingsSaveError, "temporary settings file has an unexpected size", sizeof(g_settingsSaveError));
+      break;
+    case AtomicJsonResult::RenameFailed:
+      strlcpy(g_settingsSaveError, "LittleFS atomic rename failed; old configuration was kept", sizeof(g_settingsSaveError));
+      break;
+    default:
+      strlcpy(g_settingsSaveError, "unknown atomic settings storage error", sizeof(g_settingsSaveError));
+      break;
+  }
+}
+}
+
 bool saveSettings(const Settings& s) {
-  if (!g_storageReady) return false;
+  PlatformMemoryPhaseScope saveMemory(PLATFORM_MEM_SETTINGS_SAVE, true);
+  g_settingsSaveError[0] = '\0';
+  if (!g_storageReady) {
+    strlcpy(g_settingsSaveError, "LittleFS is not mounted", sizeof(g_settingsSaveError));
+    return false;
+  }
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(s, root, /*includeSecrets=*/true);
+  const size_t expected = measureJson(doc);
+  const uint32_t freeBytes = settingsFilesystemFreeBytes();
+  const AtomicJsonResult result =
+      saveJsonAtomicallyDetailed(LittleFS, doc, CONFIG_PATH, "/config.json.tmp");
+  if (result != AtomicJsonResult::Ok) {
+    setSettingsSaveError(result, expected, freeBytes);
+    return false;
+  }
+  g_storedSize = expected;
+  return true;
+}
 
-  // Never truncate the working settings when a full disk or interrupted
-  // save prevents writing the replacement.
-  if (!saveJsonAtomically(LittleFS, doc, CONFIG_PATH, "/config.json.tmp")) return false;
-  g_storedSize = measureJson(doc);   // saveJsonAtomically() wrote exactly this
+const char* settingsSaveError() { return g_settingsSaveError; }
+
+// Arduino String copy constructors can fail their internal malloc without
+// making the containing Settings allocation return nullptr. Verify every
+// persisted String before allowing a staged copy to be mutated or saved.
+bool settingsCopyValid(const Settings& source, const Settings& candidate) {
+  for (uint8_t i = 0; i < MAX_WIFI_NETS; ++i) {
+    if (source.wifi[i].ssid != candidate.wifi[i].ssid ||
+        source.wifi[i].pass != candidate.wifi[i].pass) return false;
+  }
+  if (source.apSsid != candidate.apSsid || source.apPass != candidate.apPass ||
+      source.hostname != candidate.hostname || source.themeId != candidate.themeId ||
+      source.clock.tz != candidate.clock.tz || source.clock.tzPosix != candidate.clock.tzPosix ||
+      source.clock.dateFormat != candidate.clock.dateFormat || source.clock.lang != candidate.clock.lang ||
+      source.auth.user != candidate.auth.user || source.auth.pass != candidate.auth.pass) return false;
+#if WITH_TICKER
+  if (source.ticker.webhookUrl != candidate.ticker.webhookUrl ||
+      source.ticker.range != candidate.ticker.range) return false;
+#endif
+#if WITH_USAGE
+  if (source.usage.usageUrl != candidate.usage.usageUrl) return false;
+#endif
+#if WITH_RADAR
+  if (source.radar.webhookUrl != candidate.radar.webhookUrl) return false;
+#endif
+#if WITH_HA
+  if (source.ha.brokerHost != candidate.ha.brokerHost ||
+      source.ha.brokerUser != candidate.ha.brokerUser ||
+      source.ha.brokerPass != candidate.ha.brokerPass) return false;
+#endif
   return true;
 }
 

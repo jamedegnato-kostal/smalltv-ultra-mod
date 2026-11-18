@@ -67,43 +67,9 @@ String photoUploadError;
 uint32_t photoUploadBytes = 0, photoUploadBudget = 0;
 int photoUploadSlot = -1;
 uint16_t photoUploadParts = 0;
-uint8_t photoUploadFrameCount = 0;
-bool photoUploadAllowed = false, photoUploadEnded = false, photoUploadAnimated = false;
+bool photoUploadAllowed = false, photoUploadEnded = false;
 constexpr uint32_t MaxPhotoBytes = 128UL * 1024UL;
 constexpr char PhotoUploadPath[] = "/photos/.upload";
-constexpr char PhotoAnimationUploadPath[] = "/photos/.anim-upload";
-
-bool validatePhotoAnimation(const String& container) {
-  File input = LittleFS.open(container, "r");
-  uint8_t header[5];
-  if (!input || input.read(header, sizeof(header)) != sizeof(header) || memcmp(header, "PGA1", 4)) return false;
-  const uint8_t count = header[4];
-  if (count < 2 || count > smalltv_photo::MaxAnimationFrames) return false;
-
-  const uint32_t fileSize = input.size();
-  uint32_t cursor = 5;
-  for (uint8_t frame = 0; frame < count; ++frame) {
-    uint8_t record[6];
-    if (cursor > fileSize || fileSize - cursor < sizeof(record) ||
-        !input.seek(cursor, SeekSet) || input.read(record, sizeof(record)) != sizeof(record)) return false;
-    const uint16_t delay = uint16_t(record[0]) | (uint16_t(record[1]) << 8);
-    const uint32_t length = uint32_t(record[2]) | (uint32_t(record[3]) << 8) |
-      (uint32_t(record[4]) << 16) | (uint32_t(record[5]) << 24);
-    const uint32_t offset = input.position();
-    if (delay < 20 || delay > 2000 || !length || offset > fileSize || length > fileSize - offset ||
-        !photoValidateJpeg(container, offset, length)) return false;
-    cursor = offset + length;
-    yield();
-  }
-  if (cursor != fileSize) return false;
-  photoUploadFrameCount = count;
-  return true;
-}
-
-bool commitPhotoAnimation(uint8_t slot) {
-  const String target = smalltv_photo::animationPath(slot);
-  return !LittleFS.exists(target) && LittleFS.rename(PhotoAnimationUploadPath, target);
-}
 
 uint32_t photoReserveBytes() {
   size_t reserve = settingsStoredSize() + 4096;
@@ -129,22 +95,19 @@ bool requestPhotoId(uint8_t& id) {
 void abortPhotoUpload(const String& reason) {
   photoUpload.close();
   LittleFS.remove(PhotoUploadPath);
-  LittleFS.remove(PhotoAnimationUploadPath);
   photoUploadError = reason;
   photoUploadEnded = false;
   photoUploadAllowed = false;
   photoUploadSlot = -1;
-  photoUploadFrameCount = 0;
 }
 void receivePhotoUpload() {
+  PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   HTTPUpload& up = server.upload();
   if (up.status == UPLOAD_FILE_START) {
     if (++photoUploadParts > 1) { abortPhotoUpload("Pro Upload ist genau ein Bild erlaubt"); return; }
     photoUploadError = ""; photoUploadBytes = 0; photoUploadEnded = false;
-    photoUploadAnimated = up.filename.endsWith(".pga");
-    photoUploadFrameCount = 0;
-    if (!photoUploadAnimated && !up.filename.endsWith(".jpg")) {
-      photoUploadError = "Nur JPEG-Fotos und vorbereitete GIF-Animationen sind erlaubt";
+    if (!up.filename.endsWith(".jpg") && !up.filename.endsWith(".jpeg")) {
+      photoUploadError = "Diese Firmware unterstützt nur JPEG-Fotos; GIF-Animationen sind nicht enthalten";
       return;
     }
     photoUploadAllowed = guardAllowed() && (!S->auth.enabled || !S->auth.pass.length() ||
@@ -155,12 +118,10 @@ void receivePhotoUpload() {
     const uint32_t free = smalltv_photo::filesystemFreeBytes();
     const uint32_t reserve = photoReserveBytes();
     if (free <= reserve) { photoUploadError = "Zu wenig freier Speicher; lösche zuerst Fotos oder Themes"; return; }
-    // Validate frames from the uploaded PGA1 container without making copies.
     photoUploadBudget = free - reserve;
     if (photoUploadBudget > MaxPhotoBytes) photoUploadBudget = MaxPhotoBytes;
     LittleFS.remove(PhotoUploadPath);
-    LittleFS.remove(PhotoAnimationUploadPath);
-    photoUpload = LittleFS.open(photoUploadAnimated ? PhotoAnimationUploadPath : PhotoUploadPath, "w");
+    photoUpload = LittleFS.open(PhotoUploadPath, "w");
     if (!photoUpload) photoUploadError = "Temporäre Upload-Datei konnte nicht angelegt werden";
   } else if (up.status == UPLOAD_FILE_WRITE) {
     if (!photoUploadAllowed || photoUploadError.length()) return;
@@ -180,36 +141,28 @@ void receivePhotoUpload() {
       LittleFS.remove(PhotoUploadPath); return;
     }
     // JPEG validation uses TJpg_Decoder's preallocated workspace plus
-    // small filesystem/decoder allocations. Release the theme if the normal
-    // request headroom is not available, then refuse safely below that floor.
+    // small filesystem/decoder allocations. Release the theme if needed.
 #if WITH_THEME
     g_themeMode.release(8UL * 1024UL, 3UL * 1024UL);
 #endif
     if (ESP.getFreeHeap() < 8UL * 1024UL || platformMaxFreeBlock() < 3UL * 1024UL) {
       photoUploadError = "Zu wenig freier Arbeitsspeicher für die Bildprüfung; Theme-Speicher wurde freigegeben";
       LittleFS.remove(PhotoUploadPath);
-      LittleFS.remove(PhotoAnimationUploadPath);
       return;
     }
-    const bool valid = photoUploadAnimated
-      ? validatePhotoAnimation(PhotoAnimationUploadPath)
-      : photoValidateJpeg(PhotoUploadPath);
-    if (!valid) {
-      photoUploadError = photoUploadAnimated
-        ? "Ungültige GIF-Animation; erwartet werden 2–12 vollständig lesbare 240×240-JPEG-Frames"
-        : "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
-      LittleFS.remove(PhotoUploadPath); return;
+    if (!photoValidateJpeg(PhotoUploadPath)) {
+      photoUploadError = "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
+      LittleFS.remove(PhotoUploadPath);
+      return;
     }
     photoUploadEnded = true;
   } else if (up.status == UPLOAD_FILE_ABORTED) {
     abortPhotoUpload("Upload abgebrochen");
-    // A client-side cancel may prevent the final POST handler from running;
-    // clear the multipart guard here so the next independent upload starts
-    // with a clean request state.
     photoUploadParts = 0;
   }
 }
 void finishPhotoUpload() {
+  PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   if (!requireAuth()) { abortPhotoUpload("Authentifizierung fehlgeschlagen"); return; }
   photoUpload.close();
   if (!photoUploadAllowed || !photoUploadEnded || photoUploadError.length() || photoUploadSlot < 0) {
@@ -219,23 +172,18 @@ void finishPhotoUpload() {
   }
   const uint8_t slot = static_cast<uint8_t>(photoUploadSlot);
   const String target = smalltv_photo::path(slot);
-  if (LittleFS.exists(target) || LittleFS.exists(smalltv_photo::animationPath(slot))) {
+  if (LittleFS.exists(target)) {
     abortPhotoUpload("Zielslot wurde bereits belegt; nichts wurde überschrieben"); photoUploadParts = 0;
     photoReply(409, "error", photoUploadError); return;
   }
-  const bool committed = photoUploadAnimated ? commitPhotoAnimation(slot) : LittleFS.rename(PhotoUploadPath, target);
-  if (!committed) {
+  if (!LittleFS.rename(PhotoUploadPath, target)) {
     abortPhotoUpload("Bild konnte nicht in die Bibliothek verschoben werden"); photoUploadParts = 0;
     photoReply(507, "error", photoUploadError); return;
   }
   const uint32_t bytes = photoUploadBytes;
-  const bool animated = photoUploadAnimated;
-  const uint8_t frames = photoUploadFrameCount;
   photoUploadParts = 0; photoUploadSlot = -1; photoUploadAllowed = photoUploadEnded = false;
-  photoUploadAnimated = false; photoUploadFrameCount = 0;
   smalltv_photo::refresh();
-  JsonDocument doc; doc["id"] = slot; doc["bytes"] = bytes; doc["type"] = animated ? "gif" : "jpeg";
-  if (animated) doc["frames"] = frames;
+  JsonDocument doc; doc["id"] = slot; doc["bytes"] = bytes; doc["type"] = "jpeg";
   String body; serializeJson(doc, body); server.send(201, "application/json", body);
 }
 void handlePhotoList() {
@@ -255,11 +203,8 @@ void handlePhotoList() {
   char item[96];
   const uint8_t* ids = smalltv_photo::slots();
   for (uint8_t i = 0; i < smalltv_photo::count(); ++i) {
-    const bool animated = smalltv_photo::isAnimation(ids[i]);
-    snprintf(item, sizeof(item), animated
-      ? "%s{\"id\":%u,\"bytes\":%lu,\"type\":\"gif\",\"frames\":%u}"
-      : "%s{\"id\":%u,\"bytes\":%lu,\"type\":\"jpeg\"}",
-      i ? "," : "", unsigned(ids[i]), (unsigned long)smalltv_photo::bytes(ids[i]), unsigned(smalltv_photo::frameCount(ids[i])));
+    snprintf(item, sizeof(item), "%s{\"id\":%u,\"bytes\":%lu,\"type\":\"jpeg\"}",
+      i ? "," : "", unsigned(ids[i]), (unsigned long)smalltv_photo::bytes(ids[i]));
     server.sendContent(item); yield();
   }
   server.sendContent("]}");
@@ -268,93 +213,15 @@ void handlePhotoList() {
 void handlePhotoFile() {
   if (!requireAuth()) return;
   uint8_t id;
-  if (!requestPhotoId(id) || !smalltv_photo::contains(id)) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
-  appRelease();
-
-  if (smalltv_photo::isAnimation(id)) {
-    smalltv_photo::AnimationFrameInfo frames[smalltv_photo::MaxAnimationFrames];
-    uint8_t count = 0;
-    if (!smalltv_photo::loadAnimationFrames(id, frames, smalltv_photo::MaxAnimationFrames, count) || !count) {
-      server.send(404, "text/plain", "Foto nicht gefunden"); return;
-    }
-    if (frames[0].embedded) {
-      File file = LittleFS.open(smalltv_photo::animationPath(id), "r");
-      if (!file || !file.seek(frames[0].offset, SeekSet)) {
-        server.send(404, "text/plain", "Foto nicht gefunden"); return;
-      }
-      server.sendHeader("Cache-Control", "no-store");
-      server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-      server.send(200, "image/jpeg", "");
-      uint8_t buffer[256];
-      uint32_t remaining = frames[0].length;
-      while (remaining) {
-        const size_t wanted = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-        const int got = file.read(buffer, wanted);
-        if (got <= 0) break;
-        server.sendContent(reinterpret_cast<const char*>(buffer), static_cast<size_t>(got));
-        remaining -= static_cast<uint32_t>(got);
-        if (static_cast<size_t>(got) != wanted) break;
-        yield();
-      }
-      file.close();
-      server.sendContent("", 0);
-      return;
-    }
+  if (!requestPhotoId(id) || !smalltv_photo::contains(id)) {
+    server.send(404, "text/plain", "Foto nicht gefunden"); return;
   }
-
-  const String path = smalltv_photo::isAnimation(id) ? smalltv_photo::framePath(id, 0) : smalltv_photo::path(id);
-  File file = LittleFS.open(path, "r");
+  appRelease();
+  File file = LittleFS.open(smalltv_photo::path(id), "r");
   if (!file) { server.send(404, "text/plain", "Foto nicht gefunden"); return; }
   server.sendHeader("Cache-Control", "no-store");
   server.streamFile(file, "image/jpeg");
   file.close();
-}
-void handlePhotoFrame() {
-  if (!requireAuth()) return;
-  uint8_t id;
-  if (!requestPhotoId(id) || !smalltv_photo::contains(id) || !smalltv_photo::isAnimation(id)) {
-    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
-  }
-  const String rawFrame = server.arg("frame");
-  if (!rawFrame.length()) { server.send(400, "text/plain", "Frame-Index fehlt"); return; }
-  for (size_t i = 0; i < rawFrame.length(); ++i) {
-    if (rawFrame[i] < '0' || rawFrame[i] > '9') {
-      server.send(400, "text/plain", "Ungültiger Frame-Index"); return;
-    }
-  }
-  const int requested = rawFrame.toInt();
-  if (requested < 0 || requested >= smalltv_photo::MaxAnimationFrames) {
-    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
-  }
-  smalltv_photo::AnimationFrameInfo frames[smalltv_photo::MaxAnimationFrames];
-  uint8_t count = 0;
-  if (!smalltv_photo::loadAnimationFrames(id, frames, smalltv_photo::MaxAnimationFrames, count) ||
-      requested >= count) {
-    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
-  }
-  const smalltv_photo::AnimationFrameInfo& frame = frames[requested];
-  const String filePath = frame.embedded ? smalltv_photo::animationPath(id)
-                                         : smalltv_photo::framePath(id, static_cast<uint8_t>(requested));
-  File file = LittleFS.open(filePath, "r");
-  if (!file || (frame.embedded && !file.seek(frame.offset, SeekSet))) {
-    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
-  }
-  server.sendHeader("Cache-Control", "no-store");
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, "image/jpeg", "");
-  uint8_t buffer[256];
-  uint32_t remaining = frame.embedded ? frame.length : file.size();
-  while (remaining) {
-    const size_t wanted = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-    const int got = file.read(buffer, wanted);
-    if (got <= 0) break;
-    server.sendContent(reinterpret_cast<const char*>(buffer), static_cast<size_t>(got));
-    remaining -= static_cast<uint32_t>(got);
-    if (static_cast<size_t>(got) != wanted) break;
-    yield();
-  }
-  file.close();
-  server.sendContent("", 0);
 }
 void handlePhotoDelete() {
   if (!requireAuth()) return;
@@ -554,6 +421,30 @@ static void handleStatus() {
     d.memoryPhases[i].heapAfter = memory.phases[i].heapAfter;
     d.memoryPhases[i].maxblkAfter = memory.phases[i].maxBlockAfter;
   }
+#if defined(SMALLTV_ESP8266)
+  FSInfo fsInfo;
+  if (LittleFS.info(fsInfo)) {
+    d.storageStatsValid = true;
+    d.fsTotal = fsInfo.totalBytes;
+    d.fsUsed = fsInfo.usedBytes;
+    d.fsFree = d.fsTotal >= d.fsUsed ? d.fsTotal - d.fsUsed : 0;
+  }
+#else
+  d.fsTotal = LittleFS.totalBytes();
+  d.fsUsed = LittleFS.usedBytes();
+  d.fsFree = d.fsTotal >= d.fsUsed ? d.fsTotal - d.fsUsed : 0;
+  d.storageStatsValid = true;
+#endif
+  d.settingsObjectBytes = sizeof(Settings);
+  d.configBytes = settingsStoredSize();
+  File configTemp = LittleFS.open("/config.json.tmp", "r");
+  if (configTemp) d.configTempBytes = configTemp.size();
+#if WITH_PHOTOS
+  d.photoBytes = smalltv_photo::totalPhotoBytes();
+  d.orphanPhotoBytes = smalltv_photo::orphanFrameBytes();
+  File photoTemp = LittleFS.open("/photos/.upload", "r");
+  if (photoTemp) d.photoTempBytes += photoTemp.size();
+#endif
   d.contstk = platformFreeContStack();   // ESP8266 continuation-stack high-water (untouched bytes since last repaint)
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
@@ -603,17 +494,23 @@ static void handleStatus() {
 // Fingerprint of everything network-identity related: the WiFi list and the
 // hostname. Changing any of it needs a reboot, because the connection and the
 // mDNS registration are established once at boot.
-static String netFingerprint(const Settings& s) {
-  String f((int)s.wifiCount);
-  for (uint8_t i = 0; i < s.wifiCount; i++) {
-    f += '\n';
-    f += s.wifi[i].ssid;
-    f += '\x01';
-    f += s.wifi[i].pass;
+static void fingerprintByte(uint64_t& hash, uint8_t value) {
+  hash ^= value;
+  hash *= 1099511628211ULL;
+}
+static void fingerprintString(uint64_t& hash, const String& value) {
+  for (size_t i = 0; i < value.length(); ++i) fingerprintByte(hash, static_cast<uint8_t>(value[i]));
+  fingerprintByte(hash, 0xff);
+}
+static uint64_t netFingerprint(const Settings& s) {
+  uint64_t hash = 14695981039346656037ULL;
+  fingerprintByte(hash, s.wifiCount);
+  for (uint8_t i = 0; i < s.wifiCount; ++i) {
+    fingerprintString(hash, s.wifi[i].ssid);
+    fingerprintString(hash, s.wifi[i].pass);
   }
-  f += '\n';
-  f += s.hostname;
-  return f;
+  fingerprintString(hash, s.hostname);
+  return hash;
 }
 
 // A settings body that could not be parsed. Running out of heap is reported
@@ -624,6 +521,25 @@ static void sendParseError(DeserializationError err) {
     server.send(503, "application/json", "{\"ok\":false,\"error\":\"not enough memory\"}");
   else
     server.send(400, "application/json", String("{\"ok\":false,\"error\":\"bad json (") + err.c_str() + ")\"}");
+}
+
+static void sendSettingsTransactionError(SettingsTransactionFailure failure) {
+  if (failure == SettingsTransactionFailure::OutOfMemory ||
+      failure == SettingsTransactionFailure::CopyIncomplete) {
+    char body[240];
+    snprintf(body, sizeof(body),
+             "{\"ok\":false,\"error\":\"%s: Settings=%lu B, free heap=%lu B, largest block=%lu B\"}",
+             failure == SettingsTransactionFailure::CopyIncomplete
+               ? "Settings String copy incomplete (RAM)"
+               : "not enough RAM for Settings staging block",
+             (unsigned long)sizeof(Settings), (unsigned long)ESP.getFreeHeap(),
+             (unsigned long)platformMaxFreeBlock());
+    server.send(503, "application/json", body);
+    return;
+  }
+  char body[224];
+  snprintf(body, sizeof(body), "{\"ok\":false,\"error\":\"%s\"}", settingsSaveError());
+  server.send(507, "application/json", body);
 }
 
 static void handlePostConfig() {
@@ -640,14 +556,22 @@ static void handlePostConfig() {
     return;
   }
 
-  String oldNet = netFingerprint(*S);
+  // Parsing itself consumes heap. Re-check the thresholds after parsing,
+  // while the JSON document is still alive, so a theme whose release was not
+  // needed before deserializeJson() is dropped if the remaining contiguous
+  // block is now too small for the Settings staging copy.
+  appRelease();
+
+  const uint64_t oldNet = netFingerprint(*S);
 
   // The request is freed once applied, before saveSettings() builds its own
   // document: the two together do not fit on the ESP8266.
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save settings\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
+    sendSettingsTransactionError(failure);
     return;
   }
 
@@ -657,7 +581,7 @@ static void handlePostConfig() {
   gfxApplyColors(*S);       // rotation, panel colour order/inversion, channel gain
   appInvalidate();          // re-init every mode + repaint (covers mode/URL/symbol changes)
 
-  bool wifiChanged = netFingerprint(*S) != oldNet;
+  const bool wifiChanged = netFingerprint(*S) != oldNet;
 
   JsonDocument res;
   res["ok"] = true;
@@ -700,10 +624,12 @@ static void handleCrashClear() {
 static void handleFactory() {
   if (!requireAuth()) return;
   appRelease();  // Free theme/runtime allocations before serializing defaults.
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [](Settings& settings) { factoryReset(settings); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save factory defaults\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
+    sendSettingsTransactionError(failure);
     return;
   }
   server.send(200, "application/json", "{\"ok\":true}");
@@ -749,10 +675,12 @@ static void handleImport() {
     sendParseError(err);
     return;
   }
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save settings\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
+    sendSettingsTransactionError(failure);
     return;
   }
   server.send(200, "application/json", "{\"ok\":true,\"reboot\":true}");
@@ -1013,7 +941,6 @@ void webPortalBegin(Settings& settings) {
 #if WITH_PHOTOS
   server.on("/api/photos", HTTP_GET, handlePhotoList);
   server.on("/api/photos/file", HTTP_GET, handlePhotoFile);
-  server.on("/api/photos/frame", HTTP_GET, handlePhotoFrame);
   server.on("/api/photos/upload", HTTP_POST, finishPhotoUpload, receivePhotoUpload);
   server.on("/api/photos/delete", HTTP_POST, handlePhotoDelete);
   server.on("/api/photos/delete-all", HTTP_POST, handlePhotoDeleteAll);

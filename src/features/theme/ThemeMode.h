@@ -52,12 +52,10 @@ class ThemeMode : public DisplayMode {
   // largest-request limit) with some slack.
   static constexpr uint32_t ParseFreeHeap = 6144;
   static constexpr uint32_t ParseLargestBlock = 1536;
-  // Frees the loaded theme when the heap is short of what a web request needs,
-  // so the request does not run out of memory next to it; on the ESP8266 a
-  // theme and a second package parse do not fit together (issue #30). With
-  // enough heap it does nothing. The selection, the fetched values and the
-  // fetch schedule stay: the next service() call loads the theme again and
-  // repaints it with the same values, and no source is fetched early.
+  // Frees all theme-owned heap when a request needs more memory, including
+  // cached source values and fetch-schedule vectors. Those caches are rebuilt
+  // and sources are fetched again on the next service() call. With enough
+  // heap it does nothing.
   void release(uint32_t needFree = ParseFreeHeap, uint32_t needLargestBlock = ParseLargestBlock);
   // DisplayMode::freeForRequest(), before a settings read, save or import.
   // A save needs about 7 KB of heap (#35's measurement on a SmallTV-Ultra)
@@ -65,8 +63,12 @@ class ThemeMode : public DisplayMode {
   // 2.4 KB settings document. On the ESP8266 with a
   // theme running that is not free, so the theme is released; on the ESP32
   // boards it always is, and the theme stays.
-  static constexpr uint32_t RequestFreeHeap = 8192;
-  static constexpr uint32_t RequestLargestBlock = 3072;
+  static constexpr uint32_t RequestFreeHeap =
+      (sizeof(Settings) + 4096UL > 8192UL) ? sizeof(Settings) + 4096UL : 8192UL;
+  // applyAndSaveSettings() allocates one complete Settings object before any
+  // String member copies. Keep enough contiguous space for that exact object,
+  // plus allocator overhead; a fixed 3 KiB floor can be smaller than Settings.
+  static constexpr uint32_t RequestLargestBlock = sizeof(Settings) + 256UL;
   void freeForRequest() override { release(RequestFreeHeap, RequestLargestBlock); }
  private:
   void unload();
@@ -87,8 +89,6 @@ class ThemeMode : public DisplayMode {
   uint32_t lastRenderMs_ = 0;
   uint32_t transitionStartedMs_ = 0;
   bool transitionPending_ = false, transitionActive_ = false;
-  // Set by release(): the next load of the same theme keeps the data state.
-  bool keepData_ = false;
   bool attempted_ = false, messageDrawn_ = false;
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
   bool recoveryMode_ = false;

@@ -9,13 +9,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   firmware:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
 
       - uses: actions/setup-python@v6
         with:
@@ -37,6 +39,24 @@ jobs:
           python -m pip install platformio
           sudo apt-get update
           sudo apt-get install -y g++-multilib
+
+      - name: Regenerate embedded web page
+        run: python tools/gzip_webui_settings.py
+
+      - name: Commit generated web page to same-repository PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if git diff --quiet -- src/webui_settings.h; then
+            echo "Embedded Web UI is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/webui_settings.h
+          git commit -m "chore: regenerate embedded photo-only Web UI"
+          git push origin "HEAD:${HEAD_BRANCH}"
 
       - name: Check embedded web page
         run: python tools/gzip_webui_settings.py --check
@@ -60,6 +80,9 @@ jobs:
           sh tests/theme/run.sh
           node tests/theme/test_settings_webui.js
           node tests/theme/test_settings_webui_poll.js
+
+      - name: Check JPEG-only photo profile
+        run: python tests/photos/test_photo_only.py
 
       - name: Check untrusted input parsers
         run: sh tests/fuzz/run.sh

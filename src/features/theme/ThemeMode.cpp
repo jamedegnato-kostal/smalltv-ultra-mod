@@ -95,7 +95,7 @@ void ThemeMode::unload() {
   engine_.setValues({});
   engine_.setTheme(smalltv::Theme{}, millis());
   loadedId_ = "";
-  attempted_ = messageDrawn_ = keepData_ = false;
+  attempted_ = messageDrawn_ = false;
   error_ = "";
 }
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
@@ -126,18 +126,13 @@ bool ThemeMode::playlistLoadFailed() const {
 }
 #endif
 void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
-  if (!package_ || (ESP.getFreeHeap() >= needFree && platformMaxFreeBlock() >= needLargestBlock)) return;
-  // A fetch in flight is dropped; its source is still due, so the reload
-  // fetches it again.
-  dataRequests_.cancel();
-  dataRequests_.take();
-  dataRequests_.releaseStorage();
-  package_.reset();
-  file_.reset();
-  engine_.setValues({});
-  engine_.setTheme(smalltv::Theme{}, millis());
-  attempted_ = messageDrawn_ = false;
-  keepData_ = true;
+  if (ESP.getFreeHeap() >= needFree && platformMaxFreeBlock() >= needLargestBlock) return;
+  // A settings save needs one large contiguous allocation. Drop every
+  // theme-owned allocation, including cached source values and fetch
+  // schedules; keeping those vector capacities can pin the largest free
+  // block below sizeof(Settings). service() reloads the selected theme and
+  // refetches its data after the request completes.
+  unload();
 }
 // Collects a finished fetch (if any) and, with at most one request in flight
 // at a time, starts the next source whose interval has elapsed, round-robin
@@ -299,14 +294,11 @@ void ThemeMode::service(const Settings& s) {
       package_.reset();
       file_.reset();
     } else {
-      // After a release the same package loads again, so its sources match.
-      if (!keepData_ || dataNextMs_.size() != theme.data.size()) {
-        dataNextMs_.assign(theme.data.size(), 0);
-        dataScheduled_.assign(theme.data.size(), false);
-        dataValues_.clear();
-        dataAges_.reset(theme.data.size(), theme.spec >= 2);
-        dataCursor_ = 0;
-      }
+      dataNextMs_.assign(theme.data.size(), 0);
+      dataScheduled_.assign(theme.data.size(), false);
+      dataValues_.clear();
+      dataAges_.reset(theme.data.size(), theme.spec >= 2);
+      dataCursor_ = 0;
       engine_.setTheme(std::move(theme), millis());
       engine_.setValues(dataValues_);
       error_ = "";

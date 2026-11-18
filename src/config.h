@@ -8,7 +8,7 @@
 // Firmware identity
 // ---------------------------------------------------------------------------
 #define FW_NAME    "smalltv-settings"
-#define FW_VERSION "0.1.6"
+#define FW_VERSION "0.1.8"
 
 // Project / update references (shown in the web UI; used by the GitHub self-update)
 #define REPO_URL      "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
@@ -16,7 +16,7 @@
 #define REPO_NAME     "smalltv-ultra-mod"
 // Release asset pulled by the GitHub self-updater.
 #define UPDATE_ASSET "smalltv-settings-firmware.bin"
-#define FW_VARIANT   "esp8266-settings"
+#define FW_VARIANT   "esp8266-settings-photo-only"
 #define GH_API_HOST   "api.github.com"
 
 // ---------------------------------------------------------------------------

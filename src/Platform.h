@@ -174,6 +174,7 @@ enum PlatformMemoryPhase : uint8_t {
   PLATFORM_MEM_THEME_DATA,
   PLATFORM_MEM_WEB_REQUEST,
   PLATFORM_MEM_PHOTO,
+  PLATFORM_MEM_SETTINGS_SAVE,
   PLATFORM_MEM_PHASE_COUNT
 };
 struct PlatformMemoryPhaseStats {

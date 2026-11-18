@@ -13,6 +13,7 @@
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
 #include "Settings.h"
+#include "Platform.h"
 #include "features/theme/ThemeCatalog.h"
 #include "features/theme/ThemePackage.h"
 #include <algorithm>
@@ -33,6 +34,11 @@ WiFiClass WiFi;
 MDNSClass MDNS;
 UpdateClass Update;
 EspClass ESP;
+// Settings.cpp is linked into this native parser harness, but this harness
+// does not exercise device heap sampling. Provide inert phase hooks rather
+// than pulling the ESP8266-specific Platform.cpp into the sanitizer binary.
+void platformMemoryPhaseBegin(PlatformMemoryPhase, bool) {}
+void platformMemoryPhaseEnd(PlatformMemoryPhase, bool) {}
 using namespace smalltv;
 using Bytes = std::string;
 
@@ -231,6 +237,8 @@ void fuzzImport(const Bytes& input, uint64_t) {
   ++accepted[3];
   Settings s;
   s.setDefaults();
+  Settings copied(s);
+  if (!settingsCopyValid(s, copied)) abort();
   settingsApplyJson(s, doc.as<JsonObjectConst>());
   // What saveSettings() would write next. Reading every field back also walks
   // any fixed-size buffer the import filled.
