@@ -59,6 +59,15 @@ static std::string reference(const Case& c) {
   o["heap"] = d.heap;
   o["maxblk"] = d.maxblk;
   o["contstk"] = d.contstk;
+  if (d.storageStatsValid) {
+    o["fsTotal"] = d.fsTotal;
+    o["fsUsed"] = d.fsUsed;
+    o["fsFree"] = d.fsFree;
+    o["photoBytes"] = d.photoBytes;
+    o["orphanPhotoBytes"] = d.orphanPhotoBytes;
+    o["configBytes"] = d.configBytes;
+    o["configTempBytes"] = d.configTempBytes;
+  }
   o["uptime"] = d.uptime;
   o["reset"] = d.reset;
   o["synced"] = d.synced;
@@ -186,6 +195,14 @@ static std::vector<Case> cases() {
   full.d.night = true;
   full.d.nightHeld = true;
   full.d.clockFresh = false;
+  full.d.storageStatsValid = true;
+  full.d.fsTotal = 1024000;
+  full.d.fsUsed = 700000;
+  full.d.fsFree = 324000;
+  full.d.photoBytes = 123456;
+  full.d.orphanPhotoBytes = 2048;
+  full.d.configBytes = 4096;
+  full.d.configTempBytes = 0;
   full.d.wg.compiledIn = true;
   full.d.wg.enabled = full.d.wg.up = true;
   full.d.wg.stage = 3;

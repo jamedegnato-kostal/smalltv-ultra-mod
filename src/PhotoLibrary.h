@@ -36,6 +36,7 @@ int nextFreeSlot();
 bool remove(uint8_t id);
 uint16_t removeAll();
 uint32_t totalPhotoBytes();
+uint32_t orphanFrameBytes();
 uint32_t filesystemTotalBytes();
 uint32_t filesystemFreeBytes();
 } // namespace smalltv_photo

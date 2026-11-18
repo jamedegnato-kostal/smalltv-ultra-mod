@@ -98,13 +98,9 @@ void refresh() {
     if (parsePhotoName(dir.fileName(), id, animation) && !animation && !alreadyInstalled(id) &&
         LittleFS.exists(path(id))) installed[installedCount++] = id;
   }
-  Dir frames = LittleFS.openDir("/photos");
-  while (frames.next()) {
-    if (!frames.isFile()) continue;
-    uint8_t id;
-    if (parseAnimationFrameName(frames.fileName(), id) && !LittleFS.exists(animationPath(id)))
-      LittleFS.remove(String("/photos/") + frames.fileName());
-  }
+  // Preserve orphaned animation JPEGs. A missing metadata file does not prove
+  // that the remaining user image data is disposable.
+
   // Sort the small directory snapshot so IDs and previews have a stable order.
   for (uint8_t i = 1; i < installedCount; ++i) {
     uint8_t value = installed[i], j = i;
@@ -247,6 +243,21 @@ uint16_t removeAll() {
 uint32_t totalPhotoBytes() {
   uint32_t total = 0;
   for (uint8_t i = 0; i < installedCount; ++i) total += bytes(installed[i]);
+  return total;
+}
+uint32_t orphanFrameBytes() {
+  uint32_t total = 0;
+  Dir frames = LittleFS.openDir("/photos");
+  while (frames.next()) {
+    if (!frames.isFile()) continue;
+    uint8_t id;
+    if (!parseAnimationFrameName(frames.fileName(), id) || LittleFS.exists(animationPath(id))) continue;
+    char name[24];
+    snprintf(name, sizeof(name), "/photos/%s", frames.fileName());
+    File orphan = LittleFS.open(name, "r");
+    if (orphan) total += orphan.size();
+    yield();
+  }
   return total;
 }
 uint32_t filesystemTotalBytes() {
