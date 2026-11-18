@@ -13,6 +13,7 @@
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
 #include "Settings.h"
+#include "Platform.h"
 #include "features/theme/ThemeCatalog.h"
 #include "features/theme/ThemePackage.h"
 #include <algorithm>
