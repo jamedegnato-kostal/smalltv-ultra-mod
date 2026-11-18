@@ -90,6 +90,11 @@ der Grenzwert war, konnte appRelease() das Theme behalten, obwohl für die
 Staging-Kopie kein ausreichend großer zusammenhängender Block mehr
 vorhanden war.
 
+Die Settings-POST-Route prüft den Bedarf zusätzlich nach erfolgreichem
+JSON-Parsing erneut und gibt dann bei Bedarf den Theme-Cache frei. Das ist
+wichtig, weil das geparste JSON den größten freien Heap-Block verkleinern
+kann, obwohl der Vorab-Check noch ausreichend Speicher gesehen hat.
+
 **Korrektur:** Der Request-Guard verwendet nun sizeof(Settings) + 256
 Byte als Largest-Block-Schwelle und mindestens max(8192,
 sizeof(Settings) + 4096) Byte freien Heap. Der tatsächliche Wert
