@@ -39,13 +39,13 @@ assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwell
 
 // Photo-only profile: classify GIF signatures and reject animation input
 // before upload; the firmware has no GIF frame parser, endpoint or renderer.
-assert.match(html, /function photoFileHeader\\(file\\)/);
-assert.match(html, /function photoIsGif\\(file\\)/);
-assert.match(html, /bytes\\[0\\]===71&&bytes\\[1\\]===73&&bytes\\[2\\]===70/);
+assert.match(html, /function photoFileHeader\(file\)/);
+assert.match(html, /function photoIsGif\(file\)/);
+assert.match(html, /bytes\[0\]===71&&bytes\[1\]===73&&bytes\[2\]===70/);
 assert.match(html, /GIF-Animationen werden von dieser Foto-only-Firmware nicht unterstützt/);
 assert.ok(html.includes('accept="image/jpeg,image/png,image/webp'));
-assert.match(html, /function photoToJpeg\\(file\\)/);
-assert.match(html, /function uploadPhotos\\(\\)/);
+assert.match(html, /function photoToJpeg\(file\)/);
+assert.match(html, /function uploadPhotos\(\)/);
 assert.doesNotMatch(html, /gifToAnimation|data-animation-frames/);
 assert.ok(!html.includes('/api/photos/frame'));
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
