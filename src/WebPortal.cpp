@@ -660,9 +660,17 @@ static void sendParseError(DeserializationError err) {
 }
 
 static void sendSettingsTransactionError(SettingsTransactionFailure failure) {
-  if (failure == SettingsTransactionFailure::OutOfMemory) {
-    server.send(503, "application/json",
-                "{\"ok\":false,\"error\":\"not enough RAM to stage settings transaction\"}");
+  if (failure == SettingsTransactionFailure::OutOfMemory ||
+      failure == SettingsTransactionFailure::CopyIncomplete) {
+    char body[240];
+    snprintf(body, sizeof(body),
+             "{\"ok\":false,\"error\":\"%s: Settings=%lu B, free heap=%lu B, largest block=%lu B\"}",
+             failure == SettingsTransactionFailure::CopyIncomplete
+               ? "Settings String copy incomplete (RAM)"
+               : "not enough RAM for Settings staging block",
+             (unsigned long)sizeof(Settings), (unsigned long)ESP.getFreeHeap(),
+             (unsigned long)platformMaxFreeBlock());
+    server.send(503, "application/json", body);
     return;
   }
   char body[224];
@@ -691,7 +699,8 @@ static void handlePostConfig() {
   SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
     sendSettingsTransactionError(failure);
     return;
   }
@@ -748,7 +757,8 @@ static void handleFactory() {
   SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [](Settings& settings) { factoryReset(settings); },
-        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
     sendSettingsTransactionError(failure);
     return;
   }
@@ -798,7 +808,8 @@ static void handleImport() {
   SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+        [](const Settings& settings) { return saveSettings(settings); }, &failure,
+        [](const Settings& original, const Settings& candidate) { return settingsCopyValid(original, candidate); })) {
     sendSettingsTransactionError(failure);
     return;
   }
