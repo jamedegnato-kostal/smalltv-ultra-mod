@@ -33,6 +33,11 @@ WiFiClass WiFi;
 MDNSClass MDNS;
 UpdateClass Update;
 EspClass ESP;
+// Settings.cpp is linked into this native parser harness, but this harness
+// does not exercise device heap sampling. Provide inert phase hooks rather
+// than pulling the ESP8266-specific Platform.cpp into the sanitizer binary.
+void platformMemoryPhaseBegin(PlatformMemoryPhase, bool) {}
+void platformMemoryPhaseEnd(PlatformMemoryPhase, bool) {}
 using namespace smalltv;
 using Bytes = std::string;
 
