@@ -35,6 +35,8 @@ assert "legacySlotOccupied" in library
 assert '"/photos/p%03u.anim"' in library
 assert '"/photos/p%03uf%02u.jpg"' in library
 assert "LittleFS.format" not in library
-assert "LittleFS.remove" not in library
+remove_impl = library[library.index("bool remove("):library.index("uint16_t removeAll()")]
+assert "LittleFS.remove(fileName)" in remove_impl
+assert "framePath" not in remove_impl and "animationPath" not in remove_impl
 
 print("JPEG-only photo profile checks passed")
