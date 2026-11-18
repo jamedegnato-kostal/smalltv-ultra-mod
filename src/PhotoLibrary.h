@@ -3,13 +3,11 @@
 #if WITH_PHOTOS
 #include <Arduino.h>
 #include <LittleFS.h>
-
 namespace smalltv_photo {
 #ifndef SMALLTV_PHOTO_MAX_COUNT
 #define SMALLTV_PHOTO_MAX_COUNT
 constexpr uint8_t MaxPhotos = 240;
 #endif
-
 void begin();
 void refresh();
 uint8_t count();
