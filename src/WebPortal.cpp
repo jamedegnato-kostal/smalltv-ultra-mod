@@ -137,6 +137,7 @@ void abortPhotoUpload(const String& reason) {
   photoUploadFrameCount = 0;
 }
 void receivePhotoUpload() {
+  PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   HTTPUpload& up = server.upload();
   if (up.status == UPLOAD_FILE_START) {
     if (++photoUploadParts > 1) { abortPhotoUpload("Pro Upload ist genau ein Bild erlaubt"); return; }
@@ -210,6 +211,7 @@ void receivePhotoUpload() {
   }
 }
 void finishPhotoUpload() {
+  PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   if (!requireAuth()) { abortPhotoUpload("Authentifizierung fehlgeschlagen"); return; }
   photoUpload.close();
   if (!photoUploadAllowed || !photoUploadEnded || photoUploadError.length() || photoUploadSlot < 0) {
@@ -554,6 +556,27 @@ static void handleStatus() {
     d.memoryPhases[i].heapAfter = memory.phases[i].heapAfter;
     d.memoryPhases[i].maxblkAfter = memory.phases[i].maxBlockAfter;
   }
+#if defined(SMALLTV_ESP8266)
+  FSInfo fsInfo;
+  if (LittleFS.info(fsInfo)) {
+    d.storageStatsValid = true;
+    d.fsTotal = fsInfo.totalBytes;
+    d.fsUsed = fsInfo.usedBytes;
+    d.fsFree = d.fsTotal >= d.fsUsed ? d.fsTotal - d.fsUsed : 0;
+  }
+#else
+  d.fsTotal = LittleFS.totalBytes();
+  d.fsUsed = LittleFS.usedBytes();
+  d.fsFree = d.fsTotal >= d.fsUsed ? d.fsTotal - d.fsUsed : 0;
+  d.storageStatsValid = true;
+#endif
+  d.configBytes = settingsStoredSize();
+  File configTemp = LittleFS.open("/config.json.tmp", "r");
+  if (configTemp) d.configTempBytes = configTemp.size();
+#if WITH_PHOTOS
+  d.photoBytes = smalltv_photo::totalPhotoBytes();
+  d.orphanPhotoBytes = smalltv_photo::orphanFrameBytes();
+#endif
   d.contstk = platformFreeContStack();   // ESP8266 continuation-stack high-water (untouched bytes since last repaint)
   d.uptime = millis() / 1000;
   d.reset = appResetReason();
@@ -603,17 +626,23 @@ static void handleStatus() {
 // Fingerprint of everything network-identity related: the WiFi list and the
 // hostname. Changing any of it needs a reboot, because the connection and the
 // mDNS registration are established once at boot.
-static String netFingerprint(const Settings& s) {
-  String f((int)s.wifiCount);
-  for (uint8_t i = 0; i < s.wifiCount; i++) {
-    f += '\n';
-    f += s.wifi[i].ssid;
-    f += '\x01';
-    f += s.wifi[i].pass;
+static void fingerprintByte(uint64_t& hash, uint8_t value) {
+  hash ^= value;
+  hash *= 1099511628211ULL;
+}
+static void fingerprintString(uint64_t& hash, const String& value) {
+  for (size_t i = 0; i < value.length(); ++i) fingerprintByte(hash, static_cast<uint8_t>(value[i]));
+  fingerprintByte(hash, 0xff);
+}
+static uint64_t netFingerprint(const Settings& s) {
+  uint64_t hash = 14695981039346656037ULL;
+  fingerprintByte(hash, s.wifiCount);
+  for (uint8_t i = 0; i < s.wifiCount; ++i) {
+    fingerprintString(hash, s.wifi[i].ssid);
+    fingerprintString(hash, s.wifi[i].pass);
   }
-  f += '\n';
-  f += s.hostname;
-  return f;
+  fingerprintString(hash, s.hostname);
+  return hash;
 }
 
 // A settings body that could not be parsed. Running out of heap is reported
@@ -624,6 +653,17 @@ static void sendParseError(DeserializationError err) {
     server.send(503, "application/json", "{\"ok\":false,\"error\":\"not enough memory\"}");
   else
     server.send(400, "application/json", String("{\"ok\":false,\"error\":\"bad json (") + err.c_str() + ")\"}");
+}
+
+static void sendSettingsTransactionError(SettingsTransactionFailure failure) {
+  if (failure == SettingsTransactionFailure::OutOfMemory) {
+    server.send(503, "application/json",
+                "{\"ok\":false,\"error\":\"not enough RAM to stage settings transaction\"}");
+    return;
+  }
+  char body[224];
+  snprintf(body, sizeof(body), "{\"ok\":false,\"error\":\"%s\"}", settingsSaveError());
+  server.send(507, "application/json", body);
 }
 
 static void handlePostConfig() {
@@ -644,10 +684,11 @@ static void handlePostConfig() {
 
   // The request is freed once applied, before saveSettings() builds its own
   // document: the two together do not fit on the ESP8266.
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save settings\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+    sendSettingsTransactionError(failure);
     return;
   }
 
@@ -700,10 +741,11 @@ static void handleCrashClear() {
 static void handleFactory() {
   if (!requireAuth()) return;
   appRelease();  // Free theme/runtime allocations before serializing defaults.
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [](Settings& settings) { factoryReset(settings); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save factory defaults\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+    sendSettingsTransactionError(failure);
     return;
   }
   server.send(200, "application/json", "{\"ok\":true}");
@@ -749,10 +791,11 @@ static void handleImport() {
     sendParseError(err);
     return;
   }
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
   if (!applyAndSaveSettings(*S,
         [&](Settings& settings) { settingsApplyJson(settings, doc.as<JsonObjectConst>()); doc.clear(); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save settings\"}");
+        [](const Settings& settings) { return saveSettings(settings); }, &failure)) {
+    sendSettingsTransactionError(failure);
     return;
   }
   server.send(200, "application/json", "{\"ok\":true,\"reboot\":true}");
