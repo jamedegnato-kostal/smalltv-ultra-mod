@@ -34,19 +34,19 @@ https://github.com/jamedegnato-kostal/smalltv-ultra-mod/actions/runs/44268403847
 
 Quelle der Werte nach der Änderung ist der erfolgreiche
 GitHub-Actions-Firmware-Workflow auf dem Audit-Branch,
-Commit 80c1198eaeadf17515c87bddd666d373145ac011.
+Commit c4a0afeb05eeda7a6d112c4730070c9802dec117.
 
 | Messgröße | main | Audit-Branch | Differenz |
 | --- | ---: | ---: | ---: |
-| ESP8266 statisches RAM (PlatformIO) | 58.624 B | 59.420 B | +796 B |
+| ESP8266 statisches RAM (PlatformIO) | 58.624 B | 59.404 B | +780 B |
 | ESP8266 RAM-Auslastung | 71,6 % | 72,5 % | +0,9 Prozentpunkte |
-| ESP8266 Flash laut PlatformIO | 881.981 B | 817.505 B | −64.476 B |
-| App-Slot-Größe laut CI-Prüfung | 886.128 B | 821.664 B | −64.464 B |
-| Freier App-Slot laut CI-Prüfung | 158.336 B | 222.800 B | +64.464 B |
+| ESP8266 Flash laut PlatformIO | 881.981 B | 817.353 B | −64.628 B |
+| App-Slot-Größe laut CI-Prüfung | 886.128 B | 821.504 B | −64.624 B |
+| Freier App-Slot laut CI-Prüfung | 158.336 B | 222.960 B | +64.624 B |
 | Loader statisches RAM | 28.824 B | 28.824 B | unverändert |
 | Loader Flash laut CI-Prüfung | 315.920 B | 315.920 B | unverändert |
 
-Der statische RAM-Wert steigt netto um 796 Byte. Das ist der Preis der
+Der statische RAM-Wert steigt netto um 780 Byte. Das ist der Preis der
 zusätzlichen Fehlerdiagnose und Zustandszähler. Er ist kein
 Laufzeit-Heap-Messwert. Für den ESP8266-Laufzeitspeicher zählen weiterhin
 freier Heap, größter zusammenhängender Block und Stack-Reserve; diese Werte
@@ -210,7 +210,7 @@ keine hochfrequente Spitzenwertmessung während eines Vorgangs.
 ## 6. Automatisierte Tests
 
 Auf dem Audit-Branch, Commit
-80c1198eaeadf17515c87bddd666d373145ac011, war die
+c4a0afeb05eeda7a6d112c4730070c9802dec117, war die
 GitHub-Actions-Firmware-Pipeline vollständig erfolgreich.
 
 Ausgeführt und erfolgreich:
