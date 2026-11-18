@@ -37,6 +37,15 @@ assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
+// GIF classification is based on the file signature, not a potentially empty or
+// misleading filename/MIME type. GIF-looking files with a bad signature fail closed.
+assert.match(html, /function photoFileHeader\(file\)/);
+assert.match(html, /bytes\[0\]===71&&bytes\[1\]===73&&bytes\[2\]===70/);
+assert.match(html, /bytes\[4\]===55\|\|bytes\[4\]===57/);
+assert.match(html, /function photoIsGif\(file\)/);
+assert.match(html, /var isGif=await photoIsGif\(picked\[i\]\)/);
+assert.doesNotMatch(html, /var prepared=\/\\.gif\$\/i\.test\(picked\[i\]\.name\)\|\|picked\[i\]\.type==='image\\/gif'/);
+
 // GIF capture must snapshot at display cadence before asynchronous JPEG encoding.
 // The gallery preview must fetch each stored frame instead of always showing frame zero.
 assert.match(html, /for\(var sample=0;sample<375&&frames\.length<12;sample\+\+\)/);
