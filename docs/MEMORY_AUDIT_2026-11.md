@@ -32,7 +32,18 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
    persistenten Schreibens bestehen. Das ist ein relevanter Peak-Verbraucher,
    besonders mit festen Theme-Alias- und Showflow-Arrays.
 
-2. **Der bisherige Fehlertext fasste Ursachen zusammen.** `false` konnte
+2. **Die Settings-Stagingkopie konnte an einem zu kleinen Heap-Block scheitern.**
+   `applyAndSaveSettings()` benötigt einen zusammenhängenden Block von
+   `sizeof(Settings)` Byte. Der vorherige Theme-Request-Guard verlangte nur
+   3.072 Byte Largest-Block. Bei einer größeren Settings-Struktur konnte
+   `appRelease()` deshalb das Theme behalten, obwohl die Transaktionskopie
+   nicht mehr in einen einzelnen Block passte. Der Guard wird nun aus
+   `sizeof(Settings)` plus Allokatorreserve abgeleitet. Zusätzlich prüft die
+   Transaktion, ob String-Mitglieder beim Kopieren vollständig erhalten
+   blieben; String-Allokationsfehler können sonst trotz erfolgreichem
+   `new Settings` leere Kopien erzeugen.
+
+4. **Der bisherige Fehlertext fasste Ursachen zusammen.** `false` konnte
    sowohl bei nicht erfolgreicher Staging-Allokation als auch bei
    fehlgeschlagener Persistierung entstehen. Der Branch unterscheidet diese
    Fälle sowie JSON-Overflow, Temp-Open, Short Write, Flush, Größenprüfung
@@ -42,19 +53,19 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
    Passwörter und Hostname wurden vor/nach POST verkettet. Der Branch ersetzt
    dies durch einen allocation-freien 64-Bit-Fingerprint.
 
-4. **Heap-Telemetrie existierte bereits.** `/api/status` liefert freien Heap,
+5. **Heap-Telemetrie existierte bereits.** `/api/status` liefert freien Heap,
    größten zusammenhängenden Block, Heap-/Block-Minima und Phasenwerte für
    Theme-Parse, Theme-Render, Theme-Daten, Web-Request und Foto. Neu ist
    `settingsSave`; Upload/Commit werden ebenfalls der festen Photo-Phase
    zugeordnet. Die Messstrukturen selbst allozieren keinen Heap.
 
-5. **Theme-/JPEG-Wiedergabe lädt Medien nicht komplett in den ESP8266-Heap.**
+6. **Theme-/JPEG-Wiedergabe lädt Medien nicht komplett in den ESP8266-Heap.**
    Themes werden abschnittsweise aus LittleFS gelesen. JPEG wird direkt aus
    LittleFS bzw. einem PGA1-Offset decodiert. Für Animationen hält die
    Firmware eine feste Tabelle mit maximal zwölf Frame-Metadaten; JPEG-
    Payloads bleiben im Flash-Dateisystem.
 
-6. **GIF-Import benötigt vor allem Browser-RAM.** Bis zu zwölf 240×240-RGBA-
+7. **GIF-Import benötigt vor allem Browser-RAM.** Bis zu zwölf 240×240-RGBA-
    Snapshots entsprechen rund 2,64 MiB Browser-RAM (230.400 Byte pro Bild),
    zuzüglich Encoder-/Blob-Puffern. Die Snapshots werden nicht zum ESP8266
    übertragen: PGA1 wird in Upload-Chunks direkt in eine temporäre LittleFS-

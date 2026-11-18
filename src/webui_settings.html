@@ -859,6 +859,7 @@ function showStatus(s){
   (s.wifiFail?kv('Last join failure',s.wifiFail):'')+
   kv('Free heap',s.heap+' B'+(s.maxblk?' ('+s.maxblk+' B largest block)':''))+
   (s.heapMin!=null?kv('Heap minimum',s.heapMin+' B'+(s.maxblkMin!=null?' · min. contiguous block '+s.maxblkMin+' B':'')):'')+
+  (s.settingsObjectBytes!=null?kv('Settings-Staginggröße',s.settingsObjectBytes+' B (zusammenhängend)'):'')+
   (s.fsTotal!=null?kv('LittleFS',fmtBytes(s.fsUsed)+' used / '+fmtBytes(s.fsTotal)+' total · '+fmtBytes(s.fsFree)+' free'):'')+
   (s.photoBytes!=null?kv('Fotobibliothek',fmtBytes(s.photoBytes)+' · verwaiste Frames '+fmtBytes(s.orphanPhotoBytes||0)):'')+
   (s.photoTempBytes?kv('Foto-Upload temporär',fmtBytes(s.photoTempBytes)):'')+
