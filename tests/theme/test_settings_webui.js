@@ -50,8 +50,8 @@ assert.doesNotMatch(html, /gifToAnimation|data-animation-frames/);
 assert.ok(!html.includes('/api/photos/frame'));
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
 assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
-assert.match(portal, /photoValidateJpeg\\(PhotoUploadPath\\)/);
-assert.match(portal, /LittleFS\\.rename\\(PhotoUploadPath, target\\)/);
+assert.ok(portal.includes('photoValidateJpeg(PhotoUploadPath)'));
+assert.ok(portal.includes('LittleFS.rename(PhotoUploadPath, target)'));
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
   '/api/themes/install', '/api/themes/select', '/api/themes/metadata',
