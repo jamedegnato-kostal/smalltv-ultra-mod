@@ -1,8 +1,8 @@
 # SmallTV Ultra – Speicher-Audit
 
 **Stand:** 18. November 2026  
-**Analysierter Stand:** \`main\`, Commit \`a413e0b0e0e9673268f79523e85e98a03b8a1bb6\`  
-**Arbeitsbranch:** \`audit/memory-footprint-2026-11\`
+**Analysierter Stand:** `main`, Commit `a413e0b0e0e9673268f79523e85e98a03b8a1bb6`  
+**Arbeitsbranch:** `audit/memory-footprint-2026-11`
 
 ## Messbare Ausgangsbasis
 
@@ -17,7 +17,7 @@ Der letzte erfolgreiche GitHub-Actions-Lauf vor diesem Branch ist
 
 Das sind Linker-/Buildwerte, keine Messung des freien Laufzeit-Heaps,
 größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
-\`eagle.flash.4m1m.ld\`; LittleFS ist vom App-Slot getrennt.
+`eagle.flash.4m1m.ld`; LittleFS ist vom App-Slot getrennt.
 
 ## Befunde
 
@@ -25,14 +25,14 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
 
 1. **Settings-POST hat mehrere aktive Strukturen.** Der Webserver hält den
    Request-Body, ArduinoJson parst ihn in ein Dokument, die Transaktion legt
-   eine vollständige \`Settings\`-Stagingkopie auf dem Heap an und
-   \`saveSettings()\` serialisiert die Konfiguration in ein weiteres
+   eine vollständige `Settings`-Stagingkopie auf dem Heap an und
+   `saveSettings()` serialisiert die Konfiguration in ein weiteres
    ArduinoJson-Dokument. Das Request-Dokument wird vor dem Speichern explizit
-   mit \`doc.clear()\` freigegeben; die Stagingkopie bleibt während des
+   mit `doc.clear()` freigegeben; die Stagingkopie bleibt während des
    persistenten Schreibens bestehen. Das ist ein relevanter Peak-Verbraucher,
    besonders mit festen Theme-Alias- und Showflow-Arrays.
 
-2. **Der bisherige Fehlertext fasste Ursachen zusammen.** \`false\` konnte
+2. **Der bisherige Fehlertext fasste Ursachen zusammen.** `false` konnte
    sowohl bei nicht erfolgreicher Staging-Allokation als auch bei
    fehlgeschlagener Persistierung entstehen. Der Branch unterscheidet diese
    Fälle sowie JSON-Overflow, Temp-Open, Short Write, Flush, Größenprüfung
@@ -42,10 +42,10 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
    Passwörter und Hostname wurden vor/nach POST verkettet. Der Branch ersetzt
    dies durch einen allocation-freien 64-Bit-Fingerprint.
 
-4. **Heap-Telemetrie existierte bereits.** \`/api/status\` liefert freien Heap,
+4. **Heap-Telemetrie existierte bereits.** `/api/status` liefert freien Heap,
    größten zusammenhängenden Block, Heap-/Block-Minima und Phasenwerte für
    Theme-Parse, Theme-Render, Theme-Daten, Web-Request und Foto. Neu ist
-   \`settingsSave\`; Upload/Commit werden ebenfalls der festen Photo-Phase
+   `settingsSave`; Upload/Commit werden ebenfalls der festen Photo-Phase
    zugeordnet. Die Messstrukturen selbst allozieren keinen Heap.
 
 5. **Theme-/JPEG-Wiedergabe lädt Medien nicht komplett in den ESP8266-Heap.**
@@ -64,21 +64,21 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
 ### Flash / LittleFS
 
 1. **Atomare Speicherung braucht vorübergehend zwei Konfigurationsdateien.**
-   \`AtomicJson.h\` schreibt \`/config.json.tmp\`, prüft Schreibanzahl, Flush
+   `AtomicJson.h` schreibt `/config.json.tmp`, prüft Schreibanzahl, Flush
    und endgültige Größe und veröffentlicht erst danach per Rename. Die alte
-   \`/config.json\` bleibt bis zum erfolgreichen Rename bestehen. Diesen
+   `/config.json` bleibt bis zum erfolgreichen Rename bestehen. Diesen
    Sicherheitsgewinn nicht durch vorheriges Löschen der Zieldatei aufgeben.
 
 2. **Fehlgeschlagenes Speichern bedeutet nicht automatisch „LittleFS voll“.**
    Mögliche Ursachen sind Platzmangel, fehlgeschlagener Open, Short Write,
    Flush-/Flashfehler oder Rename-/Metadatenfehler. Der Branch meldet die
-   konkrete Stufe; \`/api/status\` liefert FS-Kapazität, belegt/frei,
+   konkrete Stufe; `/api/status` liefert FS-Kapazität, belegt/frei,
    Fotodaten, verwaiste Frame-Daten, Config-Größe und Größe einer ggf.
-   vorhandenen \`config.json.tmp\`.
+   vorhandenen `config.json.tmp`.
 
 3. **Verwaiste Animationsframes wurden automatisch gelöscht.**
-   \`PhotoLibrary::refresh()\` entfernte \`pNNNfNN.jpg\`, wenn die
-   \`.anim\`-Metadatei fehlte. Nach einer unterbrochenen Speicherung können
+   `PhotoLibrary::refresh()` entfernte `pNNNfNN.jpg`, wenn die
+   `.anim`-Metadatei fehlte. Nach einer unterbrochenen Speicherung können
    diese JPEGs die einzigen verbliebenen Bilddaten sein. Der Branch bewahrt
    sie und zählt ihre Bytes separat. Das ist konservativer, kann aber
    ungenutzten LittleFS-Platz binden.
@@ -86,10 +86,10 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
 4. **Upload-Temp-Dateien.** Foto-/GIF-Uploads landen zunächst in versteckten
    Temp-Dateien und werden erst nach Validierung umbenannt. Fehlerpfade
    entfernen unvollständige Uploads; ein Stromausfall kann Reste hinterlassen.
-   \`config.json.tmp\` wird nicht automatisch als gültige Konfiguration
+   `config.json.tmp` wird nicht automatisch als gültige Konfiguration
    übernommen.
 
-5. **Weboberfläche.** Die HTML-Quelle wird zu \`webui_settings.h\` gzip-
+5. **Weboberfläche.** Die HTML-Quelle wird zu `webui_settings.h` gzip-
    komprimiert und liegt in PROGMEM. Die Größe des generierten C-Headers ist
    nicht mit Laufzeit-Heap gleichzusetzen.
 
@@ -112,8 +112,8 @@ erfolgreicher Persistierung übernommen.
 - Detaillierte AtomicJson-Ergebnisse; der bool-Kompatibilitätswrapper bleibt.
 - Unterschiedliche HTTP-Fehler für RAM-Staging und Persistenz.
 - Allocation-freier Netzwerk-Fingerprint.
-- Heap-Phase \`settingsSave\` und Photo-Phase für Upload/Commit.
-- LittleFS-, Foto-, Orphan- und Config-Temp-Daten in \`/api/status\`.
+- Heap-Phase `settingsSave` und Photo-Phase für Upload/Commit.
+- LittleFS-, Foto-, Orphan- und Config-Temp-Daten in `/api/status`.
 - Keine automatische Löschung verwaister Animationsframes.
 - Hosttests für AtomicJson-Fehlerklassen und maximales 16-Schritte-Showflow-JSON.
 
@@ -124,7 +124,7 @@ erfolgreicher Persistierung übernommen.
 - Mindestens 100 wiederholte Saves; Heap-Minimum und Largest-Block-Trend
   beobachten.
 - LittleFS knapp unter/über dem Platzbedarf der Temp-Datei: Fehlerantwort
-  und anschließendes Lesen von \`config.json\` prüfen.
+  und anschließendes Lesen von `config.json` prüfen.
 - Stromunterbrechung während des Temp-Schreibens sowie vor/nach Rename.
 - JPEG-/GIF-Upload bis zum 12-Frame-Limit bei knappem Heap und LittleFS.
 - Foto-/GIF-Wiedergabe während Theme-/Showflow-Wechsel.
@@ -132,5 +132,5 @@ erfolgreicher Persistierung übernommen.
   und als Orphan-Bytes erscheinen.
 - 24-Stunden-Test mit Webinterface, Fotos, GIFs, Themes und Showflow.
 
-\`/api/status\` ist die Quelle für Laufzeit-Heap, Largest Block, Minima,
+`/api/status` ist die Quelle für Laufzeit-Heap, Largest Block, Minima,
 Phasen und LittleFS. CI-Builds ersetzen diese Hardwaretests nicht.
