@@ -258,12 +258,13 @@ mindestens folgende Tests durchzuführen:
 6. Stromunterbrechung beim Schreiben der Temp-Datei sowie direkt vor und
    nach dem Rename simulieren; keine beschädigte oder verlorene
    Konfiguration zulassen.
-7. JPEG-Upload sowie GIF-Upload mit mehreren Frames bis zum 12-Frame-Limit
-   bei knappem Heap und knappem LittleFS testen.
-8. GIF-Wiedergabe mit Webinterface-Requests und Theme-/Showflow-Wechsel
+7. Mehrere JPEG-Uploads bis nahe an das 128-KiB-Limit bei knappem Heap und
+   knappem LittleFS testen.
+8. Foto-Wiedergabe mit Webinterface-Requests und Theme-/Showflow-Wechsel
    kombinieren; Resets, WDTs und Heap-Fragmentierung beobachten.
-9. Einen abgebrochenen Animationsimport simulieren und verbliebene Frames
-   als Orphan-Bytes kontrollieren.
+9. Vorhandene Legacy-GIF-Dateien kontrollieren: Sie müssen auf LittleFS
+   erhalten bleiben, dürfen keine JPEG-Slots blockieren oder überschreiben
+   und werden in diesem Build nicht angezeigt oder abgespielt.
 10. Mount-Fehler / beschädigte FS-Metadaten kontrolliert simulieren und
     verifizieren, dass normaler Start niemals formatiert.
 11. 24-Stunden-Stabilitätstest mit Webinterface, Fotos, GIFs, Themes und
@@ -282,3 +283,29 @@ Die ursprüngliche Fehlermeldung eines konkreten Geräts lässt sich ohne
 Fehlerzeitpunkt-Snapshot nicht rückwirkend eindeutig einem Heap- oder
 LittleFS-Fehler zuweisen. Der Branch sorgt dafür, dass ein erneuter Fehler
 eine konkrete Stufe und die relevanten Heap-/LittleFS-Werte meldet.
+
+
+## 9. Foto-only-Verteilbuild v0.1.8
+
+Der ESP8266-Verteilbuild enthält JPEG-Fotos, aber keine GIF-Import- oder
+GIF-Wiedergabe-Pipeline. Die Browser-Oberfläche nimmt JPEG-, PNG- und
+WebP-Einzelbilder an und wandelt sie vor dem Upload in 240×240-JPEG um.
+Der Firmware-Upload-Endpunkt akzeptiert ausschließlich JPEG-Dateien.
+
+Bestehende GIF-Metadaten und Frame-Dateien in LittleFS werden beim Update
+nicht formatiert, nicht automatisch gelöscht und nicht überschrieben.
+Diese Dateien werden von der Foto-only-Version jedoch nicht mehr in der
+Fotobibliothek angezeigt oder im Showflow abgespielt. Die Slotvergabe
+reserviert IDs, die noch durch alte GIF-Metadaten oder Frame-Dateien belegt
+sind. Wer bestehende GIFs weiter nutzen möchte, sollte sie vor dem Update
+mit einer GIF-fähigen Firmware exportieren bzw. sichern.
+
+Die Foto-only-Variante reduziert die Komplexität von Upload-Validierung,
+Frame-Metadaten, Frame-HTTP-Endpunkten, GIF-Vorschau und Animationstiming.
+Ein großer zusätzlicher Heap-Gewinn ist nicht garantiert, da GIF-Payloads
+bereits dateibasiert und nicht vollständig im ESP8266-Heap gehalten wurden.
+
+**Freigabestatus:** Der ESP8266-Compiler, automatisierte Hosttests und die
+Flash-Slot-Prüfung sind CI-Gates. Ein physisches Gerät, reale Foto-Uploads,
+wiederholte Theme-Speichervorgänge und ein Dauerlauf müssen vor einer
+uneingeschränkten Stabilitätszusage noch praktisch geprüft werden.
