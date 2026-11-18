@@ -538,7 +538,20 @@ void Settings::setDefaults() {
 
 // ---------------------------------------------------------------------------
 bool settingsBegin() {
+#if defined(SMALLTV_FAMILY_ESP8266)
+  // ESP8266 LittleFS defaults to autoFormat=true. A transient mount failure
+  // must never erase the user's photo, theme and settings partition.
+  if (!LittleFS.setConfig(LittleFSConfig(false))) {
+    g_storageReady = false;
+    return false;
+  }
   g_storageReady = LittleFS.begin();
+#elif defined(SMALLTV_FAMILY_ESP32)
+  // ESP32 exposes formatOnFail directly; keep it disabled as well.
+  g_storageReady = LittleFS.begin(false);
+#else
+  g_storageReady = LittleFS.begin();
+#endif
   return g_storageReady;
 }
 
@@ -547,9 +560,10 @@ bool settingsStorageReady() {
 }
 
 bool settingsFormatStorage() {
+  // This path is intentionally explicit/destructive and only called by the
+  // user-requested recovery endpoint. Mount itself still never auto-formats.
   if (g_storageReady || !LittleFS.format()) return false;
-  g_storageReady = LittleFS.begin();
-  return g_storageReady;
+  return settingsBegin();
 }
 
 bool loadSettings(Settings& s) {

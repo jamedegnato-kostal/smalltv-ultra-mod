@@ -79,6 +79,9 @@ größten Heap-Blocks oder freien LittleFS. Das Linkerskript ist
    und endgültige Größe und veröffentlicht erst danach per Rename. Die alte
    `/config.json` bleibt bis zum erfolgreichen Rename bestehen. Diesen
    Sicherheitsgewinn nicht durch vorheriges Löschen der Zieldatei aufgeben.
+   Beim Mount ist automatisches Formatieren explizit deaktiviert
+   (`LittleFSConfig(false)` auf ESP8266 und `LittleFS.begin(false)` auf ESP32).
+   Ein Mount-Fehler kann so keine Benutzerdatenpartition automatisch löschen.
 
 2. **Fehlgeschlagenes Speichern bedeutet nicht automatisch „LittleFS voll“.**
    Mögliche Ursachen sind Platzmangel, fehlgeschlagener Open, Short Write,

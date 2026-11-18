@@ -18,7 +18,12 @@ struct FSInfo {
   uint32_t totalBytes = 0;
   uint32_t usedBytes = 0;
 };
+namespace littlefs_impl {
+struct LittleFSConfig { explicit LittleFSConfig(bool) {} };
+}
+using littlefs_impl::LittleFSConfig;
 struct FSClass {
+  bool setConfig(const LittleFSConfig&) { return true; }
   bool begin() { return false; }
   bool format() { return false; }
   bool info(FSInfo&) { return false; }
