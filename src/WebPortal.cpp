@@ -680,7 +680,7 @@ static void handlePostConfig() {
     return;
   }
 
-  String oldNet = netFingerprint(*S);
+  const uint64_t oldNet = netFingerprint(*S);
 
   // The request is freed once applied, before saveSettings() builds its own
   // document: the two together do not fit on the ESP8266.
@@ -698,7 +698,7 @@ static void handlePostConfig() {
   gfxApplyColors(*S);       // rotation, panel colour order/inversion, channel gain
   appInvalidate();          // re-init every mode + repaint (covers mode/URL/symbol changes)
 
-  bool wifiChanged = netFingerprint(*S) != oldNet;
+  const bool wifiChanged = netFingerprint(*S) != oldNet;
 
   JsonDocument res;
   res["ok"] = true;

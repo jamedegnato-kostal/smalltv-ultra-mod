@@ -8,6 +8,8 @@ namespace {
 uint8_t installed[MaxPhotos] = {};
 uint8_t installedCount = 0;
 uint16_t currentGeneration = 0;
+uint32_t cachedPhotoBytes = 0;
+uint32_t cachedOrphanBytes = 0;
 
 bool parsePhotoName(const String& name, uint8_t& id, bool& animation) {
   if ((name.length() != 8 && name.length() != 9) || name[0] != 'p' || name[4] != '.') return false;
@@ -106,6 +108,27 @@ void refresh() {
     uint8_t value = installed[i], j = i;
     while (j && installed[j - 1] > value) { installed[j] = installed[j - 1]; --j; }
     installed[j] = value;
+  }
+
+  // Cache accounting during refresh, not on every periodic /api/status poll.
+  // This avoids repeatedly opening up to 240 media files while the UI polls.
+  cachedPhotoBytes = 0;
+  for (uint8_t i = 0; i < installedCount; ++i) cachedPhotoBytes += bytes(installed[i]);
+  cachedOrphanBytes = 0;
+  Dir orphanFrames = LittleFS.openDir("/photos");
+  while (orphanFrames.next()) {
+    if (!orphanFrames.isFile()) continue;
+    const String frameName = orphanFrames.fileName();
+    uint8_t id;
+    if (!parseAnimationFrameName(frameName, id)) continue;
+    char animationName[24];
+    snprintf(animationName, sizeof(animationName), "/photos/p%03u.anim", unsigned(id));
+    if (LittleFS.exists(animationName)) continue;
+    char frameNamePath[24];
+    snprintf(frameNamePath, sizeof(frameNamePath), "/photos/%s", frameName.c_str());
+    File orphan = LittleFS.open(frameNamePath, "r");
+    if (orphan) cachedOrphanBytes += orphan.size();
+    yield();
   }
   ++currentGeneration;
 }
@@ -240,26 +263,8 @@ uint16_t removeAll() {
   refresh();
   return removed;
 }
-uint32_t totalPhotoBytes() {
-  uint32_t total = 0;
-  for (uint8_t i = 0; i < installedCount; ++i) total += bytes(installed[i]);
-  return total;
-}
-uint32_t orphanFrameBytes() {
-  uint32_t total = 0;
-  Dir frames = LittleFS.openDir("/photos");
-  while (frames.next()) {
-    if (!frames.isFile()) continue;
-    uint8_t id;
-    if (!parseAnimationFrameName(frames.fileName(), id) || LittleFS.exists(animationPath(id))) continue;
-    char name[24];
-    snprintf(name, sizeof(name), "/photos/%s", frames.fileName());
-    File orphan = LittleFS.open(name, "r");
-    if (orphan) total += orphan.size();
-    yield();
-  }
-  return total;
-}
+uint32_t totalPhotoBytes() { return cachedPhotoBytes; }
+uint32_t orphanFrameBytes() { return cachedOrphanBytes; }
 uint32_t filesystemTotalBytes() {
 #if defined(SMALLTV_ESP8266)
   FSInfo info;
