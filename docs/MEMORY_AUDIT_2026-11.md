@@ -112,9 +112,13 @@ Das aktive Settings-Objekt bleibt unverändert.
 - Der Netzwerk-Fingerprint wurde zuvor durch Verkettung temporärer
   String-Objekte erzeugt. Er wird jetzt als allocation-freier
   64-Bit-Fingerprint berechnet.
-- Der Theme-Renderer verwendet weiterhin eine explizite Freigabe vor
-  speicherintensiven Requests. ThemeMode::unload() gibt Theme-Vector-
-  Kapazitäten frei.
+- Der Theme-Renderer verwendet eine vollständige Freigabe vor
+  speicherintensiven Requests. ThemeMode::release() ruft bei knappem Heap
+  jetzt ThemeMode::unload() auf und gibt damit auch die Vektorkapazitäten
+  für Datenwerte und Abrufpläne frei. Diese Cache-Werte werden nach dem
+  Request neu aufgebaut; Theme-Daten werden erneut abgerufen. So bleiben
+  sie nicht als kleine Heap-Blöcke zurück, die den größten zusammenhängenden
+  Block für die Settings-Kopie begrenzen.
 - Foto-/GIF-Wiedergabe lädt keine vollständigen PGA1-Payloads in den
   ESP8266-Heap. Die Firmware hält höchstens zwölf Frame-Metadatensätze;
   JPEG-Daten werden aus LittleFS gelesen.
