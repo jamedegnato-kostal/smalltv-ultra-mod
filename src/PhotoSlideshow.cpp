@@ -5,12 +5,11 @@
 #include "PhotoLibrary.h"
 #include <Arduino_GFX_Library.h>
 #include <TJpg_Decoder.h>
-
 namespace {
 bool photoOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* data) {
   if (x < 0 || y < 0 || x + w > 240 || y + h > 240 || !gfxDev()) return false;
   const uint32_t pixels = uint32_t(w) * h;
-  if (pixels > 256) return false; // baseline JPEG MCU is at most 16x16
+  if (pixels > 256) return false;
   for (uint32_t i = 0; i < pixels; ++i) data[i] = gfxTint(data[i]);
   gfxDev()->draw16bitRGBBitmap(x, y, data, w, h);
   yield();
@@ -21,9 +20,7 @@ bool validateOutput(int16_t, int16_t, uint16_t, uint16_t, uint16_t*) {
   return true;
 }
 }
-
 PhotoSlideshow g_photoSlideshow;
-
 bool photoValidateJpeg(const String& path) {
   uint16_t width = 0, height = 0;
   TJpgDec.setJpgScale(0);
@@ -33,13 +30,10 @@ bool photoValidateJpeg(const String& path) {
   File file = LittleFS.open(path, "r");
   return file && TJpgDec.drawFsJpg(0, 0, file) == JDR_OK;
 }
-
 void PhotoSlideshow::begin() {
   sequence_.seed(ESP.getCycleCount());
 }
-
 bool PhotoSlideshow::startOne(uint8_t photoId, bool randomPhoto, uint16_t dwellSeconds) {
-  // Require a contiguous heap block before touching LittleFS/JPEG state.
   constexpr uint32_t MinFreeHeap = 8UL * 1024UL;
   constexpr uint32_t MinLargestBlock = 3UL * 1024UL;
   if (ESP.getFreeHeap() < MinFreeHeap || platformMaxFreeBlock() < MinLargestBlock) return false;
@@ -58,15 +52,12 @@ bool PhotoSlideshow::startOne(uint8_t photoId, bool randomPhoto, uint16_t dwellS
   active_ = true;
   return true;
 }
-
 bool PhotoSlideshow::wasAttempted(uint8_t id) const {
   return (attempted_[id >> 3] & uint8_t(1u << (id & 7))) != 0;
 }
-
 void PhotoSlideshow::markAttempted(uint8_t id) {
   attempted_[id >> 3] |= uint8_t(1u << (id & 7));
 }
-
 bool PhotoSlideshow::draw(uint8_t id) {
   PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
   if (!smalltv_photo::contains(id)) return false;
@@ -77,7 +68,6 @@ bool PhotoSlideshow::draw(uint8_t id) {
   TJpgDec.setCallback(photoOutput);
   return TJpgDec.drawFsJpg(0, 0, file) == JDR_OK;
 }
-
 bool PhotoSlideshow::service(const Settings& settings) {
   if (!active_) return true;
   if (settings.mode != MODE_THEME) {
@@ -85,13 +75,11 @@ bool PhotoSlideshow::service(const Settings& settings) {
     showing_ = false;
     return true;
   }
-
   if (generation_ != smalltv_photo::generation()) {
     generation_ = smalltv_photo::generation();
     sequence_.setPhotos(smalltv_photo::slots(), smalltv_photo::count());
     if (!randomPhoto_ && !smalltv_photo::contains(requestedPhoto_)) target_ = 0;
   }
-
   if (showing_) {
     if (uint32_t(millis() - shownAt_) < uint32_t(currentDwellSeconds_) * 1000UL) return false;
     showing_ = false;
@@ -100,7 +88,6 @@ bool PhotoSlideshow::service(const Settings& settings) {
       return true;
     }
   }
-
   const uint8_t available = smalltv_photo::count();
   for (uint8_t attempt = 0; attempt < available; ++attempt) {
     uint8_t id = requestedPhoto_;
@@ -118,7 +105,7 @@ bool PhotoSlideshow::service(const Settings& settings) {
     showing_ = true;
     return false;
   }
-  active_ = false; // this step's selected photo could not be displayed
+  active_ = false;
   return true;
 }
 #endif
