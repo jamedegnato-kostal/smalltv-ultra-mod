@@ -44,7 +44,7 @@ assert.match(html, /bytes\[0\]===71&&bytes\[1\]===73&&bytes\[2\]===70/);
 assert.match(html, /bytes\[4\]===55\|\|bytes\[4\]===57/);
 assert.match(html, /function photoIsGif\(file\)/);
 assert.match(html, /var isGif=await photoIsGif\(picked\[i\]\)/);
-assert.doesNotMatch(html, /var prepared=\/\\.gif\$\/i\.test\(picked\[i\]\.name\)\|\|picked\[i\]\.type==='image\\/gif'/);
+assert.ok(!html.includes("picked[i].type==='image/gif'?await gifToAnimation"), 'upload routing must use verified file bytes');
 
 // GIF capture must snapshot at display cadence before asynchronous JPEG encoding.
 // The gallery preview must fetch each stored frame instead of always showing frame zero.
