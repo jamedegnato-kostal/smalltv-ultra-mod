@@ -309,6 +309,53 @@ void handlePhotoFile() {
   server.streamFile(file, "image/jpeg");
   file.close();
 }
+void handlePhotoFrame() {
+  if (!requireAuth()) return;
+  uint8_t id;
+  if (!requestPhotoId(id) || !smalltv_photo::contains(id) || !smalltv_photo::isAnimation(id)) {
+    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
+  }
+  const String rawFrame = server.arg("frame");
+  if (!rawFrame.length()) { server.send(400, "text/plain", "Frame-Index fehlt"); return; }
+  for (size_t i = 0; i < rawFrame.length(); ++i) {
+    if (rawFrame[i] < '0' || rawFrame[i] > '9') {
+      server.send(400, "text/plain", "Ungültiger Frame-Index"); return;
+    }
+  }
+  const int requested = rawFrame.toInt();
+  if (requested < 0 || requested >= smalltv_photo::MaxAnimationFrames) {
+    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
+  }
+  smalltv_photo::AnimationFrameInfo frames[smalltv_photo::MaxAnimationFrames];
+  uint8_t count = 0;
+  if (!smalltv_photo::loadAnimationFrames(id, frames, smalltv_photo::MaxAnimationFrames, count) ||
+      requested >= count) {
+    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
+  }
+  const smalltv_photo::AnimationFrameInfo& frame = frames[requested];
+  const String filePath = frame.embedded ? smalltv_photo::animationPath(id)
+                                         : smalltv_photo::framePath(id, static_cast<uint8_t>(requested));
+  File file = LittleFS.open(filePath, "r");
+  if (!file || (frame.embedded && !file.seek(frame.offset, SeekSet))) {
+    server.send(404, "text/plain", "GIF-Frame nicht gefunden"); return;
+  }
+  server.sendHeader("Cache-Control", "no-store");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "image/jpeg", "");
+  uint8_t buffer[256];
+  uint32_t remaining = frame.embedded ? frame.length : file.size();
+  while (remaining) {
+    const size_t wanted = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+    const int got = file.read(buffer, wanted);
+    if (got <= 0) break;
+    server.sendContent(reinterpret_cast<const char*>(buffer), static_cast<size_t>(got));
+    remaining -= static_cast<uint32_t>(got);
+    if (static_cast<size_t>(got) != wanted) break;
+    yield();
+  }
+  file.close();
+  server.sendContent("", 0);
+}
 void handlePhotoDelete() {
   if (!requireAuth()) return;
   uint8_t id;
@@ -966,6 +1013,7 @@ void webPortalBegin(Settings& settings) {
 #if WITH_PHOTOS
   server.on("/api/photos", HTTP_GET, handlePhotoList);
   server.on("/api/photos/file", HTTP_GET, handlePhotoFile);
+  server.on("/api/photos/frame", HTTP_GET, handlePhotoFrame);
   server.on("/api/photos/upload", HTTP_POST, finishPhotoUpload, receivePhotoUpload);
   server.on("/api/photos/delete", HTTP_POST, handlePhotoDelete);
   server.on("/api/photos/delete-all", HTTP_POST, handlePhotoDeleteAll);
