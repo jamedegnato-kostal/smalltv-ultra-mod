@@ -2,7 +2,6 @@
 #if WITH_PHOTOS
 #include <stdio.h>
 #include <string.h>
-
 namespace smalltv_photo {
 namespace {
 uint8_t installed[MaxPhotos] = {};
@@ -10,7 +9,6 @@ uint8_t installedCount = 0;
 uint16_t currentGeneration = 0;
 uint32_t cachedPhotoBytes = 0;
 uint32_t cachedOrphanBytes = 0;
-
 bool parsePhotoName(const String& name, uint8_t& id) {
   if (name.length() != 8 || name[0] != 'p' || name[4] != '.') return false;
   if (name[1] < '0' || name[1] > '9' || name[2] < '0' || name[2] > '9' ||
@@ -23,11 +21,9 @@ bool parsePhotoName(const String& name, uint8_t& id) {
   id = static_cast<uint8_t>(value);
   return true;
 }
-
-// Old GIF imports used a .anim metadata file and separate pNNNfNN.jpg
-// payloads. Keep recognizing those names for storage diagnostics and slot
-// reservation, but this JPEG-only firmware never opens, modifies or deletes
-// those legacy files.
+// Old GIF imports used pNNN.anim metadata and pNNNfNN.jpg frame files.
+// Keep recognizing frame filenames for storage diagnostics and slot
+// reservation, but this firmware never opens, modifies or deletes them.
 bool parseLegacyFrameName(const String& name, uint8_t& id) {
   if (name.length() != 11 || name[0] != 'p' || name[4] != 'f' || name[7] != '.' ||
       name[8] != 'j' || name[9] != 'p' || name[10] != 'g') return false;
@@ -41,13 +37,11 @@ bool parseLegacyFrameName(const String& name, uint8_t& id) {
   id = static_cast<uint8_t>(value);
   return true;
 }
-
 bool alreadyInstalled(uint8_t id) {
   for (uint8_t i = 0; i < installedCount; ++i)
     if (installed[i] == id) return true;
   return false;
 }
-
 bool legacySlotOccupied(uint8_t id) {
   char name[28];
   snprintf(name, sizeof(name), "/photos/p%03u.anim", unsigned(id));
@@ -59,13 +53,11 @@ bool legacySlotOccupied(uint8_t id) {
   return false;
 }
 } // namespace
-
 String path(uint8_t id) {
   char name[20];
   snprintf(name, sizeof(name), "/photos/p%03u.jpg", unsigned(id));
   return String(name);
 }
-
 void refresh() {
   installedCount = 0;
   Dir dir = LittleFS.openDir("/photos");
@@ -76,23 +68,16 @@ void refresh() {
     if (parsePhotoName(name, id) && !alreadyInstalled(id) && LittleFS.exists(path(id)))
       installed[installedCount++] = id;
   }
-
-  // Sort the small directory snapshot so IDs and previews have a stable order.
   for (uint8_t i = 1; i < installedCount; ++i) {
     uint8_t value = installed[i], j = i;
     while (j && installed[j - 1] > value) {
-      installed[j] = installed[j - 1];
-      --j;
+      installed[j] = installed[j - 1]; --j;
     }
     installed[j] = value;
   }
-
-  // Cache accounting during refresh, not on every periodic /api/status poll.
   cachedPhotoBytes = 0;
   for (uint8_t i = 0; i < installedCount; ++i) cachedPhotoBytes += bytes(installed[i]);
-
-  // Legacy frame files with no matching .anim index are retained and counted
-  // as orphan bytes. Nothing in this firmware automatically deletes them.
+  // Orphan legacy frame files are accounted for but never removed.
   cachedOrphanBytes = 0;
   Dir frames = LittleFS.openDir("/photos");
   while (frames.next()) {
@@ -111,32 +96,26 @@ void refresh() {
   }
   ++currentGeneration;
 }
-
 void begin() {
   LittleFS.mkdir("/photos");
-  // Never clean user media on boot. This photo-only build leaves older GIF
-  // payloads in LittleFS untouched; it simply does not list or play them.
+  // Never clean user media on boot. Old GIF files remain untouched; they are
+  // simply not listed or played by this JPEG-only build.
   refresh();
 }
-
 uint8_t count() { return installedCount; }
 const uint8_t* slots() { return installed; }
 uint16_t generation() { return currentGeneration; }
-
 bool contains(uint8_t id) {
   for (uint8_t i = 0; i < installedCount; ++i)
     if (installed[i] == id) return true;
   return false;
 }
-
 uint32_t bytes(uint8_t id) {
   File file = LittleFS.open(path(id), "r");
   return file ? file.size() : 0;
 }
-
 int nextFreeSlot() {
-  // Do not reuse IDs still occupied by legacy GIF media. That media is not
-  // supported here, but preserving its files also means not overwriting it.
+  // Do not reuse an ID still occupied by legacy GIF metadata/frame files.
   for (uint16_t candidate = 0; candidate < MaxPhotos; ++candidate) {
     const uint8_t id = static_cast<uint8_t>(candidate);
     if (LittleFS.exists(path(id)) || legacySlotOccupied(id)) continue;
@@ -144,7 +123,6 @@ int nextFreeSlot() {
   }
   return -1;
 }
-
 bool remove(uint8_t id) {
   if (!contains(id)) return false;
   const String fileName = path(id);
@@ -152,7 +130,6 @@ bool remove(uint8_t id) {
   refresh();
   return true;
 }
-
 uint16_t removeAll() {
   uint16_t removed = 0;
   uint8_t ids[MaxPhotos];
@@ -165,10 +142,8 @@ uint16_t removeAll() {
   refresh();
   return removed;
 }
-
 uint32_t totalPhotoBytes() { return cachedPhotoBytes; }
 uint32_t orphanFrameBytes() { return cachedOrphanBytes; }
-
 uint32_t filesystemTotalBytes() {
 #if defined(SMALLTV_ESP8266)
   FSInfo info;
@@ -177,7 +152,6 @@ uint32_t filesystemTotalBytes() {
   return LittleFS.totalBytes();
 #endif
 }
-
 uint32_t filesystemFreeBytes() {
 #if defined(SMALLTV_ESP8266)
   FSInfo info;
