@@ -570,6 +570,7 @@ static void handleStatus() {
   d.fsFree = d.fsTotal >= d.fsUsed ? d.fsTotal - d.fsUsed : 0;
   d.storageStatsValid = true;
 #endif
+  d.settingsObjectBytes = sizeof(Settings);
   d.configBytes = settingsStoredSize();
   File configTemp = LittleFS.open("/config.json.tmp", "r");
   if (configTemp) d.configTempBytes = configTemp.size();
