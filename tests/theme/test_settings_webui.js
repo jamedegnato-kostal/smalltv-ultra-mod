@@ -46,7 +46,8 @@ assert.match(html, /GIF-Animationen werden von dieser Foto-only-Firmware nicht u
 assert.ok(html.includes('accept="image/jpeg,image/png,image/webp'));
 assert.match(html, /function photoToJpeg\\(file\\)/);
 assert.match(html, /function uploadPhotos\\(\\)/);
-assert.doesNotMatch(html, /gifToAnimation|data-animation-frames|\\/api\\/photos\\/frame/);
+assert.doesNotMatch(html, /gifToAnimation|data-animation-frames/);
+assert.ok(!html.includes('/api/photos/frame'));
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
 assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
 assert.match(portal, /photoValidateJpeg\\(PhotoUploadPath\\)/);
