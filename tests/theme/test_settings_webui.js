@@ -37,29 +37,20 @@ assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
-// GIF classification is based on the file signature, not a potentially empty or
-// misleading filename/MIME type. GIF-looking files with a bad signature fail closed.
-assert.match(html, /function photoFileHeader\(file\)/);
-assert.match(html, /bytes\[0\]===71&&bytes\[1\]===73&&bytes\[2\]===70/);
-assert.match(html, /bytes\[4\]===55\|\|bytes\[4\]===57/);
-assert.match(html, /function photoIsGif\(file\)/);
-assert.match(html, /var isGif=await photoIsGif\(picked\[i\]\)/);
-assert.ok(!html.includes("picked[i].type==='image/gif'?await gifToAnimation"), 'upload routing must use verified file bytes');
-
-// GIF capture must snapshot at display cadence before asynchronous JPEG encoding.
-// The gallery preview must fetch each stored frame instead of always showing frame zero.
-assert.match(html, /for\(var sample=0;sample<375&&frames\.length<12;sample\+\+\)/);
-assert.match(html, /photoDelay\(16\)/);
-assert.match(html, /ctx\.getImageData\(0,0,240,240\)/);
-assert.match(html, /Math\.imul\(hash\^pixels\[q\+2\],16777619\)/);
-assert.match(html, /frames\.length<2\)throw new Error\('Keine unterschiedlichen GIF-Frames erkannt/);
-assert.doesNotMatch(html, /frames\.length<2\)return \{blob:await photoBlob/);
-assert.match(html, /data-animation-frames/);
-assert.match(html, /\/api\/photos\/frame\?id=/);
+// Photo-only profile: classify GIF signatures and reject animation input
+// before upload; the firmware has no GIF frame parser, endpoint or renderer.
+assert.match(html, /function photoFileHeader\\(file\\)/);
+assert.match(html, /function photoIsGif\\(file\\)/);
+assert.match(html, /bytes\\[0\\]===71&&bytes\\[1\\]===73&&bytes\\[2\\]===70/);
+assert.match(html, /GIF-Animationen werden von dieser Foto-only-Firmware nicht unterstützt/);
+assert.match(html, /accept="image\\/jpeg,image\\/png,image\\/webp/);
+assert.match(html, /function photoToJpeg\\(file\\)/);
+assert.match(html, /function uploadPhotos\\(\\)/);
+assert.doesNotMatch(html, /gifToAnimation|data-animation-frames|\\/api\\/photos\\/frame/);
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
-assert.match(portal, /server\.on\("\/api\/photos\/frame", HTTP_GET, handlePhotoFrame\)/);
-assert.match(portal, /void handlePhotoFrame\(\)/);
-
+assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
+assert.match(portal, /photoValidateJpeg\\(PhotoUploadPath\\)/);
+assert.match(portal, /LittleFS\\.rename\\(PhotoUploadPath, target\\)/);
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
   '/api/themes/install', '/api/themes/select', '/api/themes/metadata',
