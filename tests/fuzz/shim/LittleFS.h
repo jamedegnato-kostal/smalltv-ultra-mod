@@ -14,9 +14,14 @@ struct File {
   int peek() { return -1; }
   size_t readBytes(char*, size_t) { return 0; }
 };
+struct FSInfo {
+  uint32_t totalBytes = 0;
+  uint32_t usedBytes = 0;
+};
 struct FSClass {
   bool begin() { return false; }
   bool format() { return false; }
+  bool info(FSInfo&) { return false; }
   File open(const char*, const char*) { return File(); }
   bool rename(const char*, const char*) { return false; }
   bool remove(const char*) { return false; }
