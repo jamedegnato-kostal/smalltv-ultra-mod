@@ -43,7 +43,7 @@ assert.match(html, /function photoFileHeader\\(file\\)/);
 assert.match(html, /function photoIsGif\\(file\\)/);
 assert.match(html, /bytes\\[0\\]===71&&bytes\\[1\\]===73&&bytes\\[2\\]===70/);
 assert.match(html, /GIF-Animationen werden von dieser Foto-only-Firmware nicht unterstützt/);
-assert.match(html, /accept="image\\/jpeg,image\\/png,image\\/webp/);
+assert.ok(html.includes('accept="image/jpeg,image/png,image/webp'));
 assert.match(html, /function photoToJpeg\\(file\\)/);
 assert.match(html, /function uploadPhotos\\(\\)/);
 assert.doesNotMatch(html, /gifToAnimation|data-animation-frames|\\/api\\/photos\\/frame/);
