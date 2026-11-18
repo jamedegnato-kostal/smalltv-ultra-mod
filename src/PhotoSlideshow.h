@@ -4,9 +4,7 @@
 #include "Settings.h"
 #include "PhotoShuffle.h"
 #include "PhotoLibrary.h"
-
 bool photoValidateJpeg(const String& path);
-
 class PhotoSlideshow {
  public:
   void begin();
@@ -14,7 +12,6 @@ class PhotoSlideshow {
   bool service(const Settings& settings); // true when this batch is finished
   void cancel() { active_ = false; showing_ = false; }
   bool active() const { return active_; }
-
  private:
   bool draw(uint8_t id);
   bool wasAttempted(uint8_t id) const;
@@ -28,6 +25,5 @@ class PhotoSlideshow {
   uint8_t attempted_[(smalltv_photo::MaxPhotos + 7) / 8] = {};
   smalltv_photo::ShuffleBag sequence_;
 };
-
 extern PhotoSlideshow g_photoSlideshow;
 #endif
