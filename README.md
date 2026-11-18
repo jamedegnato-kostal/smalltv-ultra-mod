@@ -30,7 +30,7 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 | **Uhr & Zeit** | NTP, Zeitzone, 12-/24-Stunden-Format, Datum, Sekunden und zeitgesteuerter Nachtmodus |
 | **Themes** | Installierbare `.stheme`-Pakete, Suche, Filter, Vorschau, Metadaten, Ebenenreihenfolge und Verwaltung |
 | **Playlist** | Bis zu 8 Einträge, feste oder zufällige Reihenfolge, Zeitfenster und individuelle Laufzeiten |
-| **Fotos** | JPEG- und GIF-Import, Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe |
+| **Fotos** | JPEG-/PNG-/WebP-Einzelbildimport (Umwandlung in JPEG), Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe; keine GIF-Animationen |
 | **Renderer** | Text, Bilder, Formen, Animationen, transparente Ebenen und optionale PNG-Schriftatlanten |
 | **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionale Digest-Authentifizierung, Konfigurations-Backup, Firmware-Upload und Recovery |
 
@@ -50,7 +50,7 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 
 Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
-- `smalltv-settings-firmware.bin` – reguläre Settings-Firmware
+- `smalltv-settings-firmware.bin` – ESP8266 Settings-Firmware v0.1.8 (Foto-only: JPEG-Fotobibliothek, keine GIF-Animationen)
 
 Das Loader-Image wird im normalen Release nicht mitveröffentlicht. Falls der dokumentierte Erstinstallationsweg es erfordert, kann es lokal mit `python -m platformio run -e smalltv_loader` gebaut werden.
 
