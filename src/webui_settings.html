@@ -858,6 +858,12 @@ function showStatus(s){
   kv('Signal',s.rssi?s.rssi+' dBm':'-')+
   (s.wifiFail?kv('Last join failure',s.wifiFail):'')+
   kv('Free heap',s.heap+' B'+(s.maxblk?' ('+s.maxblk+' B largest block)':''))+
+  (s.heapMin!=null?kv('Heap minimum',s.heapMin+' B'+(s.maxblkMin!=null?' · min. contiguous block '+s.maxblkMin+' B':'')):'')+
+  (s.fsTotal!=null?kv('LittleFS',fmtBytes(s.fsUsed)+' used / '+fmtBytes(s.fsTotal)+' total · '+fmtBytes(s.fsFree)+' free'):'')+
+  (s.photoBytes!=null?kv('Fotobibliothek',fmtBytes(s.photoBytes)+' · verwaiste Frames '+fmtBytes(s.orphanPhotoBytes||0)):'')+
+  (s.photoTempBytes?kv('Foto-Upload temporär',fmtBytes(s.photoTempBytes)):'')+
+  (s.configBytes!=null?kv('Konfiguration',fmtBytes(s.configBytes)+' · Temp-Datei '+fmtBytes(s.configTempBytes||0)):'')+
+  (s.memoryPhases?Object.keys(s.memoryPhases).map(function(k){var p=s.memoryPhases[k];return kv('Heap '+k,p.heapBefore+' → '+p.heapAfter+' B · Block '+p.maxblkBefore+' → '+p.maxblkAfter+' B')}).join(''):'')+
   kv('Uptime',fmtUp(s.uptime))+kv('Last reset',s.reset||'-')+
   (s.lastCrash?kv('Letzter Absturz',s.lastCrash.reason+(s.lastCrash.firmware?' · '+s.lastCrash.firmware:'')+(s.lastCrash.uptimeKnown?' nach '+fmtUp(s.lastCrash.uptime):''))+'<button class="btn sec" style="margin-top:8px" onclick="clearCrash()">Absturzinfo löschen</button>':'')+
   (s.radar?kv('Radar',radarLine(s.radar)):'');

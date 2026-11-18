@@ -576,6 +576,10 @@ static void handleStatus() {
 #if WITH_PHOTOS
   d.photoBytes = smalltv_photo::totalPhotoBytes();
   d.orphanPhotoBytes = smalltv_photo::orphanFrameBytes();
+  File photoTemp = LittleFS.open("/photos/.upload", "r");
+  if (photoTemp) d.photoTempBytes += photoTemp.size();
+  File animationTemp = LittleFS.open("/photos/.anim-upload", "r");
+  if (animationTemp) d.photoTempBytes += animationTemp.size();
 #endif
   d.contstk = platformFreeContStack();   // ESP8266 continuation-stack high-water (untouched bytes since last repaint)
   d.uptime = millis() / 1000;
