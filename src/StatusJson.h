@@ -48,7 +48,7 @@ struct StatusData {
   uint8_t brightness = 0;
   uint32_t heap = 0, maxblk = 0, heapMin = 0, maxblkMin = 0, contstk = 0, uptime = 0;
   bool storageStatsValid = false;
-  uint32_t fsTotal = 0, fsUsed = 0, fsFree = 0;
+  uint32_t fsTotal = 0, fsUsed = 0, fsFree = 0, settingsObjectBytes = 0;
   uint32_t photoBytes = 0, orphanPhotoBytes = 0, photoTempBytes = 0, configBytes = 0, configTempBytes = 0;
   const char* lastCrashReason = "";
   const char* lastCrashFw = "";
@@ -165,6 +165,7 @@ template <class Out> void writeStatusHead(Out& out, const StatusData& d) {
     member(out, PSTR(",\"fsTotal\":"), d.fsTotal);
     member(out, PSTR(",\"fsUsed\":"), d.fsUsed);
     member(out, PSTR(",\"fsFree\":"), d.fsFree);
+    member(out, PSTR(",\"settingsObjectBytes\":"), d.settingsObjectBytes);
     member(out, PSTR(",\"photoBytes\":"), d.photoBytes);
     member(out, PSTR(",\"orphanPhotoBytes\":"), d.orphanPhotoBytes);
     member(out, PSTR(",\"photoTempBytes\":"), d.photoTempBytes);

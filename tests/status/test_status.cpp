@@ -63,6 +63,7 @@ static std::string reference(const Case& c) {
     o["fsTotal"] = d.fsTotal;
     o["fsUsed"] = d.fsUsed;
     o["fsFree"] = d.fsFree;
+    o["settingsObjectBytes"] = d.settingsObjectBytes;
     o["photoBytes"] = d.photoBytes;
     o["orphanPhotoBytes"] = d.orphanPhotoBytes;
     o["photoTempBytes"] = d.photoTempBytes;
@@ -200,6 +201,7 @@ static std::vector<Case> cases() {
   full.d.fsTotal = 1024000;
   full.d.fsUsed = 700000;
   full.d.fsFree = 324000;
+  full.d.settingsObjectBytes = 3584;
   full.d.photoBytes = 123456;
   full.d.orphanPhotoBytes = 2048;
   full.d.photoTempBytes = 512;

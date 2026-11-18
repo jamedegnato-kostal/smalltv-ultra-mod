@@ -237,6 +237,8 @@ void fuzzImport(const Bytes& input, uint64_t) {
   ++accepted[3];
   Settings s;
   s.setDefaults();
+  Settings copied(s);
+  if (!settingsCopyValid(s, copied)) abort();
   settingsApplyJson(s, doc.as<JsonObjectConst>());
   // What saveSettings() would write next. Reading every field back also walks
   // any fixed-size buffer the import filled.
