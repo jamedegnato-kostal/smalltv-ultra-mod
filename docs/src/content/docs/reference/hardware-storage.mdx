@@ -22,11 +22,11 @@ Die Pinbelegung steht in `src/board_esp8266.h`; die Displaygröße und -ansteuer
 
 ## Flashlayouts für 4 MB
 
-Das Standardprofil und das optionale Profil verwenden denselben Programmslot. Sie unterscheiden sich in der Startadresse des LittleFS-Dateisystems.
+Das reguläre Firmwareprofil verwendet 4m2m. Das bisherige 4m1m-Layout bleibt ausschließlich als Legacy-Build für bereits damit formatierte Geräte erhalten. Die LittleFS-Startadresse unterscheidet sich.
 
-| Eigenschaft | Standard `4m1m` | Optional `4m2m` |
+| Eigenschaft | Legacy `4m1m` | Standard `4m2m` |
 | --- | ---: | ---: |
-| PlatformIO-Umgebung | `smalltv_settings` | `smalltv_settings_4m2m` |
+| PlatformIO-Umgebung | `smalltv_settings_4m1m_legacy` | `smalltv_settings` |
 | Linkerskript | `eagle.flash.4m1m.ld` | `eagle.flash.4m2m.ld` |
 | LittleFS-Start | `0x40500000` | `0x40400000` |
 | LittleFS-Ende | `0x405FA000` | `0x405FA000` |
@@ -47,12 +47,12 @@ Das 4m2m-Linkerskript lässt den IROM-Slot unverändert. Die CI baut beide Setti
 
 Daher gilt:
 
-- Das 4m2m-Image ist als separates Build-Profil vorhanden, aber **nicht das Standardimage**.
-- Ein vorhandenes 4m1m-Gerät darf nicht einfach per OTA auf 4m2m umgestellt werden, solange keine geprüfte Export-/Migrations-/Restore-Prozedur für Konfiguration, Themes und Fotos vorhanden ist.
+- Das reguläre Image `smalltv-settings-firmware.bin` ist ab dieser Änderung 4m2m. Das 4m1m-Profil ist nur für Geräte gedacht, deren LittleFS bereits am alten Offset liegt.
+- Ein vorhandenes 4m1m-Gerät darf nicht einfach per OTA auf 4m2m umgestellt werden. Vorher müssen Konfiguration, Themes und Fotos über eine geprüfte Sicherungs-/Wiederherstellungsprozedur exportiert und nach dem Layoutwechsel wiederhergestellt werden.
 - Derzeit ist keine automatische LittleFS-Layoutmigration implementiert. Die Daten können physisch noch im Flash liegen, sind aber mit dem neuen Startoffset nicht ohne Konvertierung als dasselbe Dateisystem nutzbar.
 - Nach dem Wechsel auf 4m2m müssen zukünftige Firmwareupdates ebenfalls das 4m2m-Release-Asset verwenden. Die Profile haben deshalb unterschiedliche `UPDATE_ASSET`-Namen.
 
-Der minimale Loader (`smalltv_loader`) ist ein separater Installationshelfer und bleibt beim bisherigen 4m1m-Layout. Er ist kein allgemeiner Zwischenschritt für ein bestehendes 4m2m-Gerät.
+Der minimale Loader (`smalltv_loader`) bleibt ein separates Hilfsimage mit dem bisherigen 4m1m-Linkerskript. Es ist ein Erstinstallations-/Recovery-Helfer und nicht die reguläre Nutzfirmware; seine bloße Installation migriert keine LittleFS-Daten.
 
 ## Was die größere Partition praktisch bringt
 
@@ -121,8 +121,8 @@ Buildbefehle:
 
 ```sh
 python -m platformio run -e smalltv_settings
-python -m platformio run -e smalltv_settings_4m2m
+python -m platformio run -e smalltv_settings_4m1m_legacy
 python -m platformio run -e smalltv_loader
 ```
 
-Die resultierenden Firmwaredateien liegen unter `.pio/build/<environment>/firmware.bin`. CI baut alle drei Profile und lädt das 4m2m-Image als separates Artefakt/Release-Asset hoch.
+Die resultierenden Firmwaredateien liegen unter `.pio/build/<environment>/firmware.bin`. CI baut alle drei Profile und veröffentlicht das 4m2m-Image als reguläres Firmware-Asset sowie das 4m1m-Image separat als Legacy-Asset.
