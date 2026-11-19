@@ -50,7 +50,7 @@ Die Grafik zeigt die reale Navigationsstruktur und Statusbereiche in schematisch
 
 ## Unterstützte Hardware
 
-Der PlatformIO-Build `smalltv_settings` zielt auf SmallTV/SmallTV Ultra mit ESP-12-Familie (ESP8266) und 4 MB SPI-Flash. Das optionale Profil `smalltv_settings_4m2m` verdoppelt den LittleFS-Bereich bei unverändertem IROM-Programmslot. Es ist **nicht** für ESP32- oder ESP32-C2-Geräte. Der Wechsel des Flashlayouts verschiebt den Dateisystemstart und benötigt eine geprüfte Datensicherung/Migration; nicht einfach per OTA auf ein bestehendes Gerät flashen.
+Der PlatformIO-Build `smalltv_settings` zielt auf SmallTV/SmallTV Ultra mit ESP-12-Familie (ESP8266) und 4 MB SPI-Flash. Das reguläre Profil `smalltv_settings` verwendet das 4m2m-Layout mit 2.024 KiB LittleFS. Ein Legacy-Build `smalltv_settings_4m1m_legacy` bleibt für bereits mit 4m1m formatierte Geräte verfügbar. Das 4m2m-Image ist **nicht** für ESP32- oder ESP32-C2-Geräte. Der Wechsel des Flashlayouts verschiebt den Dateisystemstart und benötigt eine geprüfte Datensicherung/Migration; nicht einfach per OTA auf ein bestehendes 4m1m-Gerät flashen.
 
 ## Dokumentation
 
