@@ -35,7 +35,7 @@ assert.match(html, /id="showflowPhotoAddId"/);
 assert.match(html, /Maximal 16 Schritte/);
 assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
-assert.match(html, /function installTheme\(inputId\)[\\s\\S]*?xhr\.upload\.onprogress/);
+assert.match(html, /function installTheme\(inputId\)[\s\S]*?xhr\.upload\.onprogress/);
 assert.match(html, /xhr\.onerror=function\(\)/);
 assert.match(html, /xhr\.ontimeout=function\(\)/);
 assert.match(html, /Keine HTTP-Antwort vom SmallTV/);
