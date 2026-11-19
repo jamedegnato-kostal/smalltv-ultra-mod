@@ -52,8 +52,10 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 
 Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
-- `smalltv-settings-firmware.bin` – Standardprofil mit 1 MB LittleFS (4m1m).
-- `smalltv-settings-firmware-4m2m.bin` – optionales Profil mit 2 MB LittleFS (4m2m); der Flashlayoutwechsel verschiebt den LittleFS-Start und darf ohne Datensicherung/Migration nicht auf ein bereits eingerichtetes Gerät geflasht werden.
+- `smalltv-settings-firmware.bin` – reguläres Image mit 2 MB LittleFS (4m2m).
+- `smalltv-settings-firmware-4m1m-legacy.bin` – Legacy-Image für Geräte, deren LittleFS bereits mit 4m1m formatiert wurde.
+
+**Achtung:** Der Wechsel von 4m1m auf 4m2m verschiebt den LittleFS-Startoffset. Vor dem Wechsel müssen WLAN-/Geräteeinstellungen, Themes und Fotos gesichert und nach dem Layoutwechsel wiederhergestellt werden. Ein normales OTA-Update migriert diese Daten nicht automatisch.
 
 Das Loader-Image wird im normalen Release nicht mitveröffentlicht. Falls der dokumentierte Erstinstallationsweg es erfordert, kann es lokal mit `python -m platformio run -e smalltv_loader` gebaut werden.
 
@@ -66,8 +68,8 @@ Voraussetzungen: Python 3 und PlatformIO Core. PlatformIO kann beispielsweise mi
 ```bash
 python tools/gzip_webui_settings.py --check
 python -m platformio run -e smalltv_settings
-# Optionales 2-MB-LittleFS-Profil (vor Installation Migrationshinweis lesen)
-python -m platformio run -e smalltv_settings_4m2m
+# Legacy-Image (nur für bereits im 4m1m-Layout formatierte Geräte)
+python -m platformio run -e smalltv_settings_4m1m_legacy
 ```
 
 Das Hauptimage entsteht unter:
