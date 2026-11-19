@@ -14,9 +14,15 @@
 #define REPO_URL      "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
 #define REPO_OWNER    "jamedegnato-kostal"
 #define REPO_NAME     "smalltv-ultra-mod"
-// Release asset pulled by the GitHub self-updater.
+// Keep OTA assets layout-specific. A 4m2m device must never self-update to
+// the default 4m1m image because that would move the LittleFS start address.
+#if defined(SMALLTV_FLASH_4M2M)
+#define UPDATE_ASSET "smalltv-settings-firmware-4m2m.bin"
+#define FW_VARIANT   "esp8266-settings-photo-only-4m2m"
+#else
 #define UPDATE_ASSET "smalltv-settings-firmware.bin"
 #define FW_VARIANT   "esp8266-settings-photo-only"
+#endif
 #define GH_API_HOST   "api.github.com"
 
 // ---------------------------------------------------------------------------
