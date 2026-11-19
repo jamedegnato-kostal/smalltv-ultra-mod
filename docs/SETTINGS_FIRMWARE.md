@@ -8,9 +8,10 @@ LittleFS für Einstellungen, Themes und Fotos.
 
 | PlatformIO-Profil | Zweck |
 | --- | --- |
-| `smalltv_settings` | Hauptfirmware mit Weboberfläche, `.stheme`, Playlist und Fotos |
+| `smalltv_settings` | Standardfirmware mit Weboberfläche, `.stheme`, Playlist und JPEG-Fotos; 4m1m-Linkerlayout |
+| `smalltv_settings_4m2m` | optional gleicher Firmwarecode mit 2 MB LittleFS; eigener OTA-Assetname |
 | `smalltv_clean` | Basisprofil ohne die Foto-Bibliothek |
-| `smalltv_loader` | separates Hilfsimage für bestimmte Erstinstallationswege |
+| `smalltv_loader` | separates Hilfsimage für bestimmte Erstinstallationswege; bleibt 4m1m |
 
 Ticker, Nutzungsanzeige, Radar, Home-Assistant/MQTT und Benachrichtigungen sind
 in diesen Profilen deaktiviert. Das Loader-Image ist keine vollständige
@@ -45,7 +46,10 @@ werden durch ihre Verwaltungsaktionen geschrieben.
 - Bis zu 16 installierte Themes; Paketgröße höchstens 3 MiB, höchstens 256
   Dateien und 32 Layer je Theme.
 - Bis zu acht Playlist-Einträge, jeweils 5 bis 3600 Sekunden.
-- Bis zu 240 Fotos; ein JPEG-Upload darf höchstens 128 KiB groß sein.
+- Bis zu 240 Fotos; ein JPEG-Upload darf höchstens 128 KiB groß sein. Der Foto-Import erzeugt 240 × 240 JPEG-Einzelbilder; GIF-Fotowiedergabe ist im JPEG-only-Profil nicht enthalten.
+- Theme-Pakete sind auf 3 MiB und 256 Dateien begrenzt; das Manifest darf höchstens 16 KiB, ein Theme maximal 32 Layer, 4 Datenquellen und 8 Felder je Datenquelle umfassen.
+- Die Theme-Engine unterstützt bis zu 240 Animationsframes mit 1–15 FPS. Ein Bildasset darf maximal 240 × 240 Pixel groß sein.
+- Das Dateisystem reserviert für einen Upload mindestens 16 KiB oder den gespeicherten Konfigurationsbedarf plus 4 KiB, falls dieser Wert größer ist.
 - Foto-Wiedergabe lädt und dekodiert Bilder einzeln. Die Firmware weist
   fehlerhafte Dateien zurück und hält freien LittleFS-Speicher für Betrieb und
   Einstellungen zurück.
@@ -75,10 +79,25 @@ geladen werden kann.
 - Das Projekt enthält keinen vollständigen ESP8266-Emulator. Das lokale
   QEMU-Experiment ist kein unterstützter Testweg.
 - Der Selbstupdate-Release muss unter dem in `src/config.h` eingetragenen
-  Repository liegen und das Asset `smalltv-settings-firmware.bin` anbieten.
+  Repository liegen und den zum Layout passenden Assetnamen anbieten:
+  `smalltv-settings-firmware.bin` für 4m1m bzw.
+  `smalltv-settings-firmware-4m2m.bin` für 4m2m.
+- Die 4m1m-Partition beginnt bei `0x40500000` und umfasst 1.024.000 Byte.
+  Das optionale 4m2m-Linkerskript beginnt bei `0x40400000` und stellt
+  2.072.576 Byte LittleFS bereit; der IROM-Programmslot bleibt bei
+  1.044.464 Byte.
+- **4m1m und 4m2m sind keine Drop-in-Dateisystemupdates.** Der Wechsel
+  verschiebt den LittleFS-Startoffset. Die derzeitige Firmware migriert das
+  Dateisystem nicht automatisch und formatiert bei Mountfehlern ausdrücklich
+  nicht automatisch. Vor dem Wechsel ist eine geprüfte Sicherungs- und
+  Wiederherstellungsprozedur für Konfiguration, Themes und Fotos erforderlich.
 - Der Ultra kann je nach vorherigem Flashlayout einen gesonderten
   Erstinstallationsweg benötigen. Prüfe vor dem Flashen die verfügbare
   Updatefläche und sichere bei Bedarf die bestehende Firmware.
+- Die vollständige Tabelle mit Hardware-Pinout, Flashadressen und Limits
+  steht in [Hardware und Speicher](src/content/docs/reference/hardware-storage.mdx).
+  Die Zuständigkeiten der Module sind in der
+  [Repository-Landkarte](src/content/docs/reference/repository-map.mdx) aufgeführt.
 
 ## Web-API
 
