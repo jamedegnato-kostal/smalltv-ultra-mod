@@ -82,10 +82,13 @@ geladen werden kann.
   Repository liegen und den zum Layout passenden Assetnamen anbieten:
   `smalltv-settings-firmware-4m2m.bin` für 4m2m bzw.
   `smalltv-settings-firmware-4m1m-legacy.bin` für das Legacy-Layout. Der
+  generische Assetname `smalltv-settings-firmware.bin` bleibt vorübergehend
+  ein 4m1m-Kompatibilitätsalias für bereits installierte Firmware, die noch
+  genau diesen Dateinamen erwartet. Der
   generische Name `smalltv-settings-firmware.bin` bleibt vorübergehend ein
   4m1m-Kompatibilitätsalias für ältere Firmware, die diesen Namen fest erwartet.
 - Die 4m1m-Partition beginnt bei `0x40500000` und umfasst 1.024.000 Byte.
-  Das optionale 4m2m-Linkerskript beginnt bei `0x40400000` und stellt
+  Das reguläre 4m2m-Linkerskript beginnt bei `0x40400000` und stellt
   2.072.576 Byte LittleFS bereit; der IROM-Programmslot bleibt bei
   1.044.464 Byte.
 - **4m1m und 4m2m sind keine Drop-in-Dateisystemupdates.** Der Wechsel
