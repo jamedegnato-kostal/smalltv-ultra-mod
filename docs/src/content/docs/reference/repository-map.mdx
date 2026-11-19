@@ -1,0 +1,85 @@
+---
+title: Repository-Landkarte
+description: Logische Zuständigkeiten, Verzeichnisübersicht und Einstiegspunkte des SmallTV-Repositorys.
+---
+
+# Logische Architektur
+
+Die Codebasis wird nach Verantwortlichkeiten gelesen. Die Verzeichnisnamen und öffentlichen Header bleiben stabil; die folgende Karte benennt die funktionalen Blöcke eindeutig, ohne riskante Massenumbenennungen von Include-Pfaden, Buildfiltern oder generierten Dateien vorzunehmen.
+
+## 1. Hardware und Plattform
+
+| Logischer Block | Dateien | Verantwortung |
+| --- | --- | --- |
+| Board-Pinout | `src/board_esp8266.h` | GPIO-Zuordnung, Panel-Farbfolge, Backlight-Polarität |
+| Hardware-/Buildziel | `platformio.ini`, `src/Target.h`, `src/config.h` | ESP8266-Ziel, Compile-Features, Boardkonfiguration |
+| Display-Abstraktion | `src/Gfx.*`, `src/Platform.*` | GFX-Treiber, Speicher-/Plattformhilfen und gerätespezifische Abstraktion |
+
+## 2. Firmware-Kern und Gerätelebenszyklus
+
+| Logischer Block | Dateien | Verantwortung |
+| --- | --- | --- |
+| Boot und Main Loop | `src/main.cpp` | Setup, Modusauswahl, zyklischer Service, Showflow, Crash-Recovery-Zähler |
+| Geräteeinstellungen | `src/Settings.*` | Defaults, JSON-Einstellungen, Laden/Speichern |
+| Atomare Konfiguration | `src/AtomicJson.*`, `src/SettingsTransaction.*` | Sichere Schreibtransaktionen und Settings-Reserve |
+| Zeit und Uhr | `src/Clock.*` | NTP, Zeitzone, Uhrzeit, Nachtmodus |
+| Netzwerk | `src/Net.*` | WLAN-Station/Setup-AP und Verbindungsstatus |
+
+## 3. Theme-Plattform
+
+Die Theme-Funktion liegt unter `src/features/theme/`.
+
+| Logischer Block | Dateien | Verantwortung |
+| --- | --- | --- |
+| Theme-Datenmodell und Engine | `ThemeEngine.*` | Manifestmodell, Parser, Layer-Zustand, Animation, Bindings und Renderplanung |
+| Paketcontainer und Assets | `ThemePackage.*` | STH1-Container, Paketindex, Asset-Validierung und zeilenweises Lesen |
+| Laufzeitmodus | `ThemeMode.*` | Theme laden, Heap freigeben, Datenquellen aktualisieren, Renderer bedienen |
+| Web/API | `ThemeWeb.*` | Upload, Liste, Auswahl, Löschen, Metadaten und Verwaltung |
+| Katalog und Metadaten | `ThemeCatalog.*` | Installationseinträge und Cache/Index |
+| Zeitsteuerung | `ThemeSchedule.*` | Theme-Playlist und zeitabhängige Wiedergabe |
+| Datenabruf | `ThemeDataClient.*` | Von Themes deklarierte Datenquellen |
+
+## 4. Fotoplattform
+
+| Logischer Block | Dateien | Verantwortung |
+| --- | --- | --- |
+| Foto-Bibliothek | `src/PhotoLibrary.*` | Slotbelegung, Dateinamen, Größenstatistik und Löschen |
+| Diashow | `src/PhotoSlideshow.*` | Auswahl und zeitgesteuerte Wiedergabe |
+| Shuffle | `src/PhotoShuffle.*` | Zyklus ohne unmittelbare Wiederholung |
+| Foto-HTTP/API | `src/WebPortal.cpp` | Foto-Upload, JPEG-Prüfung, Auslieferung und Löschroute |
+
+Dieses Firmwareprofil unterstützt Fotos als JPEG-Einzelbilder. GIF-Animationen im Foto-Bereich sind nicht aktiv; alte GIF-Frame-Dateien werden nicht automatisch gelöscht.
+
+## 5. HTTP, Weboberfläche und Updates
+
+| Logischer Block | Dateien | Verantwortung |
+| --- | --- | --- |
+| HTTP-Portal und API-Routen | `src/WebPortal.*` | Webserver, Authentifizierung, Request-Guard, Settings-/Foto-/Update-Endpunkte |
+| WebUI-Quelltext | `src/webui_settings.html` | HTML, CSS und Browser-JavaScript |
+| Generierte WebUI | `src/webui_settings.h` | Gzip-/C-Header, aus dem HTML beim Firmwarebuild eingebettet wird |
+| WebUI-Generator | `tools/gzip_webui_settings.py` | Regenerierung und Konsistenzprüfung des Headers |
+| GitHub-OTA | `src/OtaUpdate.*` | Release-Prüfung und ESP8266-Update im Bootpfad |
+| Manueller OTA-Speichercheck | `src/UpdateBuffer.h`, `src/WebPortal.cpp` | Heap-/Blockprüfung und Firmware-Upload |
+| Recovery-Theme | `extra_script.py`, `examples/recovery-theme/` | Recovery-Paket zur Buildzeit in den Programmflash einbetten |
+
+## 6. Build, Beispiele, Tests und Dokumentation
+
+| Logischer Block | Pfad | Verantwortung |
+| --- | --- | --- |
+| Buildprofile | `platformio.ini` | Firmware-/Loader-Varianten und Linkerskripte |
+| Buildhilfen | `extra_script.py`, `tools/` | WebUI-Gzip, Theme-Packaging, CI-Größen-/Assetprüfungen |
+| Theme-Beispiele | `examples/themes/` | Quellmanifeste und installierbare `.stheme`-Pakete |
+| Firmware-Tests | `tests/` | Themeparser/-pakete, Foto-Profil, Status/API, Storage, Guard, Fuzzing |
+| Entwicklerdokumentation | `docs/` | Astro/Starlight-Site, Bedienung, API, Architektur und Fehlerbehebung |
+| Automatisierung | `.github/workflows/` | Firmware-Builds, Dokumentationsbuilds und Release-Artefakte |
+| Externe Herkunft/Lizenzen | `NOTICE.md`, `LICENSE` | Ursprungscode, Lizenz- und Drittanbieterhinweise |
+
+## Änderungsregeln
+
+- Hardwarepins gehören in den Boardheader, nicht verteilt in Theme-/Webcode.
+- Persistente Geräteeinstellungen gehören in `Settings.*`; temporärer Wiedergabezustand bleibt in den jeweiligen Laufzeitmodulen.
+- Theme-Paketformat und Laufzeitmodell bleiben getrennt: `ThemePackage` liest/validiert Assets, `ThemeEngine` interpretiert und rendert das Modell.
+- Foto-Dateiverwaltung bleibt von der Wiedergabelogik getrennt.
+- WebUI-Änderungen erfolgen zuerst in `src/webui_settings.html`; danach muss `src/webui_settings.h` mit dem Generator aktualisiert werden.
+- Änderungen am Flashlayout müssen die Release-Asset-Auswahl, OTA-Grenze, Datenmigration und CI-Größenprüfung zusammen betrachten.
+- Keine Datei-/Namespace-Massenumbenennung ohne begleitende Aktualisierung aller Includes, Buildfilter, Tests, Generatoren und Dokumentationslinks.
