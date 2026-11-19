@@ -37,6 +37,8 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 ## Unterstützte Hardware
 
 - **Zielplattform:** ESP8266
+- **Modul/Ziel:** ESP-12-Familie (PlatformIO-Board `esp12e`), ESP8266
+- **SPI-Flash:** 4 MB
 - **Display:** ST7789, 240 × 240 Pixel
 - **WLAN:** 2,4 GHz
 - **PlatformIO-Umgebung:** `smalltv_settings`
@@ -50,7 +52,8 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 
 Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
-- `smalltv-settings-firmware.bin` – ESP8266 Settings-Firmware v0.1.8 (Foto-only: JPEG-Fotobibliothek, keine GIF-Animationen)
+- `smalltv-settings-firmware.bin` – Standardprofil mit 1 MB LittleFS (4m1m).
+- `smalltv-settings-firmware-4m2m.bin` – optionales Profil mit 2 MB LittleFS (4m2m); der Flashlayoutwechsel verschiebt den LittleFS-Start und darf ohne Datensicherung/Migration nicht auf ein bereits eingerichtetes Gerät geflasht werden.
 
 Das Loader-Image wird im normalen Release nicht mitveröffentlicht. Falls der dokumentierte Erstinstallationsweg es erfordert, kann es lokal mit `python -m platformio run -e smalltv_loader` gebaut werden.
 
@@ -63,6 +66,8 @@ Voraussetzungen: Python 3 und PlatformIO Core. PlatformIO kann beispielsweise mi
 ```bash
 python tools/gzip_webui_settings.py --check
 python -m platformio run -e smalltv_settings
+# Optionales 2-MB-LittleFS-Profil (vor Installation Migrationshinweis lesen)
+python -m platformio run -e smalltv_settings_4m2m
 ```
 
 Das Hauptimage entsteht unter:
@@ -80,6 +85,8 @@ python tools/gzip_webui_settings.py
 ## Dokumentation und Entwicklung
 
 - **[Online-Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/)** – Einrichtung, Bedienung, Themes, API und Entwicklung
+- [Hardware-, Flashlayout- und Ressourcenlimits](docs/src/content/docs/reference/hardware-storage.mdx)
+- [Logische Repository-Landkarte](docs/src/content/docs/reference/repository-map.mdx)
 - [Firmware- und Architekturhinweise](docs/SETTINGS_FIRMWARE.md)
 - [HTTP-API](docs/API.md)
 - [Code-Audit und bekannte technische Punkte](docs/AUDIT_2026-11.md)
@@ -91,7 +98,10 @@ python tools/gzip_webui_settings.py
 
 ```text
 src/                    Firmware und eingebettete Weboberfläche
-  features/theme/       Theme-Parser, Renderer, Paket- und Web-API
+  features/theme/       Theme-Modell, Paketcontainer, Engine, Laufzeit und Web-API
+  PhotoLibrary.*        Foto-Slots und Dateispeicher
+  PhotoSlideshow.*      Foto-Wiedergabe und Shuffle
+  WebPortal.*           HTTP-API, WebUI-Routen und manuelles OTA
 examples/               Recovery-Theme und installierbare Theme-Beispiele
 docs/                   Bedienungs-, Architektur- und API-Dokumentation
 tests/                  Hosttests, Parser-, Speicher- und UI-Prüfungen
@@ -102,7 +112,8 @@ lib/                    lokal angepasste ESP8266-mDNS-Bibliothek
 
 ## Ressourcen- und Sicherheitshinweise
 
-- Themes und Fotos teilen sich den begrenzten LittleFS-Speicher.
+- Themes und Fotos teilen sich den LittleFS-Speicher. Standard: 1.000 KiB; optionales 4m2m-Profil: 2.024 KiB.
+- 4m1m und 4m2m haben unterschiedliche LittleFS-Startadressen. Der Wechsel benötigt eine Datenmigration; die Firmware formatiert bei einem Mountfehler nicht automatisch.
 - Ein erfolgreicher Host-/CI-Build ersetzt keinen vollständigen Test auf echter SmallTV-Ultra-Hardware.
 - Der Webzugriff ist standardmäßig nicht passwortgeschützt. Optionaler Digest-Schutz schützt die Anmeldung, **verschlüsselt aber nicht den HTTP-Datenverkehr**.
 - Konfigurations-Backups können WLAN-Zugangsdaten enthalten. Teile solche Dateien nicht öffentlich.
