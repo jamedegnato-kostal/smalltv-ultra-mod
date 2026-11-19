@@ -41,7 +41,7 @@ Die Grafik zeigt die reale Navigationsstruktur und Statusbereiche in schematisch
     `.stheme`-Pakete verwalten, Uhr-Designs auswählen und bis zu acht Themes als Playlist abspielen.
   </Card>
   <Card title="Foto-Bibliothek" icon="seti:image">
-    JPEGs und GIF-Animationen hochladen, organisieren und zwischen Playlist-Einträgen anzeigen.
+    JPEG-Einzelbilder hochladen, organisieren und zwischen Playlist-Einträgen anzeigen; GIF-Fotowiedergabe ist in diesem Build nicht enthalten.
   </Card>
   <Card title="Netzwerk und System" icon="seti:shield">
     WLAN einrichten, Einstellungen sichern, Firmware aktualisieren und Recovery nutzen.
@@ -50,7 +50,7 @@ Die Grafik zeigt die reale Navigationsstruktur und Statusbereiche in schematisch
 
 ## Unterstützte Hardware
 
-Der PlatformIO-Build `smalltv_settings` ist für SmallTV und SmallTV Ultra mit ESP8266 vorgesehen. Er ist **nicht** für ESP32- oder ESP32-C2-Geräte. Vor einer Erstinstallation auf dem Ultra muss geprüft werden, ob das vorhandene Flashlayout genügend Platz für das Image bietet; das kann je nach Ausgangsfirmware abweichen.
+Der PlatformIO-Build `smalltv_settings` zielt auf SmallTV/SmallTV Ultra mit ESP-12-Familie (ESP8266) und 4 MB SPI-Flash. Das optionale Profil `smalltv_settings_4m2m` verdoppelt den LittleFS-Bereich bei unverändertem IROM-Programmslot. Es ist **nicht** für ESP32- oder ESP32-C2-Geräte. Der Wechsel des Flashlayouts verschiebt den Dateisystemstart und benötigt eine geprüfte Datensicherung/Migration; nicht einfach per OTA auf ein bestehendes Gerät flashen.
 
 ## Dokumentation
 
@@ -60,6 +60,8 @@ Der PlatformIO-Build `smalltv_settings` ist für SmallTV und SmallTV Ultra mit E
   <LinkCard title="Bedienung" href="./manual/settings/" description="Einstellungen, Themes, Uhr und Fotos in der Weboberfläche finden." />
   <LinkCard title="Theme-Entwicklung" href="./features/themes/" description="Paketgrenzen, Assets, Schriften und Renderer kennenlernen." />
   <LinkCard title="Firmware bauen" href="./reference/building/" description="Das Settings-Image und die lokalen Prüfungen ausführen." />
+  <LinkCard title="Hardware und Speicher" href="./reference/hardware-storage/" description="ESP-12, 4-MB-Flash, 1m/2m-Layout, OTA und konkrete Ressourcenlimits." />
+  <LinkCard title="Repository-Landkarte" href="./reference/repository-map/" description="Firmware in logische Module und Zuständigkeiten einordnen." />
 </CardGrid>
 
 ## Abgrenzung
