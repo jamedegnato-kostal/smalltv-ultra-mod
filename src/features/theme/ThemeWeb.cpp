@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <string.h>
+#include <stdint.h>
 extern void appInvalidate();
 #if defined(SMALLTV_CLEAN) && defined(SMALLTV_FAMILY_ESP8266)
 extern void appClearCrashStreak();
@@ -197,25 +198,40 @@ void receiveUpload() {
     // its own configuration afterward. The size of the last save stands in
     // for the next one: building the settings document here to measure it
     // took the ESP8266's heap down to 896 B at an install's tightest point.
-    size_t reserve = settingsStoredSize() + 4096;
-    if (reserve < 16384) reserve = 16384;
-    size_t free = freeBytes();
+    const size_t reserve = std::max<size_t>(settingsStoredSize() + 4096, 16384);
+    const size_t free = freeBytes();
     if (free <= reserve) {
-      uploadError = "Not enough storage; remove a theme first";
+      uploadError = String("Zu wenig freier LittleFS-Speicher: ") +
+          String(static_cast<unsigned long>(free / 1024)) + " KiB frei, " +
+          String(static_cast<unsigned long>(reserve / 1024)) +
+          " KiB für Einstellungen und Dateisystem reserviert. Lösche zuerst Themes oder Fotos.";
       return;
     }
-    uploadBudget = std::min<size_t>(smalltv::MaxPackage, free - reserve);
+    uploadBudget = static_cast<uint32_t>(
+        std::min<size_t>(smalltv::MaxPackage, free - reserve));
     upload = LittleFS.open(staging, "w");
-    if (!upload) uploadError = "Cannot create staging file";
+    if (!upload) uploadError = "Temporäre Upload-Datei konnte nicht angelegt werden";
   } else if (up.status == UPLOAD_FILE_WRITE) {
     if (!uploadAllowed || uploadError.length()) return;
-    if (!upload || up.currentSize > uploadBudget - uploaded) {
-      uploadError = "Package exceeds available storage or 3 MiB";
+    const uint64_t nextSize = static_cast<uint64_t>(uploaded) + up.currentSize;
+    if (!upload) {
+      uploadError = "Temporäre Upload-Datei ist nicht verfügbar";
+      return;
+    }
+    if (nextSize > smalltv::MaxPackage) {
+      uploadError = "Theme-Paket überschreitet das Formatlimit von 3 MiB";
+      upload.close();
+      return;
+    }
+    if (nextSize > uploadBudget) {
+      uploadError = String("Nicht genug LittleFS-Speicher: aktuell sind höchstens ") +
+          String(static_cast<unsigned long>(uploadBudget / 1024)) +
+          " KiB für ein neues Theme verfügbar (nach Sicherheitsreserve). Lösche zuerst Fotos oder installierte Themes.";
       upload.close();
       return;
     }
     if (upload.write(up.buf, up.currentSize) != up.currentSize) {
-      uploadError = "Not enough storage";
+      uploadError = "LittleFS-Speicher während des Uploads erschöpft";
       upload.close();
       return;
     }
