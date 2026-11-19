@@ -8,10 +8,10 @@ LittleFS für Einstellungen, Themes und Fotos.
 
 | PlatformIO-Profil | Zweck |
 | --- | --- |
-| `smalltv_settings` | Standardfirmware mit Weboberfläche, `.stheme`, Playlist und JPEG-Fotos; 4m1m-Linkerlayout |
-| `smalltv_settings_4m2m` | optional gleicher Firmwarecode mit 2 MB LittleFS; eigener OTA-Assetname |
+| `smalltv_settings` | Reguläre Firmware mit Weboberfläche, `.stheme`, Playlist und JPEG-Fotos; 4m2m-Linkerlayout |
+| `smalltv_settings_4m1m_legacy` | Legacy-Firmware mit 1 MB LittleFS und eigenem OTA-Asset; nur für bereits so formatierte Geräte |
 | `smalltv_clean` | Basisprofil ohne die Foto-Bibliothek |
-| `smalltv_loader` | separates Hilfsimage für bestimmte Erstinstallationswege; bleibt 4m1m |
+| `smalltv_loader` | separates Hilfsimage für bestimmte Erstinstallationswege; Legacy-4m1m-Linkerlayout |
 
 Ticker, Nutzungsanzeige, Radar, Home-Assistant/MQTT und Benachrichtigungen sind
 in diesen Profilen deaktiviert. Das Loader-Image ist keine vollständige
@@ -80,8 +80,8 @@ geladen werden kann.
   QEMU-Experiment ist kein unterstützter Testweg.
 - Der Selbstupdate-Release muss unter dem in `src/config.h` eingetragenen
   Repository liegen und den zum Layout passenden Assetnamen anbieten:
-  `smalltv-settings-firmware.bin` für 4m1m bzw.
-  `smalltv-settings-firmware-4m2m.bin` für 4m2m.
+  `smalltv-settings-firmware.bin` für 4m2m bzw.
+  `smalltv-settings-firmware-4m1m-legacy.bin` für das Legacy-Layout.
 - Die 4m1m-Partition beginnt bei `0x40500000` und umfasst 1.024.000 Byte.
   Das optionale 4m2m-Linkerskript beginnt bei `0x40400000` und stellt
   2.072.576 Byte LittleFS bereit; der IROM-Programmslot bleibt bei
