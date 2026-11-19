@@ -115,7 +115,7 @@ lib/                    lokal angepasste ESP8266-mDNS-Bibliothek
 
 ## Ressourcen- und Sicherheitshinweise
 
-- Themes und Fotos teilen sich den LittleFS-Speicher. Standard: 1.000 KiB; optionales 4m2m-Profil: 2.024 KiB.
+- Themes und Fotos teilen sich den LittleFS-Speicher. Das reguläre 4m2m-Image stellt 2.024 KiB bereit; das Legacy-4m1m-Profil 1.000 KiB.
 - 4m1m und 4m2m haben unterschiedliche LittleFS-Startadressen. Der Wechsel benötigt eine Datenmigration; die Firmware formatiert bei einem Mountfehler nicht automatisch.
 - Ein erfolgreicher Host-/CI-Build ersetzt keinen vollständigen Test auf echter SmallTV-Ultra-Hardware.
 - Der Webzugriff ist standardmäßig nicht passwortgeschützt. Optionaler Digest-Schutz schützt die Anmeldung, **verschlüsselt aber nicht den HTTP-Datenverkehr**.
