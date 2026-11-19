@@ -22,7 +22,7 @@
 #define UPDATE_ASSET "smalltv-settings-firmware-4m1m-legacy.bin"
 #define FW_VARIANT   "esp8266-settings-photo-only-4m1m-legacy"
 #else
-#define UPDATE_ASSET "smalltv-settings-firmware.bin"
+#define UPDATE_ASSET "smalltv-settings-firmware-4m2m.bin"
 #define FW_VARIANT   "esp8266-settings-photo-only-4m2m"
 #endif
 #define GH_API_HOST   "api.github.com"
