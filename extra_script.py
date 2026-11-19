@@ -10,7 +10,7 @@ PROJECT_DIR = env.subst("$PROJECT_DIR")
 # The custom ESP8266 build keeps its recovery .stheme in program flash, outside
 # LittleFS and the user theme catalog. Embed the package during this build so a
 # bad filesystem or user theme cannot remove the recovery screen.
-if env.subst("$PIOENV") in ("smalltv_clean", "smalltv_settings"):
+if env.subst("$PIOENV") in ("smalltv_clean", "smalltv_settings", "smalltv_settings_4m1m_legacy"):
     recovery = Path(PROJECT_DIR) / "examples" / "recovery-theme" / "recovery.stheme"
     build_dir = Path(env.subst("$BUILD_DIR"))
     if not build_dir.is_absolute():
