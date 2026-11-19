@@ -52,6 +52,8 @@ export default defineConfig({
           label: 'Entwicklung',
           items: [
             { label: 'Firmware bauen', link: '/reference/building/' },
+            { label: 'Hardware und Speicher', link: '/reference/hardware-storage/' },
+            { label: 'Repository-Landkarte', link: '/reference/repository-map/' },
             { label: 'Recovery', link: '/reference/recovery/' },
           ],
         },
