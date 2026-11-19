@@ -35,6 +35,12 @@ assert.match(html, /id="showflowPhotoAddId"/);
 assert.match(html, /Maximal 16 Schritte/);
 assert.match(html, /function renderShowflowSteps\(\)/);
 assert.match(html, /function addShowflowPhoto\(\)/);
+assert.match(html, /function installTheme\(inputId\)[\s\S]*?xhr\.upload\.onprogress/);
+assert.match(html, /xhr\.onerror=function\(\)/);
+assert.match(html, /xhr\.ontimeout=function\(\)/);
+assert.match(html, /Keine HTTP-Antwort vom SmallTV/);
+assert.doesNotMatch(html, /fetch\('\/api\/themes\/install/);
+
 assert.doesNotMatch(html, /themePlaylist|photoPlayback|photosPerTheme|photoDwellSeconds/);
 
 // Photo-only profile: classify GIF signatures and reject animation input
@@ -52,6 +58,17 @@ const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
 assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
 assert.ok(portal.includes('photoValidateJpeg(PhotoUploadPath)'));
 assert.ok(portal.includes('LittleFS.rename(PhotoUploadPath, target)'));
+const themeWeb = fs.readFileSync('src/features/theme/ThemeWeb.cpp', 'utf8');
+assert.match(themeWeb, /nextSize > smalltv::MaxPackage/);
+assert.match(themeWeb, /nextSize > uploadBudget/);
+assert.match(themeWeb, /Formatlimit von 3 MiB/);
+assert.match(themeWeb, /höchstens /);
+const themeUploadStart = themeWeb.indexOf('g_themeMode.release(UINT32_MAX);');
+const freshCapacity = themeWeb.indexOf('forgetFreeBytes();', themeUploadStart);
+const uploadBudget = themeWeb.indexOf('const size_t reserve', themeUploadStart);
+assert.ok(themeUploadStart >= 0 && freshCapacity > themeUploadStart && freshCapacity < uploadBudget,
+          'theme upload must invalidate cached LittleFS capacity before measuring free space');
+
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
   '/api/themes/install', '/api/themes/select', '/api/themes/metadata',
