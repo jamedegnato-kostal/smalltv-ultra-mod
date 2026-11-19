@@ -39,7 +39,7 @@ Die Adressen und Längen stammen aus den ESP8266-Arduino-Linkerskripten [4m1m](h
 
 Der ESP8266 verwendet den ESP8266-Updater und den Bootloader `eboot`; es gibt hier nicht zwei gleich große ESP32-artige App-Partitionen. Der Platz für ein Update wird dynamisch aus dem Ende des aktuell installierten Sketches bis zum LittleFS-Start berechnet. Der manuelle Upload zieht zusätzlich 4 KiB ab und richtet die Grenze auf 4-KiB-Sektoren aus. Der Build wird außerdem gegen den IROM-Slot geprüft.
 
-Das 4m2m-Linkerskript lässt den IROM-Slot unverändert. Die CI baut beide Settings-Varianten und prüft für jede mindestens 8 KiB freien IROM-Spielraum. Das Standardprofil bleibt `smalltv_settings`; die Variante mit größerem Dateisystem verwendet ein eigenes Release-Asset, damit ein 4m2m-Gerät nicht versehentlich das 4m1m-Image als Self-Update bezieht.
+Das reguläre Profil `smalltv_settings` nutzt 4m2m. Das Legacyprofil `smalltv_settings_4m1m_legacy` ist nur für bereits so formatierte Geräte. Beide Linkerskripte lassen den IROM-Programmbereich bei 1.044.464 Byte. Die dynamische ESP8266-OTA-Fläche bis zum LittleFS-Start ist bei 4m2m allerdings um 1 MiB kleiner als bei 4m1m; der aktuell gebaute Firmwarecode muss zusätzlich innerhalb des IROM-Linkerbereichs bleiben. Die CI baut Standardprofil, Legacyprofil und Loader und prüft mindestens 8 KiB freien IROM-Spielraum.
 
 ### Wichtiger Migrationshinweis
 
@@ -47,10 +47,10 @@ Das 4m2m-Linkerskript lässt den IROM-Slot unverändert. Die CI baut beide Setti
 
 Daher gilt:
 
-- Das reguläre Image `smalltv-settings-firmware.bin` ist ab dieser Änderung 4m2m. Das 4m1m-Profil ist nur für Geräte gedacht, deren LittleFS bereits am alten Offset liegt.
+- Das reguläre Image `smalltv-settings-firmware-4m2m.bin` ist 4m2m. Das Legacy-Image `smalltv-settings-firmware-4m1m-legacy.bin` ist für Geräte mit dem alten 4m1m-Offset.
 - Ein vorhandenes 4m1m-Gerät darf nicht einfach per OTA auf 4m2m umgestellt werden. Vorher müssen Konfiguration, Themes und Fotos über eine geprüfte Sicherungs-/Wiederherstellungsprozedur exportiert und nach dem Layoutwechsel wiederhergestellt werden.
 - Derzeit ist keine automatische LittleFS-Layoutmigration implementiert. Die Daten können physisch noch im Flash liegen, sind aber mit dem neuen Startoffset nicht ohne Konvertierung als dasselbe Dateisystem nutzbar.
-- Nach dem Wechsel auf 4m2m muss die Firmware das 4m2m-Release-Asset verwenden. Das erledigt die layoutabhängige `UPDATE_ASSET`-Konfiguration. Die Profile haben unterschiedliche `UPDATE_ASSET`-Namen; der alte generische Assetname wird nicht für 4m2m wiederverwendet.
+- Nach dem Wechsel auf 4m2m verwendet die Firmware das 4m2m-Release-Asset. Die Profile haben unterschiedliche `UPDATE_ASSET`-Namen. Der generische Name `smalltv-settings-firmware.bin` bleibt vorübergehend ein 4m1m-Kompatibilitätsalias für ältere Firmware-Versionen (z. B. 0.1.8), die diesen Namen fest erwarten; er darf deshalb nicht auf das 4m2m-Image zeigen.
 
 Der minimale Loader (`smalltv_loader`) bleibt ein separates Hilfsimage mit dem bisherigen 4m1m-Linkerskript. Es ist ein Erstinstallations-/Recovery-Helfer und nicht die reguläre Nutzfirmware; seine bloße Installation migriert keine LittleFS-Daten.
 
