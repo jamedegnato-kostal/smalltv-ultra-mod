@@ -50,7 +50,7 @@ Daher gilt:
 - Das reguläre Image `smalltv-settings-firmware.bin` ist ab dieser Änderung 4m2m. Das 4m1m-Profil ist nur für Geräte gedacht, deren LittleFS bereits am alten Offset liegt.
 - Ein vorhandenes 4m1m-Gerät darf nicht einfach per OTA auf 4m2m umgestellt werden. Vorher müssen Konfiguration, Themes und Fotos über eine geprüfte Sicherungs-/Wiederherstellungsprozedur exportiert und nach dem Layoutwechsel wiederhergestellt werden.
 - Derzeit ist keine automatische LittleFS-Layoutmigration implementiert. Die Daten können physisch noch im Flash liegen, sind aber mit dem neuen Startoffset nicht ohne Konvertierung als dasselbe Dateisystem nutzbar.
-- Nach dem Wechsel auf 4m2m müssen zukünftige Firmwareupdates ebenfalls das 4m2m-Release-Asset verwenden. Die Profile haben deshalb unterschiedliche `UPDATE_ASSET`-Namen.
+- Nach dem Wechsel auf 4m2m muss die Firmware das 4m2m-Release-Asset verwenden. Das erledigt die layoutabhängige `UPDATE_ASSET`-Konfiguration. Die Profile haben unterschiedliche `UPDATE_ASSET`-Namen; der alte generische Assetname wird nicht für 4m2m wiederverwendet.
 
 Der minimale Loader (`smalltv_loader`) bleibt ein separates Hilfsimage mit dem bisherigen 4m1m-Linkerskript. Es ist ein Erstinstallations-/Recovery-Helfer und nicht die reguläre Nutzfirmware; seine bloße Installation migriert keine LittleFS-Daten.
 
