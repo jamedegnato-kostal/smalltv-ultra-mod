@@ -1,0 +1,128 @@
+---
+title: Hardware, Flashlayout und Ressourcenlimits
+description: Verbindliche Zielhardware, ESP8266-Flashaufteilung, OTA-Grenzen und Laufzeitlimits des SmallTV-Settings-Builds.
+---
+
+# Hardware-Ziel
+
+Der Build dieses Repositorys ist für den **ESP8266** auf einem GeekMagic SmallTV/SmallTV Ultra ausgelegt. Der PlatformIO-Boardname lautet `esp12e`; die im Repository dokumentierte Pinbelegung ist für ein **ESP-12F-Modul**. Für das hier betrachtete Gerät ist eine **4-MB-SPI-Flash-Bestückung** angegeben. Der Build wählt das Flashlayout statisch aus; er vergrößert die Hardware nicht und erkennt eine abweichende Flashbestückung nicht automatisch.
+
+| Komponente | Festlegung |
+| --- | --- |
+| MCU/Modul | ESP8266 / ESP-12-Familie (PlatformIO: `esp12e`) |
+| SPI-Flash | 4 MB laut Geräteangabe; Layout muss dazu passen |
+| Funk | 2,4-GHz-WLAN |
+| Display | 1,54-Zoll-ST7789, 240 × 240 Pixel |
+| SPI-Pins | SCLK GPIO14/D5, MOSI GPIO13/D7 |
+| Display-Steuerung | DC GPIO0/D3, RST GPIO2/D4, CS GPIO15/D8, Backlight GPIO5/D1 |
+
+Die Pinbelegung steht in `src/board_esp8266.h`; die Displaygröße und -ansteuerung werden in `src/config.h` und den GFX-Modulen verwendet. GPIO0, GPIO2 und GPIO15 sind Boot-Strapping-Pins und dürfen durch angeschlossene Hardware nicht in einen ungültigen Pegel gezogen werden.
+
+**Nicht Ziel dieses Firmwareprofils:** ESP32 und ESP32-C2.
+
+## Flashlayouts für 4 MB
+
+Das Standardprofil und das optionale Profil verwenden denselben Programmslot. Sie unterscheiden sich in der Startadresse des LittleFS-Dateisystems.
+
+| Eigenschaft | Standard `4m1m` | Optional `4m2m` |
+| --- | ---: | ---: |
+| PlatformIO-Umgebung | `smalltv_settings` | `smalltv_settings_4m2m` |
+| Linkerskript | `eagle.flash.4m1m.ld` | `eagle.flash.4m2m.ld` |
+| LittleFS-Start | `0x40500000` | `0x40400000` |
+| LittleFS-Ende | `0x405FA000` | `0x405FA000` |
+| LittleFS-Kapazität laut Linkerskript | 1.024.000 B (1.000 KiB) | 2.072.576 B (2.024 KiB) |
+| IROM-Programmslot | 1.044.464 B (ca. 1.020 KiB) | 1.044.464 B (ca. 1.020 KiB) |
+
+Die Adressen und Längen stammen aus den ESP8266-Arduino-Linkerskripten [4m1m](https://github.com/esp8266/Arduino/blob/master/tools/sdk/ld/eagle.flash.4m1m.ld) und [4m2m](https://github.com/esp8266/Arduino/blob/master/tools/sdk/ld/eagle.flash.4m2m.ld). Beide definieren `irom0_0_seg` mit `len = 0xfeff0`; der zusätzliche LittleFS-Speicher wird also nicht durch einen kleineren Linker-Programmslot erkauft.
+
+### OTA ist kein zweiter ESP32-App-Slot
+
+Der ESP8266 verwendet den ESP8266-Updater und den Bootloader `eboot`; es gibt hier nicht zwei gleich große ESP32-artige App-Partitionen. Der Platz für ein Update wird dynamisch aus dem Ende des aktuell installierten Sketches bis zum LittleFS-Start berechnet. Der manuelle Upload zieht zusätzlich 4 KiB ab und richtet die Grenze auf 4-KiB-Sektoren aus. Der Build wird außerdem gegen den IROM-Slot geprüft.
+
+Das 4m2m-Linkerskript lässt den IROM-Slot unverändert. Die CI baut beide Settings-Varianten und prüft für jede mindestens 8 KiB freien IROM-Spielraum. Das Standardprofil bleibt `smalltv_settings`; die Variante mit größerem Dateisystem verwendet ein eigenes Release-Asset, damit ein 4m2m-Gerät nicht versehentlich das 4m1m-Image als Self-Update bezieht.
+
+### Wichtiger Migrationshinweis
+
+**4m1m und 4m2m sind keine Dateisystem-kompatiblen Drop-in-Updates.** Beim Wechsel wandert der LittleFS-Start von `0x40500000` auf `0x40400000`. Das vorhandene Dateisystem wird dadurch nicht automatisch verschoben. Die Firmware deaktiviert beim ESP8266 ausdrücklich Auto-Format; ein Mount-Fehler darf nicht zum automatischen Löschen der Benutzerdaten führen.
+
+Daher gilt:
+
+- Das 4m2m-Image ist als separates Build-Profil vorhanden, aber **nicht das Standardimage**.
+- Ein vorhandenes 4m1m-Gerät darf nicht einfach per OTA auf 4m2m umgestellt werden, solange keine geprüfte Export-/Migrations-/Restore-Prozedur für Konfiguration, Themes und Fotos vorhanden ist.
+- Derzeit ist keine automatische LittleFS-Layoutmigration implementiert. Die Daten können physisch noch im Flash liegen, sind aber mit dem neuen Startoffset nicht ohne Konvertierung als dasselbe Dateisystem nutzbar.
+- Nach dem Wechsel auf 4m2m müssen zukünftige Firmwareupdates ebenfalls das 4m2m-Release-Asset verwenden. Die Profile haben deshalb unterschiedliche `UPDATE_ASSET`-Namen.
+
+Der minimale Loader (`smalltv_loader`) ist ein separater Installationshelfer und bleibt beim bisherigen 4m1m-Layout. Er ist kein allgemeiner Zwischenschritt für ein bestehendes 4m2m-Gerät.
+
+## Was die größere Partition praktisch bringt
+
+Die 4m2m-Partition stellt 2.024 KiB bereit, nicht volle 2.048 KiB. Der Upload lässt mindestens 16 KiB Sicherheitsreserve frei (bzw. den zuletzt gespeicherten Konfigurationsbedarf plus 4 KiB, falls das größer ist).
+
+Der zuletzt gemeldete Gerätestatus (Firmware 0.1.8) zeigte:
+
+| Messwert | Wert |
+| --- | ---: |
+| LittleFS gesamt | 1.024.000 B (1.000 KiB) |
+| LittleFS belegt | 229.376 B (224 KiB) |
+| LittleFS frei | 794.624 B (776 KiB) |
+| Uploadbudget nach Reserve | 760 KiB |
+| Fotos | 12.871 B |
+| Verwaiste/temporäre Fotodateien | 0 B |
+
+Bei unverändertem Datenbestand und einer 4m2m-Partition lägen überschlägig 1.800 KiB frei; nach 16 KiB Mindestreserve wären es ca. 1.784 KiB für ein neues Paket. Das hängt von Dateisystemmetadaten, Settingsgröße und allen bestehenden Dateien ab.
+
+Ein mit **2.076 KiB** angegebenes Theme ist größer als die gesamte 4m2m-LittleFS-Partition: 2.076 KiB gegenüber 2.024 KiB. Es wäre selbst auf einem leeren Dateisystem mindestens 52 KiB zu groß; mit 16 KiB Reserve müsste es mindestens ca. 68 KiB kleiner sein. Werden die derzeit belegten 224 KiB Benutzerdaten erhalten, sinkt das überschlägige Uploadbudget auf ca. 1.784 KiB. Für das konkrete Paket bleiben also zusätzliches Löschen nicht benötigter Dateien oder eine weitere Kompression nötig.
+
+## Verbindliche Ressourcenlimits
+
+Die folgenden Werte sind die im aktuellen Code und in der Feature-Dokumentation gesetzten Grenzen. Ein Paketlimit ist nicht gleich einem installierbaren Dateilimit: Das Paket muss zusätzlich vollständig in den freien LittleFS-Speicher passen.
+
+| Bereich | Limit | Quelle/Verhalten |
+| --- | ---: | --- |
+| Display-Canvas | 240 × 240 px | `ThemeEngine.h`, `config.h` |
+| Theme-Paket | 3 MiB | `ThemePackage.h`; Formatobergrenze |
+| Einträge pro Paket | 256 | `ThemePackage.h` |
+| Theme-Manifest | 16 KiB | `ThemeEngine.h` |
+| Layer pro Theme | 32 | `ThemeEngine.h` |
+| Datenquellen pro Theme | 4 | `ThemeEngine.h` |
+| Felder pro Datenquelle | 8 | `ThemeEngine.h` |
+| Fontdateien pro Paket | 4 | Theme-Paketvalidator |
+| Bildasset | maximal 240 × 240 px | Theme-Paketvalidator |
+| Installierte Themes | 16 | `ThemeWeb.cpp` |
+| Animationsframes | 240 | Theme-Ressourcenlimits |
+| Animations-Framerate | 1–15 FPS | Theme-Ressourcenlimits |
+| Themes in der Standard-Playlist | 8 | Theme-Playlist |
+| Schritte im Showflow | 16 | WebUI/Showflow |
+| Foto-Slots | 240 | `PhotoLibrary.h` |
+| Fotoformat | JPEG; GIF-Wiedergabe nicht enthalten | Photo-only-Profil |
+| Fotoabmessungen | 240 × 240 px | Foto-Validierung/Import |
+| Foto-Dateigröße | 128 KiB | `WebPortal.cpp` |
+| Uploadreserve | mindestens 16 KiB | Theme- und Foto-Upload |
+| gespeicherte WLAN-Netze | 4 | `config.h` |
+
+### Speicher- und RAM-Verhalten
+
+- Theme-Pakete werden als Dateien in LittleFS gespeichert. Der Upload schreibt zunächst nach `/themes/.upload`; nach erfolgreicher Validierung wird die Datei umbenannt, nicht ein zweites Mal kopiert.
+- Der Parser liest das Paket und das Manifest in kleinen Abschnitten. Bildpixel werden zeilenweise bzw. über kleine Lesefenster aus der Paketdatei gelesen; die komplette Assetdatei wird nicht als ein großer RAM-Block geladen.
+- Trotzdem benötigen Manifest, Paketindex, Layer, Fonts, Bindings und Laufzeitstatus RAM. Die Paketgröße in Flash ist deshalb keine Zusage, dass jedes beliebig komplexe Paket bei jeder Heap-Situation geladen werden kann.
+- Der ESP8266-Heap ist dynamisch und wird mit WLAN, Webserver, TLS und aktiver Theme-Engine geteilt. Entscheidend ist nicht nur `heap`, sondern auch der größte zusammenhängende Block (`maxblk`).
+- Beispielmessung aus dem Status 0.1.8: 9.696 B freier Heap, größter Block 4.320 B, niedrigster beobachteter Heap 5.456 B. Das sind Moment-/Laufzeitwerte dieses Geräts, keine universellen Hardwaregrenzen.
+- Die Foto-Wiedergabe in diesem Build ist JPEG-only. Alte GIF-Frame-Dateien aus einer früheren Firmware werden nicht automatisch gelöscht; sie können weiterhin LittleFS belegen und werden über die Diagnose als verwaiste Fotodaten gezählt.
+
+## Buildprofile
+
+| Profil | Zweck | Status |
+| --- | --- | --- |
+| `smalltv_settings` | Standardfirmware, 1 MB LittleFS | Standard und empfohlen für bestehende Geräte |
+| `smalltv_settings_4m2m` | Gleicher Firmwarecode, 2 MB LittleFS, separater OTA-Assetname | Optional; Layoutwechsel erfordert Datenmigration |
+| `smalltv_loader` | Minimaler Erstinstallations-/Upgradehelfer für den bestehenden Standardpfad | Kein normales Nutzungsimage |
+
+Buildbefehle:
+
+```sh
+python -m platformio run -e smalltv_settings
+python -m platformio run -e smalltv_settings_4m2m
+python -m platformio run -e smalltv_loader
+```
+
+Die resultierenden Firmwaredateien liegen unter `.pio/build/<environment>/firmware.bin`. CI baut alle drei Profile und lädt das 4m2m-Image als separates Artefakt/Release-Asset hoch.
