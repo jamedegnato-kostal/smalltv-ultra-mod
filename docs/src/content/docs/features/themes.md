@@ -56,6 +56,8 @@ Die Theme-Engine unterstützt Paketversionen 1 und 2. Version 2 fügt unter ande
 
 - Höchstens 16 installierte Themes im Webkatalog.
 - Höchstens 3 MiB und 256 Dateien pro Paket.
+- Zusätzlich muss das vollständige Paket in den aktuell freien LittleFS-Speicher passen. Der Upload reserviert mindestens 16 KiB sowie den zuletzt gespeicherten Konfigurationsbedarf plus 4 KiB für einen sicheren Settings-Schreibvorgang.
+- Themes und Fotos teilen sich denselben LittleFS-Speicher. Wenn die WebUI zu wenig verfügbaren Speicher meldet, lösche nicht benötigte Fotos oder installierte Themes und versuche es erneut.
 - Höchstens 32 Layer in einem Manifest.
 - Animationsassets dürfen bis zu 240 Frames enthalten; die deklarierte Framerate ist auf 1–15 FPS begrenzt.
 - Das Gerät validiert Manifest, Assetpfade, Bilddaten und Dateigrößen. Der freie LittleFS-Speicher begrenzt zusätzlich, wie viele große Pakete installiert werden können.
@@ -72,7 +74,7 @@ Für Uhr-Themes lässt sich unter **Themes → Automatik** eine Standarddauer ei
 
 ## Fotos zwischen Themes
 
-Die Foto-Bibliothek ist ein eigener WebUI-Bereich mit höchstens 240 Foto-Slots. Einzelbilder werden mittig auf 240 × 240 Pixel zugeschnitten und als JPEG mit maximal 128 KiB gespeichert. GIFs werden im Browser in höchstens 12 JPEG-Frames umgewandelt, die ungefähr alle 100 ms abgetastet werden; die gesamte Animation ist ebenfalls auf 128 KiB begrenzt. Die Firmware validiert jeden Frame vollständig und speichert die Framegruppe als einen Foto-Slot. Im Shuffle-Cycle läuft sie während der eingestellten Foto-Anzeigedauer in einer Schleife. Der Upload hält eine LittleFS-Reserve frei.
+Die Foto-Bibliothek ist ein eigener WebUI-Bereich mit höchstens 240 Foto-Slots. JPEG-, PNG- und WebP-Einzelbilder werden im Browser auf 240 × 240 Pixel zugeschnitten und vor dem Upload als JPEG mit maximal 128 KiB gespeichert. GIF-Animationen werden von diesem JPEG-only-Firmwareprofil nicht unterstützt. Im Shuffle-Cycle werden die gespeicherten Einzelbilder angezeigt. Der Upload hält eine LittleFS-Reserve frei.
 
 Wenn Foto-Wiedergabe aktiv ist, wird nach einem Playlist-Theme ein Shuffle-Batch gezeigt. Es kommen keine Fotos, wenn keine aktive Theme-Playlist läuft. Der Shuffle-Zyklus versucht, alle verfügbaren Fotos einmal zu zeigen, bevor er neu beginnt, und vermeidet eine Wiederholung am Zykluswechsel.
 
