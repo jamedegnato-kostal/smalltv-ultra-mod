@@ -52,8 +52,9 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 
 Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
 
-- `smalltv-settings-firmware.bin` – reguläres Image mit 2 MB LittleFS (4m2m).
+- `smalltv-settings-firmware-4m2m.bin` – reguläres Image mit 2 MB LittleFS (4m2m).
 - `smalltv-settings-firmware-4m1m-legacy.bin` – Legacy-Image für Geräte, deren LittleFS bereits mit 4m1m formatiert wurde.
+- `smalltv-settings-firmware.bin` – vorübergehender 4m1m-Kompatibilitätsname für ältere installierte Firmware (z. B. 0.1.8), die noch keinen layoutabhängigen Assetnamen kennt.
 
 **Achtung:** Der Wechsel von 4m1m auf 4m2m verschiebt den LittleFS-Startoffset. Vor dem Wechsel müssen WLAN-/Geräteeinstellungen, Themes und Fotos gesichert und nach dem Layoutwechsel wiederhergestellt werden. Ein normales OTA-Update migriert diese Daten nicht automatisch.
 
