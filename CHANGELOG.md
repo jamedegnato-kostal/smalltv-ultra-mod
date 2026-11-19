@@ -16,6 +16,16 @@ Die bisherige Versionshistorie wird nicht rückwirkend rekonstruiert. Für verö
 
 **Hinweis:** CI-Build und automatisierte Tests ersetzen keine Prüfung auf realer ESP8266-Hardware. Vor einem breiten Rollout sind Geräte-Tests mit wiederholtem Theme-Speichern, Foto-Upload und Dauerbetrieb erforderlich.
 
+## 0.1.9 – 4m2m LittleFS als Standard (19. November 2026)
+
+- Setzt das reguläre ESP8266-Image auf das 4-MB-Flashlayout mit 2.024 KiB LittleFS.
+- Behält ein separat benanntes 4m1m-Legacyprofil für bereits mit dem alten LittleFS-Offset formatierte Geräte.
+- Trennt die OTA-Assetnamen nach Flashlayout; der bisherige generische Assetname bleibt vorübergehend ein 4m1m-Kompatibilitätsalias für ältere Firmware.
+- Dokumentiert ESP-12/ESP8266-Hardware, Flashadressen, OTA-/IROM-Grenzen, Theme-/Foto-/RAM-Limits und die logische Modul-Landkarte.
+- Ergänzt einen CI-Build für Standard-, Legacy- und Loader-Image.
+
+**Migrationshinweis:** Ein vorhandenes 4m1m-Dateisystem wird nicht automatisch auf 4m2m verschoben. Vor dem Wechsel sind Konfiguration, Themes und Fotos separat zu sichern und nach dem Layoutwechsel wiederherzustellen. Der automatische LittleFS-Migrationspfad ist in dieser Version nicht enthalten.
+
 ## Unreleased
 
 ### Dokumentation und Repository
