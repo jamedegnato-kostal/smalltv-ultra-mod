@@ -114,7 +114,8 @@ Die folgenden Werte sind die im aktuellen Code und in der Feature-Dokumentation 
 | Profil | Zweck | Status |
 | --- | --- | --- |
 | `smalltv_settings` | Standardfirmware, 1 MB LittleFS | Standard und empfohlen für bestehende Geräte |
-| `smalltv_settings_4m2m` | Gleicher Firmwarecode, 2 MB LittleFS, separater OTA-Assetname | Optional; Layoutwechsel erfordert Datenmigration |
+| `smalltv_settings` | Reguläre Firmware, 2.024 KiB LittleFS, reguläres 4m2m-OTA-Asset | Standard für neue Installationen und Geräte mit 4m2m-Dateisystem |
+| `smalltv_settings_4m1m_legacy` | Gleicher Firmwarecode, 1.000 KiB LittleFS, separates Legacy-OTA-Asset | Nur für bereits formatierte 4m1m-Geräte |
 | `smalltv_loader` | Minimaler Erstinstallations-/Upgradehelfer für den bestehenden Standardpfad | Kein normales Nutzungsimage |
 
 Buildbefehle:
@@ -125,4 +126,4 @@ python -m platformio run -e smalltv_settings_4m1m_legacy
 python -m platformio run -e smalltv_loader
 ```
 
-Die resultierenden Firmwaredateien liegen unter `.pio/build/<environment>/firmware.bin`. CI baut alle drei Profile und veröffentlicht das 4m2m-Image als reguläres Firmware-Asset sowie das 4m1m-Image separat als Legacy-Asset.
+Die resultierenden Firmwaredateien liegen unter `.pio/build/<environment>/firmware.bin`. CI baut Standardprofil, Legacyprofil und Loader. Das 4m2m-Image wird als `smalltv-settings-firmware-4m2m.bin` veröffentlicht; das 4m1m-Image erhält den Legacy-Dateinamen und wird zusätzlich unter dem bisherigen generischen Dateinamen als Kompatibilitätsalias bereitgestellt.
