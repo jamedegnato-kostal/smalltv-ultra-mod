@@ -193,6 +193,10 @@ void receiveUpload() {
     // it already.
     g_themeMode.release(UINT32_MAX);
     LittleFS.remove(staging);
+    // Photos can be added or removed without going through this module.
+    // Refresh after removing stale staging data so the upload budget never
+    // relies on the short-lived listing cache.
+    forgetFreeBytes();
     // Preserve room for a settings rewrite plus filesystem metadata overhead,
     // so a large upload cannot leave too little space for the device to save
     // its own configuration afterward. The size of the last save stands in
