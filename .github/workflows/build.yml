@@ -56,7 +56,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/webui_settings.h
           git commit -m "chore: regenerate embedded photo-only Web UI"
-          git push origin "HEAD:${HEAD_BRANCH}"
+          # A contributor may push another fix while this job is running.
+          # Rebase the generated-header commit onto the latest PR head and
+          # retry the push instead of failing the whole firmware validation.
+          for attempt in 1 2 3; do
+            git fetch --no-tags --unshallow origin "${HEAD_BRANCH}" 2>/dev/null || git fetch --no-tags origin "${HEAD_BRANCH}"
+            git rebase FETCH_HEAD
+            if git push origin "HEAD:${HEAD_BRANCH}"; then
+              exit 0
+            fi
+            echo "PR branch moved during generated Web UI sync (attempt ${attempt}/3); retrying."
+          done
+          echo "::error::Could not publish generated Web UI after three attempts."
+          exit 1
 
       - name: Check embedded web page
         run: python tools/gzip_webui_settings.py --check
