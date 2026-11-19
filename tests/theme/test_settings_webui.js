@@ -63,6 +63,11 @@ assert.match(themeWeb, /nextSize > smalltv::MaxPackage/);
 assert.match(themeWeb, /nextSize > uploadBudget/);
 assert.match(themeWeb, /Formatlimit von 3 MiB/);
 assert.match(themeWeb, /höchstens /);
+const themeUploadStart = themeWeb.indexOf('g_themeMode.release(UINT32_MAX);');
+const freshCapacity = themeWeb.indexOf('forgetFreeBytes();', themeUploadStart);
+const uploadBudget = themeWeb.indexOf('const size_t reserve', themeUploadStart);
+assert.ok(themeUploadStart >= 0 && freshCapacity > themeUploadStart && freshCapacity < uploadBudget,
+          'theme upload must invalidate cached LittleFS capacity before measuring free space');
 
 for (const endpoint of [
   '/api/config', '/api/status', '/api/photos/upload', '/api/photos/delete-all',
