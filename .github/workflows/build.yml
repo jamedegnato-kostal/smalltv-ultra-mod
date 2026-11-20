@@ -60,6 +60,7 @@ jobs:
           sh tests/theme/run.sh
           node tests/theme/test_settings_webui.js
           node tests/theme/test_settings_webui_poll.js
+          sh tests/backlight/run.sh
 
       - name: Check untrusted input parsers
         run: sh tests/fuzz/run.sh

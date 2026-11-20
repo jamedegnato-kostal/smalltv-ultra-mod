@@ -2,6 +2,10 @@
 #include "Platform.h"
 #include <Arduino_GFX_Library.h>
 #include <SPI.h>
+#if !defined(SMALLTV_FAMILY_ESP32)
+#include "BacklightPlan.h"
+#include <sigma_delta.h>
+#endif
 
 // The SmallTV's ST7789 has its CS line tied to GND and only latches SPI in
 // **mode 3**. Arduino_GFX's stock Arduino_ST7789 forces SPI_MODE2 on the ESP8266
@@ -92,6 +96,43 @@ static Arduino_ST7789_SmallTV* smallTvPanel = nullptr;
 Arduino_GFX* gfxDev() { return gfx; }
 
 // ---------------------------------------------------------------------------
+// The ESP8266's software PWM is timer-driven and can show visible flashes
+// when Wi-Fi/TLS/flash work delays an edge. Use hardware sigma-delta there;
+// keep the existing analogWrite path unchanged on ESP32 targets.
+#if defined(SMALLTV_FAMILY_ESP32)
+static void backlightBegin() {
+  platformAnalogWriteInit(TFT_BL);
+}
+static void backlightSet(uint8_t steps, bool inverted) {
+  analogWrite(TFT_BL, inverted ? 255 - steps : steps);
+}
+#else
+static smalltv::BacklightPlan s_backlightPlan{};
+static bool s_backlightPlanValid = false;
+
+static void backlightBegin() {
+  sigmaDeltaEnable();
+  sigmaDeltaSetPrescaler(smalltv::BL_SD_PRESCALER);
+  s_backlightPlanValid = false;
+}
+
+static void backlightSet(uint8_t steps, bool inverted) {
+  const smalltv::BacklightPlan plan = smalltv::backlightPlan(steps, inverted);
+  if (s_backlightPlanValid && smalltv::backlightPlanSame(plan, s_backlightPlan)) return;
+
+  if (plan.sigmaDelta) {
+    sigmaDeltaWrite(0, plan.duty);
+    if (!sigmaDeltaIsPinAttached(TFT_BL)) sigmaDeltaAttachPin(TFT_BL);
+  } else {
+    sigmaDeltaDetachPin(TFT_BL);
+    digitalWrite(TFT_BL, plan.level ? HIGH : LOW);
+  }
+  s_backlightPlan = plan;
+  s_backlightPlanValid = true;
+}
+#endif
+
+// ---------------------------------------------------------------------------
 void gfxBegin(const Settings& s) {
 #ifdef TFT_PWR_PIN
   // Boards with a switched panel power rail (NM-TV-154): energize the display
@@ -103,7 +144,7 @@ void gfxBegin(const Settings& s) {
   // if panel init has trouble. A dark backlight then means the sketch didn't get
   // this far (early crash / bad flash) — a useful boot indicator.
   pinMode(TFT_BL, OUTPUT);
-  platformAnalogWriteInit(TFT_BL);
+  backlightBegin();
   gfxSetBrightness(s.brightness, s.backlightInverted);
 
 #if defined(SMALLTV_FAMILY_ESP32)
@@ -139,9 +180,8 @@ void gfxBegin(const Settings& s) {
 
 void gfxSetBrightness(uint8_t pct, bool inverted) {
   if (pct > 100) pct = 100;
-  int duty = (int)pct * 255 / 100;
-  if (inverted) duty = 255 - duty;
-  analogWrite(TFT_BL, duty);
+  const uint8_t steps = static_cast<uint8_t>((int)pct * 255 / 100);
+  backlightSet(steps, inverted);
 }
 
 void gfxSetRotation(uint8_t r) {

@@ -39,6 +39,11 @@
 #endif
 
 // Defined in main.cpp — re-init every mode + force a repaint after a config change.
+#if defined(SMALLTV_FAMILY_ESP8266)
+static_assert(HTTP_UPLOAD_BUFLEN <= 1024,
+              "Keep the ESP8266 HTTP upload buffer at 1 KiB; see platformio.ini");
+#endif
+
 extern void appInvalidate();
 extern void appRelease();
 extern const char* appResetReason();   // last reset reason (diagnostics)
