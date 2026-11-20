@@ -10,10 +10,12 @@ int main() {
   const std::string s=source();
   const std::string signature="static void backlightSet(uint8_t steps, bool inverted)";
   const size_t first=s.find(signature);
-  if(s.empty() || first==std::string::npos || s.find(signature,first+1)==std::string::npos) return 1;
-  const size_t end=s.find("\n#endif",first);
-  if(end==std::string::npos) return 2;
-  const std::string body=s.substr(first,end-first);
+  if(s.empty() || first==std::string::npos) return 1;
+  const size_t second=s.find(signature,first+1);
+  if(second==std::string::npos || s.find(signature,second+1)!=std::string::npos) return 2;
+  const size_t end=s.find("\n#endif",second);
+  if(end==std::string::npos) return 3;
+  const std::string body=s.substr(second,end-second);
   const size_t duty=body.find("sigmaDeltaWrite(0, plan.duty)");
   const size_t attach=body.find("sigmaDeltaAttachPin(TFT_BL)");
   const size_t detach=body.find("sigmaDeltaDetachPin(TFT_BL)");
