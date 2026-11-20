@@ -179,10 +179,24 @@ void receivePhotoUpload() {
     photoUploadBytes += up.currentSize;
     yield();
   } else if (up.status == UPLOAD_FILE_END) {
+    // Like settings saves, verify the deferred filesystem write error and
+    // final on-flash size after flush; write() alone cannot detect every failure.
+    bool stored = false;
+    if (photoUpload) {
+      photoUpload.flush();
+      stored = !photoUpload.getWriteError() && photoUpload.size() == photoUploadBytes;
+    }
     photoUpload.close();
-    if (!photoUploadAllowed || photoUploadError.length() || !photoUploadBytes || photoUploadBytes != up.totalSize) {
-      if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
-      LittleFS.remove(PhotoUploadPath); return;
+    if (!photoUploadAllowed || photoUploadError.length() || !stored ||
+        !photoUploadBytes || photoUploadBytes != up.totalSize) {
+      if (!photoUploadError.length()) {
+        if (!photoUploadAllowed) photoUploadError = "Upload wurde nicht freigegeben";
+        else if (!stored) photoUploadError = "Temporäre Bilddatei konnte nicht vollständig geschrieben werden";
+        else photoUploadError = "Upload wurde nicht vollständig übertragen";
+      }
+      LittleFS.remove(PhotoUploadPath);
+      LittleFS.remove(PhotoAnimationUploadPath);
+      return;
     }
     // JPEG validation uses TJpg_Decoder's preallocated workspace plus
     // small filesystem/decoder allocations. Release the theme if the normal
