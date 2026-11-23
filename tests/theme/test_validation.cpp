@@ -90,6 +90,18 @@ int main() {
   assert(!parseTheme(json,theme,error));assert(error.find("layers[0].value:")==0);
   deserializeJson(d,dataBase);serializeJson(d,json);assert(!parseTheme(json,theme,error));
   deserializeJson(d,dataBase);d["data"][0]["insecureTls"]=true;serializeJson(d,json);assert(parseTheme(json,theme,error));
+  // A wttr.in source uses array indices in paths and explicitly declares
+  // provider-specific transformations for WMO icon groups and day/night.
+  deserializeJson(d,dataBase);
+  d["data"][0]["url"]="http://wttr.in/51.23540,7.66507?format=j1";
+  d["data"][0]["fields"][0]["path"]="current_condition.0.temp_C";
+  d["data"][0]["fields"][0]["transform"]="wwo-wmo";
+  serializeJson(d,json);assert(parseTheme(json,theme,error));
+  assert(theme.data[0].fields[0].path=="current_condition.0.temp_C");
+  assert(theme.data[0].fields[0].transform==ThemeDataTransform::WwoWeatherCode);
+  deserializeJson(d,dataBase);
+  d["data"][0]["fields"][0]["transform"]="unknown";
+  serializeJson(d,json);assert(!parseTheme(json,theme,error));
   deserializeJson(d,dataBase);d["data"][0]["insecureTls"]="yes";serializeJson(d,json);assert(!parseTheme(json,theme,error));
   deserializeJson(d,dataBase);d["data"][0]["url"]="http://example.test/weather.json";serializeJson(d,json);assert(parseTheme(json,theme,error));
   deserializeJson(d,dataBase);d["layers"][0]["value"]="{unknown.temp}";serializeJson(d,json);assert(!parseTheme(json,theme,error));
