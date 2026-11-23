@@ -128,18 +128,17 @@ body.light .save-status.dirty{color:#80520a}
 <nav>
  <button data-t="status" class="active" aria-current="page">Übersicht</button>
  <button data-t="settingsDisplay">Anzeige</button>
- <button data-t="settingsClock">Uhr &amp; Zeit</button>
+ <button data-t="settingsClock">Uhr &amp; Themes</button>
  <button data-t="settingsThemes">Themes</button>
  <button data-t="showflow">Foto-Flow</button>
  <button data-t="photos">Fotobibliothek</button>
- <button data-t="diagnostics">Fehler-Log</button>
- <button data-t="wifi">Netzwerk</button>
+  <button data-t="wifi">Netzwerk</button>
  <button data-t="update">System</button>
  <button data-t="settingsAdvanced">Erweitert</button>
 </nav>
 <main>
  <section id="settingsDisplay" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Anzeige</h2><p>Helligkeit, Farben, Bildrate und Verhalten des Displays anpassen.</p></div></section>
- <section id="settingsClock" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Uhr &amp; Zeit</h2><p>Zeitzone, Zeitformat und Darstellung deiner Uhr festlegen.</p></div></section>
+ <section id="settingsClock" class="tab"><div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Uhr, Zeit &amp; Themes</h2><p>Zeitzone, Zeitformat, Uhr-Designs (.stheme) und Nachtmodus verwalten.</p></div></section>
  <section id="settingsThemes" class="tab">
   <div class="page-intro"><p class="eyebrow">Einstellungen</p><h2>Themes</h2><p>Themes verwalten und festlegen, wann sie angezeigt werden.</p></div>
   <div id="themeLibrary"></div>
@@ -176,17 +175,7 @@ body.light .save-status.dirty{color:#80520a}
    <div id="photoGrid" class="photo-grid"></div>
   </div>
  </section>
- <section id="diagnostics" class="tab">
-  <div class="page-intro"><p class="eyebrow">Support</p><h2>Fehler-Log erstellen</h2><p>Beschreibe den Fehler. Das Gerät ergänzt automatisch Firmware-, Netzwerk-, Speicher- und Absturzdaten sowie die aktuelle Konfiguration.</p></div>
-  <div class="card"><h2>Fehler melden</h2>
-   <label for="logTitle">Kurzbeschreibung</label><input id="logTitle" type="text" maxlength="100" placeholder="z. B. Fotos werden nicht angezeigt">
-   <label for="logState">Zustand</label><select id="logState"><option value="reproduzierbar">Fehler tritt immer auf</option><option value="sporadisch">Fehler tritt gelegentlich auf</option><option value="einmalig">Einmaliger Fehler</option><option value="funktioniert">Funktioniert inzwischen wieder</option><option value="unbekannt">Unklar</option></select>
-   <label for="logInput">Was hast du gemacht und was ist passiert?</label><textarea id="logInput" maxlength="2000" rows="5" placeholder="Schritte, erwartetes Verhalten, tatsächliches Verhalten und angezeigte Fehlermeldung …"></textarea>
-   <div class="home-actions"><button class="btn" id="logCreate" type="button" onclick="createDiagnosticLog()">Log erstellen</button><button class="btn sec" id="logCopy" type="button" onclick="copyDiagnosticLog()" disabled>Log kopieren</button><button class="btn sec" id="logDownload" type="button" onclick="downloadDiagnosticLog()" disabled>JSON herunterladen</button></div>
-   <div id="logMessage" class="muted" role="status" aria-live="polite"></div>
-  </div>
-  <div class="card"><h2>Erzeugtes Diagnose-Log</h2><p class="muted">Enthält den Gerätestatus und die Konfiguration. WLAN-Passwörter und andere Passwort-/Token-Felder werden vor dem Export entfernt.</p><textarea id="logOutput" rows="14" readonly placeholder="Nach „Log erstellen“ erscheint hier das Diagnose-Log."></textarea></div>
- </section>
+
  <section id="settingsAdvanced" class="tab"><div class="page-intro"><p class="eyebrow">Gerätekonfiguration</p><h2>Erweitert</h2><p>Zusätzliche Bedienelemente für dieses Gerät.</p></div></section>
  <!-- STATUS -->
  <section id="status" class="tab active">
@@ -818,7 +807,6 @@ function loadStatus(){
  return statusRead;
 }
 function statusNext(){clearTimeout(statusTimer);statusTimer=0;if(!document.hidden)statusTimer=setTimeout(loadStatus,STATUS_MS)}
-function clearCrash(){j('/api/crash/clear',{method:'POST'}).then(function(){toast('Absturzinfo gelöscht');loadStatus()}).catch(function(e){toast('Löschen fehlgeschlagen: '+e.message)})}
 document.addEventListener('visibilitychange',function(){
  if(document.hidden){clearTimeout(statusTimer);statusTimer=0}else loadStatus()});
 function showStatus(s){
@@ -841,7 +829,6 @@ function showStatus(s){
   (s.wifiFail?kv('Last join failure',s.wifiFail):'')+
   kv('Free heap',s.heap+' B'+(s.maxblk?' ('+s.maxblk+' B largest block)':''))+
   kv('Uptime',fmtUp(s.uptime))+kv('Last reset',s.reset||'-')+
-  (s.lastCrash?kv('Letzter Absturz',s.lastCrash.reason+(s.lastCrash.firmware?' · '+s.lastCrash.firmware:'')+(s.lastCrash.uptimeKnown?' nach '+fmtUp(s.lastCrash.uptime):''))+'<button class="btn sec" style="margin-top:8px" onclick="clearCrash()">Absturzinfo löschen</button>':'')+
   (s.radar?kv('Radar',radarLine(s.radar)):'')+
   resourceDiagnostics(s);
  var tb=$('tickBox');
@@ -1085,62 +1072,6 @@ function upload(){var f=$('fw').files[0];if(!f){toast('Wähle zuerst eine .bin-D
  x.send(fd);
 }
 
-
-// ---- Support log -----------------------------------------------------------
-var diagnosticLogText='';
-function redactDiagnosticData(value){
- if(Array.isArray(value))return value.map(redactDiagnosticData);
- if(value&&typeof value==='object'){
-  var out={};
-  Object.keys(value).forEach(function(k){
-   if(/pass(word)?|secret|token|authorization|api.?key/i.test(k)){out[k]='[redacted]';return}
-   out[k]=redactDiagnosticData(value[k]);
-  });
-  return out;
- }
- return value;
-}
-function createDiagnosticLog(){
- var button=$('logCreate'),message=$('logMessage');
- button.disabled=true;message.textContent='Gerätestatus und Konfiguration werden gelesen …';
- Promise.all([j('/api/status'),j('/api/config')]).then(function(values){
-  var status=values[0],config=redactDiagnosticData(values[1]);
-  var payload={
-   logVersion:1,createdAt:new Date().toISOString(),
-   report:{
-    title:gv('logTitle').trim(),state:gv('logState'),
-    description:gv('logInput').trim(),
-    page:document.querySelector('nav button.active')?document.querySelector('nav button.active').dataset.t:'unknown'
-   },
-   deviceStatus:status,
-   configuration:config
-  };
-  diagnosticLogText=JSON.stringify(payload,null,2);
-  $('logOutput').value=diagnosticLogText;
-  $('logCopy').disabled=false;$('logDownload').disabled=false;
-  message.textContent='Log erstellt. Prüfe es kurz und kopiere oder lade es herunter.';
- }).catch(function(e){
-  message.textContent='Log konnte nicht erstellt werden: '+e.message;
- }).then(function(){button.disabled=false});
-}
-function copyDiagnosticLog(){
- if(!diagnosticLogText)return;
- var done=function(){ $('logMessage').textContent='Log in die Zwischenablage kopiert.'; };
- if(navigator.clipboard&&navigator.clipboard.writeText){
-  navigator.clipboard.writeText(diagnosticLogText).then(done).catch(function(){
-   $('logOutput').focus();$('logOutput').select();document.execCommand('copy');done();
-  });
- }else{
-  $('logOutput').focus();$('logOutput').select();document.execCommand('copy');done();
- }
-}
-function downloadDiagnosticLog(){
- if(!diagnosticLogText)return;
- var blob=new Blob([diagnosticLogText],{type:'application/json;charset=utf-8'});
- var url=URL.createObjectURL(blob),a=document.createElement('a');
- a.href=url;a.download='smalltv-diagnose-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
- document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-}
 
 loadConfig().then(loadStatus,loadStatus);   // the status polls on, whatever the config did
 </script>
