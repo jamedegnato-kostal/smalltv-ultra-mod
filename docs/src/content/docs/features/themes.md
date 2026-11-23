@@ -45,6 +45,14 @@ Desktop-Vorschaulauf kann mit `--data` Beispielwerte bekommen. Das Beispiel
 `live-status` zeigt eine solche dynamische Anzeige. Fehlt ein Wert oder ist er
 ungültig, bleibt der statische Layerwert erhalten.
 
+Datenpfade dürfen neben Objektschlüsseln auch numerische Array-Indizes enthalten
+(z. B. `current_condition.0.temp_C`). Ein Feld kann optional einen
+`transform` angeben: `wwo-wmo` übersetzt WorldWeatherOnline-Wettercodes in
+die WMO-Codegruppen, und `wttr-daylight` leitet Tag/Nacht aus Beobachtungszeit,
+Sonnenaufgang und Sonnenuntergang von wttr.in ab. Große JSON-Antworten werden
+per ArduinoJson-Filter auf die angeforderten Felder begrenzt; der vollständige
+Forecast wird nicht im ESP8266-Heap gehalten.
+
 Farb-Bindings können eine Folge von **color stops** verwenden: Ein Quellwert
 wird zwischen den benachbarten Farbstufen interpoliert. Lege die Stopps in
 aufsteigender Reihenfolge an; Werte außerhalb des Bereichs erhalten die
@@ -75,6 +83,10 @@ Für Uhr-Themes lässt sich unter **Themes → Automatik** eine Standarddauer ei
 Die Foto-Bibliothek ist ein eigener WebUI-Bereich mit höchstens 240 Foto-Slots. Einzelbilder werden im Browser mittig auf 240 × 240 Pixel zugeschnitten und als JPEG mit maximal 128 KiB gespeichert. Die Firmware prüft den vollständigen Upload und decodiert das Bild vor der Übernahme. GIF-Animationen werden nicht importiert oder abgespielt. Dateien aus älteren GIF-Versionen bleiben beim Upgrade unangetastet und ihre Slotnummern werden nicht für neue JPEGs wiederverwendet. Erst die ausdrücklich bestätigte Aktion „Alle Fotos löschen“ entfernt auch diese Altdateien und verwaiste Foto-Uploads. Der Upload hält eine LittleFS-Reserve frei.
 
 Wenn Foto-Wiedergabe aktiv ist, wird nach einem Playlist-Theme ein Shuffle-Batch gezeigt. Es kommen keine Fotos, wenn keine aktive Theme-Playlist läuft. Der Shuffle-Zyklus versucht, alle verfügbaren Fotos einmal zu zeigen, bevor er neu beginnt, und vermeidet eine Wiederholung am Zykluswechsel.
+
+## Datenquellen auf dem ESP8266
+
+HTTPS-Datenquellen benötigen auf dem ESP8266 den vollen BearSSL-Empfangspuffer und können bei knappem Heap ausfallen. Für den Wetterdatensatz des Bellmerei-Themes wird deshalb der JSON-Endpunkt von wttr.in per HTTP verwendet. Die Firmware liest nur die sechs benötigten aktuellen Werte plus Sonnenaufgang/-untergang ein und gibt das geladene Theme für die synchrone Abfrage kurz frei. Nach dem Abruf wird es automatisch neu geladen. Der Abruf benötigt keinen API-Schlüssel; der öffentliche Dienst ist ein externer Anbieter und dessen Verfügbarkeit bleibt von dessen Betrieb abhängig.
 
 ## Beispiele und Werkzeuge
 
