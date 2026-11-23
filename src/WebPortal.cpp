@@ -162,16 +162,11 @@ void receivePhotoUpload() {
       LittleFS.remove(PhotoUploadPath);
       return;
     }
-#if WITH_THEME
-    g_themeMode.release(8UL * 1024UL, 3UL * 1024UL);
-#endif
-    if (ESP.getFreeHeap() < 8UL * 1024UL || platformMaxFreeBlock() < 3UL * 1024UL) {
-      photoUploadError = "Zu wenig freier Arbeitsspeicher für die Bildprüfung; Theme-Speicher wurde freigegeben";
-      LittleFS.remove(PhotoUploadPath);
-      return;
-    }
+    // Validate only the JPEG marker structure here. Full decompression is
+    // deferred until Showflow starts the photo step, after ThemeMode unloads
+    // its heap-owned package. This avoids spending scarce ESP8266 heap twice.
     if (!photoValidateJpeg(PhotoUploadPath)) {
-      photoUploadError = "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
+      photoUploadError = "Ungültiges oder nicht unterstütztes Bild; erwartet wird ein 240×240-Baseline-JPEG";
       LittleFS.remove(PhotoUploadPath);
       return;
     }
