@@ -861,19 +861,12 @@ void deleteTheme() {
     reply(404, "Theme not found");
     return;
   }
-  bool onScreen = settings->mode == MODE_THEME || (settings->mode == MODE_CAROUSEL && settings->carouselTheme);
-  if (settings->themeId == id && onScreen) {
-    // Inspecting parses the package; free the running copy first if the heap
-    // is short (issue #30).
-    g_themeMode.release();
-    ThemeFile file;
-    file.open(path);
-    auto info = smalltv::inspectInstalledTheme(file, id.c_str());
-    if (info.valid) {
-      reply(409, "Switch away from theme mode or untick it in the carousel before removing this theme");
-      return;
-    }
-  }
+  // Deleting the selected theme is an explicit user action. On the clean
+  // image there is no separate display-mode selector, so leave theme mode
+  // and disable the carousel theme slot in the same settings transaction.
+  const bool leaveThemeMode = settings->themeId == id &&
+      (settings->mode == MODE_THEME ||
+       (settings->mode == MODE_CAROUSEL && settings->carouselTheme));
   bool settingsChanged = settings->themeId == id;
 #if WITH_THEME_PLAYLIST
   for (uint8_t i = 0; i < settings->showflowCount; ++i)
@@ -882,6 +875,10 @@ void deleteTheme() {
 #endif
   if (settingsChanged && !applyAndSaveSettings(*settings, [&](Settings& candidate) {
         if (candidate.themeId == id) candidate.themeId = "";
+        if (leaveThemeMode) {
+          candidate.mode = MODE_CAROUSEL;
+          candidate.carouselTheme = false;
+        }
 #if WITH_THEME_PLAYLIST
         for (uint8_t i = 0; i < candidate.showflowCount;) {
           auto& step = candidate.showflow[i];
