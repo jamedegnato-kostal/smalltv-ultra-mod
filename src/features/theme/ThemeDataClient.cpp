@@ -4,6 +4,7 @@
 #include "ThemeMode.h"
 #include <ArduinoJson.h>
 #include <cstring>
+#include <climits>
 #include <cstdlib>
 #if !defined(SMALLTV_ESP8266)
 #include <freertos/FreeRTOS.h>
@@ -83,6 +84,7 @@ class BoundedBodyStream : public Stream {
     if (deadline_.expired() || bytes_ >= smalltv::MaxDataResponseBytes) return -1;
     return source_.peek();
   }
+  size_t write(uint8_t) override { return 0; }
   void flush() override {}
   size_t bytesRead() const { return bytes_; }
  private:
