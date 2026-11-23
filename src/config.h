@@ -8,16 +8,14 @@
 // Firmware identity
 // ---------------------------------------------------------------------------
 #define FW_NAME    "smalltv-settings"
-#define FW_VERSION "0.1.6"
+#define FW_VERSION "2.0.0-rc1"
 
-// Project / update references (shown in the web UI; used by the GitHub self-update)
+// Project reference shown in the web UI; owner/name also back the optional quote source.
 #define REPO_URL      "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
 #define REPO_OWNER    "jamedegnato-kostal"
 #define REPO_NAME     "smalltv-ultra-mod"
-// Release asset pulled by the GitHub self-updater.
-#define UPDATE_ASSET "smalltv-settings-firmware.bin"
-#define FW_VARIANT   "esp8266-settings"
-#define GH_API_HOST   "api.github.com"
+#define FW_VARIANT   "esp8266-settings-photo-only"
+#define FIRMWARE_ASSET "smalltv-settings-firmware.bin"
 
 // ---------------------------------------------------------------------------
 // Display wiring + panel quirks — board-specific, pulled from the right header.
@@ -255,8 +253,7 @@
 
 // GitHub source (SRC_GHUB): static quote JSON published to a git repo's `data`
 // branch and read from raw.githubusercontent.com, which — unlike cash.ch —
-// still accepts the ESP8266's static-RSA handshake (the same one GitHub
-// self-update and Yahoo use). The file is the same JSON the webhook parser
+// still accepts the ESP8266's static-RSA handshake (the same one this source and Yahoo use). The file is the same JSON the webhook parser
 // accepts, and the symbol is the cash.ch listing key. You publish the files
 // yourself from a fork: .github/scripts/fetch-quotes.mjs + quotes-config.json
 // are the example fetcher and symbol list, and the docs

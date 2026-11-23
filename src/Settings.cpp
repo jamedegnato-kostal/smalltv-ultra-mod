@@ -2,6 +2,7 @@
 #include "AtomicJson.h"
 #include "Platform.h"   // platformChipId() for the unique default hostname
 #include <LittleFS.h>
+#include <stdio.h>
 #include <string.h>
 
 static const char* CONFIG_PATH = "/config.json";
@@ -9,6 +10,7 @@ static bool g_storageReady = false;
 // Bytes in CONFIG_PATH as last read or written: what the next save needs on
 // the filesystem, known without building the settings document again.
 static size_t g_storedSize = 0;
+static char g_settingsSaveError[176] = "";
 
 // ===========================================================================
 // Ticker slice
@@ -536,7 +538,20 @@ void Settings::setDefaults() {
 
 // ---------------------------------------------------------------------------
 bool settingsBegin() {
+#if defined(SMALLTV_FAMILY_ESP8266)
+  // ESP8266 LittleFS defaults to autoFormat=true. A transient mount failure
+  // must never erase the user's photo, theme and settings partition.
+  if (!LittleFS.setConfig(LittleFSConfig(false))) {
+    g_storageReady = false;
+    return false;
+  }
   g_storageReady = LittleFS.begin();
+#elif defined(SMALLTV_FAMILY_ESP32)
+  // ESP32 exposes formatOnFail directly; keep it disabled as well.
+  g_storageReady = LittleFS.begin(false);
+#else
+  g_storageReady = LittleFS.begin();
+#endif
   return g_storageReady;
 }
 
@@ -545,9 +560,10 @@ bool settingsStorageReady() {
 }
 
 bool settingsFormatStorage() {
+  // This path is intentionally explicit/destructive and only called by the
+  // user-requested recovery endpoint. Mount itself still never auto-formats.
   if (g_storageReady || !LittleFS.format()) return false;
-  g_storageReady = LittleFS.begin();
-  return g_storageReady;
+  return settingsBegin();
 }
 
 bool loadSettings(Settings& s) {
@@ -566,16 +582,334 @@ bool loadSettings(Settings& s) {
   return true;
 }
 
+namespace {
+uint32_t settingsFilesystemFreeBytes() {
+#if defined(SMALLTV_ESP8266)
+  FSInfo info;
+  if (!LittleFS.info(info) || info.totalBytes < info.usedBytes) return UINT32_MAX;
+  return info.totalBytes - info.usedBytes;
+#else
+  const uint32_t total = LittleFS.totalBytes();
+  const uint32_t used = LittleFS.usedBytes();
+  return total >= used ? total - used : UINT32_MAX;
+#endif
+}
+void setSettingsSaveError(AtomicJsonResult result, size_t expected, uint32_t freeBytes) {
+  if (result == AtomicJsonResult::DocumentOverflow) {
+    strlcpy(g_settingsSaveError, "not enough heap to build the complete settings JSON", sizeof(g_settingsSaveError));
+    return;
+  }
+  if (result == AtomicJsonResult::TemporaryOpenFailed || result == AtomicJsonResult::ShortWrite) {
+    if (freeBytes != UINT32_MAX && freeBytes < expected) {
+      snprintf(g_settingsSaveError, sizeof(g_settingsSaveError),
+               "LittleFS space too low for atomic save: %lu B free, %lu B JSON",
+               (unsigned long)freeBytes, (unsigned long)expected);
+    } else if (result == AtomicJsonResult::TemporaryOpenFailed) {
+      strlcpy(g_settingsSaveError, "cannot create /config.json.tmp; check LittleFS capacity and I/O", sizeof(g_settingsSaveError));
+    } else {
+      strlcpy(g_settingsSaveError, "short write to /config.json.tmp; check LittleFS capacity and flash I/O", sizeof(g_settingsSaveError));
+    }
+    return;
+  }
+  switch (result) {
+    case AtomicJsonResult::FlushFailed:
+      strlcpy(g_settingsSaveError, "LittleFS flush failed; flash write error", sizeof(g_settingsSaveError));
+      break;
+    case AtomicJsonResult::SizeMismatch:
+      strlcpy(g_settingsSaveError, "temporary settings file has an unexpected size", sizeof(g_settingsSaveError));
+      break;
+    case AtomicJsonResult::RenameFailed:
+      strlcpy(g_settingsSaveError, "LittleFS atomic rename failed; old configuration was kept", sizeof(g_settingsSaveError));
+      break;
+    default:
+      strlcpy(g_settingsSaveError, "unknown atomic settings storage error", sizeof(g_settingsSaveError));
+      break;
+  }
+}
+}
+
 bool saveSettings(const Settings& s) {
-  if (!g_storageReady) return false;
+  PlatformMemoryPhaseScope saveMemory(PLATFORM_MEM_SETTINGS_SAVE, true);
+  g_settingsSaveError[0] = '\0';
+  if (!g_storageReady) {
+    strlcpy(g_settingsSaveError, "LittleFS is not mounted", sizeof(g_settingsSaveError));
+    return false;
+  }
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(s, root, /*includeSecrets=*/true);
+  const size_t expected = measureJson(doc);
+  const uint32_t freeBytes = settingsFilesystemFreeBytes();
+  const AtomicJsonResult result =
+      saveJsonAtomicallyDetailed(LittleFS, doc, CONFIG_PATH, "/config.json.tmp");
+  if (result != AtomicJsonResult::Ok) {
+    setSettingsSaveError(result, expected, freeBytes);
+    return false;
+  }
+  g_storedSize = expected;
+  return true;
+}
 
-  // Never truncate the working settings when a full disk or interrupted
-  // save prevents writing the replacement.
-  if (!saveJsonAtomically(LittleFS, doc, CONFIG_PATH, "/config.json.tmp")) return false;
-  g_storedSize = measureJson(doc);   // saveJsonAtomically() wrote exactly this
+const char* settingsSaveError() { return g_settingsSaveError; }
+
+// Arduino String copy constructors can fail their internal malloc without
+// making the containing Settings allocation return nullptr. Verify every
+// persisted String before allowing a staged copy to be mutated or saved.
+bool settingsCopyValid(const Settings& source, const Settings& candidate) {
+  for (uint8_t i = 0; i < MAX_WIFI_NETS; ++i) {
+    if (source.wifi[i].ssid != candidate.wifi[i].ssid ||
+        source.wifi[i].pass != candidate.wifi[i].pass) return false;
+  }
+  if (source.apSsid != candidate.apSsid || source.apPass != candidate.apPass ||
+      source.hostname != candidate.hostname || source.themeId != candidate.themeId ||
+      source.clock.tz != candidate.clock.tz || source.clock.tzPosix != candidate.clock.tzPosix ||
+      source.clock.dateFormat != candidate.clock.dateFormat || source.clock.lang != candidate.clock.lang ||
+      source.auth.user != candidate.auth.user || source.auth.pass != candidate.auth.pass) return false;
+#if WITH_TICKER
+  if (source.ticker.webhookUrl != candidate.ticker.webhookUrl ||
+      source.ticker.range != candidate.ticker.range) return false;
+#endif
+#if WITH_USAGE
+  if (source.usage.usageUrl != candidate.usage.usageUrl) return false;
+#endif
+#if WITH_RADAR
+  if (source.radar.webhookUrl != candidate.radar.webhookUrl) return false;
+#endif
+#if WITH_HA
+  if (source.ha.brokerHost != candidate.ha.brokerHost ||
+      source.ha.brokerUser != candidate.ha.brokerUser ||
+      source.ha.brokerPass != candidate.ha.brokerPass) return false;
+#endif
+  return true;
+}
+
+namespace {
+bool settingsJsonStringEquals(const String& actual, const char* expected, size_t maxLength = SIZE_MAX) {
+  if (!expected) return false;
+  size_t length = strlen(expected);
+  if (length > maxLength) length = maxLength;
+  return actual.length() == length &&
+         (length == 0 || memcmp(actual.c_str(), expected, length) == 0);
+}
+bool validSettingsThemeId(const char* id) {
+  if (!id) return false;
+  const size_t length = strlen(id);
+  if (length > 48) return false;
+  for (size_t i = 0; i < length; ++i) {
+    const char c = id[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c == '-' || c == '_')) return false;
+  }
+  return true;
+}
+bool validClockLanguage(const char* lang) {
+  return lang && (!strcmp(lang, "en") || !strcmp(lang, "pt") ||
+      !strcmp(lang, "es") || !strcmp(lang, "fr") ||
+      !strcmp(lang, "de") || !strcmp(lang, "it"));
+}
+bool settingsTextEqualsNoCase(const char* actual, const char* expected) {
+  if (!actual || !expected) return false;
+  while (*actual && *expected) {
+    char a = *actual++, b = *expected++;
+    if (a >= 'A' && a <= 'Z') a = static_cast<char>(a + ('a' - 'A'));
+    if (b >= 'A' && b <= 'Z') b = static_cast<char>(b + ('a' - 'A'));
+    if (a != b) return false;
+  }
+  return *actual == 0 && *expected == 0;
+}
+#if WITH_TICKER
+uint8_t settingsTickerSource(const char* source) {
+  if (settingsTextEqualsNoCase(source, "yahoo")) return SRC_YAHOO;
+  if (settingsTextEqualsNoCase(source, "cash")) return SRC_CASH;
+  if (settingsTextEqualsNoCase(source, "github")) return SRC_GHUB;
+  return SRC_WEBHOOK;
+}
+#endif
+#if WITH_RADAR
+uint8_t settingsRadarSource(const char* source) {
+  if (settingsTextEqualsNoCase(source, "webhook")) return RADAR_SRC_WEBHOOK;
+  if (settingsTextEqualsNoCase(source, "adsblol")) return RADAR_SRC_ADSBLOL;
+  if (settingsTextEqualsNoCase(source, "adsbfi")) return RADAR_SRC_ADSBFI;
+  return DEFAULT_RADAR_SRC;
+}
+#endif
+}
+
+// Apply-side validation catches a second low-heap failure mode: Arduino String
+// assignments can fail after the Settings copy has passed its initial check.
+// Compare the candidate directly with the still-live JSON input before the
+// document is released or the candidate is persisted.
+bool settingsAppliedStringsValid(const Settings& original, const Settings& candidate,
+                                 JsonObjectConst root) {
+  if (root["mode"].is<const char*>()) {
+    const char* mode = root["mode"].as<const char*>();
+#if defined(SMALLTV_CLEAN)
+    const uint8_t expectedMode = settingsTextEqualsNoCase(mode, "carousel")
+        ? MODE_CAROUSEL : MODE_THEME;
+    if (candidate.mode != expectedMode) return false;
+#else
+    if (settingsTextEqualsNoCase(mode, "theme") && candidate.mode != MODE_THEME) return false;
+#if WITH_RADAR
+    if (settingsTextEqualsNoCase(mode, "radar") && candidate.mode != MODE_RADAR) return false;
+#endif
+#if WITH_USAGE
+    if (settingsTextEqualsNoCase(mode, "usage") && candidate.mode != MODE_USAGE) return false;
+#endif
+#if WITH_HA
+    if (settingsTextEqualsNoCase(mode, "ha") && candidate.mode != MODE_HA) return false;
+#endif
+    if (settingsTextEqualsNoCase(mode, "carousel") && candidate.mode != MODE_CAROUSEL) return false;
+    if (settingsTextEqualsNoCase(mode, "stocks") && candidate.mode != MODE_STOCKS) return false;
+#endif
+  }
+  if (root["hostname"].is<const char*>() &&
+      !settingsJsonStringEquals(candidate.hostname, root["hostname"].as<const char*>())) return false;
+  if (root["apSsid"].is<const char*>() &&
+      !settingsJsonStringEquals(candidate.apSsid, root["apSsid"].as<const char*>())) return false;
+  if (root["apPass"].is<const char*>() &&
+      !settingsJsonStringEquals(candidate.apPass, root["apPass"].as<const char*>())) return false;
+
+  if (root["wifi"].is<JsonArrayConst>()) {
+    uint8_t expectedCount = 0;
+    for (JsonObjectConst row : root["wifi"].as<JsonArrayConst>()) {
+      if (expectedCount >= MAX_WIFI_NETS) break;
+      const char* ssid = row["ssid"] | "";
+      if (!ssid[0]) continue;
+      if (expectedCount >= candidate.wifiCount ||
+          !settingsJsonStringEquals(candidate.wifi[expectedCount].ssid, ssid)) return false;
+
+      const char* pass = row["pass"] | "";
+      if (pass[0]) {
+        if (!settingsJsonStringEquals(candidate.wifi[expectedCount].pass, pass)) return false;
+      } else {
+        const char* retained = "";
+        for (uint8_t old = 0; old < original.wifiCount; ++old) {
+          if (original.wifi[old].ssid == ssid) {
+            retained = original.wifi[old].pass.c_str();
+            break;
+          }
+        }
+        if (!settingsJsonStringEquals(candidate.wifi[expectedCount].pass, retained)) return false;
+      }
+      ++expectedCount;
+    }
+    if (candidate.wifiCount != expectedCount) return false;
+  } else if (root["staSsid"].is<const char*>()) {
+    const char* ssid = root["staSsid"].as<const char*>();
+    if (ssid && ssid[0]) {
+      if (!candidate.wifiCount || !settingsJsonStringEquals(candidate.wifi[0].ssid, ssid)) return false;
+      const char* pass = root["staPass"] | "";
+      if (pass[0] && !settingsJsonStringEquals(candidate.wifi[0].pass, pass)) return false;
+      if (!pass[0]) {
+        const char* retained = original.wifiCount && original.wifi[0].ssid == ssid
+            ? original.wifi[0].pass.c_str() : "";
+        if (!settingsJsonStringEquals(candidate.wifi[0].pass, retained)) return false;
+      }
+    }
+  }
+
+  if (root["themeId"].is<const char*>()) {
+    const char* id = root["themeId"].as<const char*>();
+    if (validSettingsThemeId(id) && !settingsJsonStringEquals(candidate.themeId, id)) return false;
+  }
+  if (root["display"].is<JsonObjectConst>()) {
+    JsonObjectConst display = root["display"].as<JsonObjectConst>();
+    if (display["colorOrder"].is<const char*>()) {
+      const char* order = display["colorOrder"].as<const char*>();
+      const uint8_t expected = settingsTextEqualsNoCase(order, "rgb") ? COLOR_ORDER_RGB
+          : settingsTextEqualsNoCase(order, "bgr") ? COLOR_ORDER_BGR : COLOR_ORDER_AUTO;
+      if (candidate.display.colorOrder != expected) return false;
+    }
+  }
+  if (root["clock"].is<JsonObjectConst>()) {
+    JsonObjectConst clock = root["clock"].as<JsonObjectConst>();
+    if (clock["tz"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.clock.tz, clock["tz"].as<const char*>())) return false;
+    if (clock["tzPosix"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.clock.tzPosix, clock["tzPosix"].as<const char*>())) return false;
+    if (clock["dateFormat"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.clock.dateFormat, clock["dateFormat"].as<const char*>(), 48)) return false;
+    if (clock["lang"].is<const char*>()) {
+      const char* lang = clock["lang"].as<const char*>();
+      if (validClockLanguage(lang) &&
+          !settingsJsonStringEquals(candidate.clock.lang, lang)) return false;
+    }
+  }
+  if (root["auth"].is<JsonObjectConst>()) {
+    JsonObjectConst auth = root["auth"].as<JsonObjectConst>();
+    if (auth["user"].is<const char*>()) {
+      const char* user = auth["user"].as<const char*>();
+      if (!user || !user[0]) user = DEFAULT_AUTH_USER;
+      if (!settingsJsonStringEquals(candidate.auth.user, user, MAX_AUTH_USER_LEN - 1)) return false;
+    }
+    if (auth["clear"].is<bool>() && auth["clear"].as<bool>()) {
+      const char* pass = auth["pass"] | "";
+      if (pass[0]) {
+        if (!settingsJsonStringEquals(candidate.auth.pass, pass, MAX_AUTH_PASS_LEN - 1)) return false;
+      } else if (candidate.auth.pass.length() != 0) return false;
+    } else if (auth["pass"].is<const char*>()) {
+      const char* pass = auth["pass"].as<const char*>();
+      if (pass && pass[0] &&
+          !settingsJsonStringEquals(candidate.auth.pass, pass, MAX_AUTH_PASS_LEN - 1)) return false;
+      if ((!pass || !pass[0]) &&
+          !settingsJsonStringEquals(candidate.auth.pass, original.auth.pass.c_str())) return false;
+    }
+  }
+
+#if WITH_TICKER
+  {
+    JsonObjectConst ticker = root["ticker"].is<JsonObjectConst>()
+        ? root["ticker"].as<JsonObjectConst>() : root;
+    if (root["ticker"].is<JsonObjectConst>() || ticker["symbols"].is<JsonArrayConst>() ||
+        ticker["source"].is<const char*>()) {
+      if (ticker["webhookUrl"].is<const char*>() &&
+          !settingsJsonStringEquals(candidate.ticker.webhookUrl, ticker["webhookUrl"].as<const char*>())) return false;
+      if (ticker["range"].is<const char*>() &&
+          !settingsJsonStringEquals(candidate.ticker.range, ticker["range"].as<const char*>())) return false;
+      const uint8_t legacySource = ticker["source"].is<const char*>()
+          ? settingsTickerSource(ticker["source"].as<const char*>()) : DEFAULT_SOURCE;
+      if (ticker["symbols"].is<JsonArrayConst>()) {
+        uint8_t index = 0;
+        for (JsonObjectConst symbol : ticker["symbols"].as<JsonArrayConst>()) {
+          if (index >= MAX_SYMBOLS) break;
+          const char* name = symbol["symbol"] | "";
+          if (!name[0]) continue;
+          const uint8_t expectedSource = symbol["source"].is<const char*>()
+              ? settingsTickerSource(symbol["source"].as<const char*>()) : legacySource;
+          if (index >= candidate.ticker.symbolCount ||
+              candidate.ticker.symbols[index].source != expectedSource) return false;
+          ++index;
+        }
+        if (candidate.ticker.symbolCount != index) return false;
+      }
+    }
+  }
+#endif
+#if WITH_USAGE
+  if (root["usage"].is<JsonObjectConst>() &&
+      root["usage"]["usageUrl"].is<const char*>() &&
+      !settingsJsonStringEquals(candidate.usage.usageUrl, root["usage"]["usageUrl"].as<const char*>())) return false;
+#endif
+#if WITH_RADAR
+  if (root["radar"].is<JsonObjectConst>()) {
+    JsonObjectConst radar = root["radar"].as<JsonObjectConst>();
+    if (radar["webhookUrl"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.radar.webhookUrl, radar["webhookUrl"].as<const char*>())) return false;
+    if (radar["source"].is<const char*>() &&
+        candidate.radar.source != settingsRadarSource(radar["source"].as<const char*>())) return false;
+  }
+#endif
+#if WITH_HA
+  if (root["ha"].is<JsonObjectConst>()) {
+    JsonObjectConst ha = root["ha"].as<JsonObjectConst>();
+    if (ha["brokerHost"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.ha.brokerHost, ha["brokerHost"].as<const char*>(), MAX_HA_HOST_LEN - 1)) return false;
+    if (ha["brokerUser"].is<const char*>() &&
+        !settingsJsonStringEquals(candidate.ha.brokerUser, ha["brokerUser"].as<const char*>(), MAX_HA_USER_LEN - 1)) return false;
+    if (ha["brokerPass"].is<const char*>() && ha["brokerPass"].as<const char*>()[0] &&
+        !settingsJsonStringEquals(candidate.ha.brokerPass, ha["brokerPass"].as<const char*>(), MAX_HA_PASS_LEN - 1)) return false;
+  }
+#endif
   return true;
 }
 

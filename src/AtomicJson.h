@@ -1,29 +1,49 @@
 #pragma once
 #include <ArduinoJson.h>
+#include <stdint.h>
 
-// Keep the previous config intact on short writes or failed publication.
-// LittleFS rename replaces an existing file atomically. The temporary path
-// must be on the same filesystem and owned exclusively by this writer.
+enum class AtomicJsonResult : uint8_t {
+  Ok, DocumentOverflow, TemporaryOpenFailed, ShortWrite, FlushFailed, SizeMismatch, RenameFailed
+};
+
+// Write and verify a staging file before publication. The existing target is
+// never removed first, so a short write, flash error or power loss cannot
+// replace the last known-good settings with a partial document.
 template <typename FileSystem>
-bool saveJsonAtomically(FileSystem& fs, const JsonDocument& doc,
-                         const char* target, const char* temporary) {
-  // A document that ran out of memory while it was built is valid JSON of
-  // only part of the data. Saving it would replace the working config with
-  // that part, and the next boot would use defaults for the rest.
-  if (doc.overflowed()) return false;
+AtomicJsonResult saveJsonAtomicallyDetailed(FileSystem& fs, const JsonDocument& doc,
+                                             const char* target, const char* temporary) {
+  if (doc.overflowed()) return AtomicJsonResult::DocumentOverflow;
   auto file = fs.open(temporary, "w");
-  if (!file) return false;
+  if (!file) return AtomicJsonResult::TemporaryOpenFailed;
+
   const size_t expected = measureJson(doc);
   const size_t written = serializeJson(doc, file);
   file.flush();
-  // Checked three ways because any one alone can miss a short write: the
-  // returned count, the deferred write error a buffered FS surfaces only
-  // after flush(), and the file's own final size once closed.
-  bool ok = written == expected && !file.getWriteError() && file.size() == expected;
+  const bool writeError = file.getWriteError();
+  const size_t actual = file.size();
   file.close();
-  if (ok) ok = fs.rename(temporary, target);
-  // A failed rename or a short write must not leave the half-written
-  // temporary file behind to be mistaken for a real save next boot.
-  if (!ok) fs.remove(temporary);
-  return ok;
+
+  if (written != expected) {
+    fs.remove(temporary);
+    return AtomicJsonResult::ShortWrite;
+  }
+  if (writeError) {
+    fs.remove(temporary);
+    return AtomicJsonResult::FlushFailed;
+  }
+  if (actual != expected) {
+    fs.remove(temporary);
+    return AtomicJsonResult::SizeMismatch;
+  }
+  if (!fs.rename(temporary, target)) {
+    fs.remove(temporary);
+    return AtomicJsonResult::RenameFailed;
+  }
+  return AtomicJsonResult::Ok;
+}
+
+template <typename FileSystem>
+bool saveJsonAtomically(FileSystem& fs, const JsonDocument& doc,
+                        const char* target, const char* temporary) {
+  return saveJsonAtomicallyDetailed(fs, doc, target, temporary) == AtomicJsonResult::Ok;
 }

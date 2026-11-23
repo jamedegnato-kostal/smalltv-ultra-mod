@@ -33,8 +33,8 @@ Firmware.
 - **Fotos:** JPEG-Bibliothek mit Speicheranzeige, Upload und Löschfunktionen.
   Fotos werden in 240 × 240 Pixel große JPEGs umgewandelt und zwischen
   Playlist-Themes eingeblendet.
-- **Gerät:** WLAN-Konfiguration, Konfigurationssicherung, Firmware-Upload,
-  Updateprüfung, Neustart, Werksreset und optionaler Zugriffsschutz.
+- **Gerät:** WLAN-Konfiguration, Konfigurationssicherung, manueller
+  Firmware-Upload, Neustart, Werksreset und optionaler Zugriffsschutz.
 
 Die Weboberfläche zeigt nur Funktionen an, die in diesem Build vorgesehen
 sind. Änderungen an Formularwerten werden gespeichert; Theme- und Fotodateien
@@ -74,8 +74,9 @@ geladen werden kann.
   240 × 240 Display.
 - Das Projekt enthält keinen vollständigen ESP8266-Emulator. Das lokale
   QEMU-Experiment ist kein unterstützter Testweg.
-- Der Selbstupdate-Release muss unter dem in `src/config.h` eingetragenen
-  Repository liegen und das Asset `smalltv-settings-firmware.bin` anbieten.
+- Ein Online-Self-Update ist bewusst deaktiviert. Firmware wird lokal per
+  Weboberfläche manuell hochgeladen; der Release-Download erfolgt außerhalb
+  des Geräts.
 - Der Ultra kann je nach vorherigem Flashlayout einen gesonderten
   Erstinstallationsweg benötigen. Prüfe vor dem Flashen die verfügbare
   Updatefläche und sichere bei Bedarf die bestehende Firmware.

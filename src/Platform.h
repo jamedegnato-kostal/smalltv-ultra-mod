@@ -81,7 +81,6 @@ static inline uint32_t platformFreeContStack() { return 0; }   // N/A on ESP32
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <ESP8266httpUpdate.h>
 #include <WiFiUdp.h>
 extern "C" {
 #include <user_interface.h>   // struct rst_info + REASON_* (reset cause / crash PC)
@@ -174,6 +173,7 @@ enum PlatformMemoryPhase : uint8_t {
   PLATFORM_MEM_THEME_DATA,
   PLATFORM_MEM_WEB_REQUEST,
   PLATFORM_MEM_PHOTO,
+  PLATFORM_MEM_SETTINGS_SAVE,
   PLATFORM_MEM_PHASE_COUNT
 };
 struct PlatformMemoryPhaseStats {
