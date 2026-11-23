@@ -2,7 +2,7 @@ name: Firmware build
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/v1-photo-pipeline]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -60,6 +60,10 @@ jobs:
           sh tests/theme/run.sh
           node tests/theme/test_webui.js
           node tests/theme/test_webui_poll.js
+          c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc tests/photos/test_sequence.cpp -o /tmp/smalltv-photo-sequence-tests
+          /tmp/smalltv-photo-sequence-tests
+          c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc tests/photos/test_jpeg_validator.cpp -o /tmp/smalltv-photo-jpeg-tests
+          /tmp/smalltv-photo-jpeg-tests
 
       - name: Check untrusted input parsers
         run: sh tests/fuzz/run.sh

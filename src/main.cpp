@@ -258,7 +258,12 @@ static void themePlaylistService(const Settings& s) {
 #if WITH_PHOTOS
   if (!g_themePhotosChecked) {
     g_themePhotosChecked = true;
-    if (s.photosEnabled && g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) return;
+    if (s.photosEnabled) {
+      // Release the theme package before JPEG decoding; keeping both alive can
+      // fragment the ESP8266 heap and prevent photo playback.
+      g_themeMode.setPlaylistTheme(nullptr);
+      if (g_photoSlideshow.start(s.photosPerTheme, s.photoDwellSeconds)) return;
+    }
   }
 #endif
   if (!themePlaylistSelectNext(s, false)) {

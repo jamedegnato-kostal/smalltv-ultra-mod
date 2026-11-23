@@ -101,7 +101,9 @@ void receivePhotoUpload() {
   HTTPUpload& up = server.upload();
   if (up.status == UPLOAD_FILE_START) {
     if (++photoUploadParts > 1) { abortPhotoUpload("Pro Upload ist genau ein Bild erlaubt"); return; }
-    photoUploadError = ""; photoUploadBytes = 0; photoUploadEnded = false;
+    photoUpload.close();
+    photoUploadAllowed = false; photoUploadEnded = false; photoUploadSlot = -1;
+    photoUploadError = ""; photoUploadBytes = 0; photoUploadBudget = 0;
     photoUploadAllowed = guardAllowed() && (!S->auth.enabled || !S->auth.pass.length() ||
       server.authenticate(S->auth.user.c_str(), S->auth.pass.c_str()));
     if (!photoUploadAllowed) return;
@@ -127,14 +129,35 @@ void receivePhotoUpload() {
     photoUploadBytes += up.currentSize;
     yield();
   } else if (up.status == UPLOAD_FILE_END) {
-    photoUpload.close();
-    if (!photoUploadAllowed || photoUploadError.length() || !photoUploadBytes || photoUploadBytes != up.totalSize) {
-      if (!photoUploadError.length()) photoUploadError = "Upload wurde nicht vollständig übertragen";
-      LittleFS.remove(PhotoUploadPath); return;
+    // Flush and verify the flash write before inspecting the JPEG. A successful
+    // write() call alone does not prove that LittleFS persisted every byte.
+    bool stored = false;
+    if (photoUpload) {
+      photoUpload.flush();
+      stored = !photoUpload.getWriteError() && photoUpload.size() == photoUploadBytes;
     }
+    photoUpload.close();
+    if (stored) {
+      File verify = LittleFS.open(PhotoUploadPath, "r");
+      stored = verify && verify.size() == photoUploadBytes;
+      if (verify) verify.close();
+    }
+    if (!photoUploadAllowed || photoUploadError.length() || !stored ||
+        !photoUploadBytes || photoUploadBytes != up.totalSize) {
+      if (!photoUploadError.length()) {
+        if (!photoUploadAllowed) photoUploadError = "Upload wurde nicht freigegeben";
+        else if (!stored) photoUploadError = "Temporäre Bilddatei konnte nicht vollständig geschrieben werden";
+        else photoUploadError = "Upload wurde nicht vollständig übertragen";
+      }
+      LittleFS.remove(PhotoUploadPath);
+      return;
+    }
+    // Inspect the bounded JPEG header here. Full decoding is postponed until
+    // playback, after the theme package has released its heap.
     if (!photoValidateJpeg(PhotoUploadPath)) {
-      photoUploadError = "Ungültiges Bild; erwartet wird ein vollständig lesbares 240×240-JPEG";
-      LittleFS.remove(PhotoUploadPath); return;
+      photoUploadError = "Ungültiges oder nicht unterstütztes Bild; erwartet wird ein 240×240-Baseline-JPEG";
+      LittleFS.remove(PhotoUploadPath);
+      return;
     }
     photoUploadEnded = true;
   } else if (up.status == UPLOAD_FILE_ABORTED) {

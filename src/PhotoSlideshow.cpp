@@ -1,7 +1,9 @@
 #include "PhotoSlideshow.h"
 #if WITH_PHOTOS
 #include "Gfx.h"
+#include "Platform.h"
 #include "PhotoLibrary.h"
+#include "PhotoJpeg.h"
 #include <Arduino_GFX_Library.h>
 #include <TJpg_Decoder.h>
 
@@ -15,21 +17,27 @@ bool photoOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* data) {
   yield();
   return true;
 }
-bool validateOutput(int16_t, int16_t, uint16_t, uint16_t, uint16_t*) {
-  yield();
-  return true;
-}
 }
 
 PhotoSlideshow g_photoSlideshow;
 
+namespace {
+class PhotoFileReader {
+ public:
+  explicit PhotoFileReader(File& file) : file_(file) {}
+  uint32_t size() const { return static_cast<uint32_t>(file_.size()); }
+  uint32_t position() const { return static_cast<uint32_t>(file_.position()); }
+  int read() { return file_.read(); }
+  bool seek(uint32_t position) { return file_.seek(position, SeekSet); }
+ private:
+  File& file_;
+};
+}
 bool photoValidateJpeg(const String& path) {
-  uint16_t width = 0, height = 0;
-  TJpgDec.setJpgScale(0);
-  TJpgDec.setCallback(validateOutput);
-  if (TJpgDec.getFsJpgSize(&width, &height, path, LittleFS) != JDR_OK || width != 240 || height != 240) return false;
   File file = LittleFS.open(path, "r");
-  return file && TJpgDec.drawFsJpg(0, 0, file) == JDR_OK;
+  if (!file) return false;
+  PhotoFileReader reader(file);
+  return smalltv_photo::validateBaselineJpeg240(reader);
 }
 
 void PhotoSlideshow::begin() {
@@ -37,6 +45,11 @@ void PhotoSlideshow::begin() {
 }
 
 bool PhotoSlideshow::start(uint8_t photosPerTheme, uint8_t dwellSeconds) {
+  // Do not start a photo batch unless file/decoder bookkeeping has a modest
+  // contiguous heap reserve. The active theme is released before this call.
+  constexpr uint32_t MinFreeHeap = 3UL * 1024UL;
+  constexpr uint32_t MinLargestBlock = 1280UL;
+  if (ESP.getFreeHeap() < MinFreeHeap || platformMaxFreeBlock() < MinLargestBlock) return false;
   const uint8_t available = smalltv_photo::count();
   if (!available || !photosPerTheme) return false;
   sequence_.setPhotos(smalltv_photo::slots(), available);
