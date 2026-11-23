@@ -20,7 +20,7 @@ for (const [id, title] of [
 assert.match(html, /function showTab\(id\)[\s\S]*aria-current/);
 assert.doesNotMatch(html, /data-t="diagnostics"|id="diagnostics"|createDiagnosticLog|copyDiagnosticLog|downloadDiagnosticLog|diagnosticLogText|clearCrash\(/);
 assert.match(html, /<h2>Uhr, Zeit &amp; Themes<\/h2>/);
-assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs \\(\\.stheme\\)<\/h2>/);
+assert.ok(html.includes('data-page="settingsClock"><h2>Uhr-Designs (.stheme)</h2>'));
 assert.match(html, /id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
 assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
