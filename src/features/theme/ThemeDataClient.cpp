@@ -145,21 +145,58 @@ JsonVariantConst jsonPath(JsonVariantConst root, std::string& path) {
   }
   return root;
 }
-static bool addFilterPath(JsonDocument& filter, const std::string& path) {
-  JsonVariant node = filter.as<JsonVariant>();
-  if (node.isNull()) node = filter.to<JsonObject>();
-  size_t start = 0;
-  while (start < path.size()) {
-    size_t dot = path.find('.', start);
-    if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return false;
+static bool addFilterPath(JsonVariant node, const std::string& path, size_t start) {
+  size_t dot = path.find('.', start);
+  if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return false;
+  const size_t end = dot == std::string::npos ? path.size() : dot;
+  const bool last = dot == std::string::npos;
+  if (node.is<JsonArray>()) {
     size_t index = 0;
-    const size_t end = dot == std::string::npos ? path.size() : dot;
-    if (pathIndex(path.c_str() + start, end - start, index)) node = node[index];
-    else node = node[path.substr(start, end - start).c_str()];
-    if (dot == std::string::npos) break;
-    start = dot + 1;
+    if (!pathIndex(path.c_str() + start, end - start, index)) return false;
+    JsonArray array = node.as<JsonArray>();
+    while (array.size() <= index) {
+      JsonVariant slot = array.add();
+      if (!last) {
+        size_t nextDot = path.find('.', dot + 1);
+        size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+        size_t nextIndex = 0;
+        if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+          slot.to<JsonArray>();
+        else
+          slot.to<JsonObject>();
+      }
+    }
+    JsonVariant child = array[index];
+    if (last) return child.set(true);
+    if (child.isNull()) {
+      size_t nextDot = path.find('.', dot + 1);
+      size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+      size_t nextIndex = 0;
+      if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+        child.to<JsonArray>();
+      else
+        child.to<JsonObject>();
+    }
+    return addFilterPath(child, path, dot + 1);
   }
-  return node.set(true);
+  if (!node.is<JsonObject>()) return false;
+  JsonObject object = node.as<JsonObject>();
+  std::string key(path.data() + start, end - start);
+  JsonVariant child = object[key.c_str()];
+  if (last) return child.set(true);
+  if (child.isNull()) {
+    size_t nextDot = path.find('.', dot + 1);
+    size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+    size_t nextIndex = 0;
+    if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+      child.to<JsonArray>();
+    else
+      child.to<JsonObject>();
+  }
+  return addFilterPath(child, path, dot + 1);
+}
+static bool addFilterPath(JsonDocument& filter, const std::string& path) {
+  return addFilterPath(filter.to<JsonObject>(), path, 0);
 }
 static bool jsonInteger(JsonVariantConst value, int& result) {
   if (value.is<int>()) { result = value.as<int>(); return true; }
@@ -189,7 +226,7 @@ static void assignTransform(JsonVariantConst root, const smalltv::ThemeDataField
     const char* sunrise = root["weather"][0]["astronomy"][0]["sunrise"].as<const char*>();
     const char* sunset = root["weather"][0]["astronomy"][0]["sunset"].as<const char*>();
     int day = 0;
-    output = smalltv::wttrIsDaylight(local, sunrise, sunset, day) ? (day ? "1" : "0") : "--";
+    output = smalltv::wttrClockMinutes(local, false, day) && smalltv::wttrIsDaylight(local, sunrise, sunset, day) ? (day ? "1" : "0") : "--";
     return;
   }
   jsonValue(jsonPath(root, const_cast<std::string&>(field.path)), output);
