@@ -28,7 +28,7 @@ struct Response {
 int main() {
   // Weather provider codes are translated into the WMO groups used by the
   // installed clock theme's sprite positions.
-  assert(wwoWeatherCodeToWmo(113) == 0);
+  assert(wwoWeatherCodeToWmo(113) == 1);
   assert(wwoWeatherCodeToWmo(116) == 2);
   assert(wwoWeatherCodeToWmo(122) == 3);
   assert(wwoWeatherCodeToWmo(248) == 48);
@@ -41,6 +41,7 @@ int main() {
   assert(wwoWeatherCodeToWmo(999) == 3);
 
   int daylight = -1;
+  assert(wttrIsDaylight("12:30 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 1);
   assert(wttrIsDaylight("2026-06-01 12:30 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 1);
   assert(wttrIsDaylight("2026-06-01 04:30 AM", "05:15 AM", "09:20 PM", daylight) && daylight == 0);
   assert(wttrIsDaylight("2026-06-01 10:00 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 0);
@@ -49,18 +50,20 @@ int main() {
   // ArduinoJson filtering retains only the selected array members, including
   // current conditions and sunrise/sunset, rather than the full 3-day forecast.
   const char* weatherJson =
-      R"({"current_condition":[{"temp_C":"12","weatherCode":"116","extra":"drop"}],)"
+      R"({"current_condition":[{"temp_C":"12","weatherCode":"116","observation_time":"12:30 PM","extra":"drop"}],)"
       R"("weather":[{"astronomy":[{"sunrise":"05:15 AM","sunset":"09:20 PM"}],)"
       R"("hourly":[{"tempC":"13"},{"tempC":"14"}]}]})";
   JsonDocument filter;
   filter["current_condition"][0]["temp_C"] = true;
   filter["current_condition"][0]["weatherCode"] = true;
+  filter["current_condition"][0]["observation_time"] = true;
   filter["weather"][0]["astronomy"][0]["sunrise"] = true;
   filter["weather"][0]["astronomy"][0]["sunset"] = true;
   JsonDocument selected;
   assert(!deserializeJson(selected, weatherJson, DeserializationOption::Filter(filter),
                          DeserializationOption::NestingLimit(8)));
   assert(selected["current_condition"][0]["temp_C"] == "12");
+  assert(selected["current_condition"][0]["observation_time"] == "12:30 PM");
   assert(selected["current_condition"][0]["extra"].isNull());
   assert(selected["weather"][0]["astronomy"][0]["sunrise"] == "05:15 AM");
   assert(selected["weather"][0]["hourly"].isNull());
