@@ -72,7 +72,7 @@ int main() {
   Response complete;complete.bytes="{\"value\":42}";
   assert(readDataBody(complete,12,body) && body==complete.bytes && complete.elapsed==0);
   Response stalled;stalled.bytes="{";
-  assert(!readDataBody(stalled,12,body) && stalled.elapsed==3000);
+  assert(!readDataBody(stalled,12,body) && stalled.elapsed==DataTimeoutMs);
   Response disconnected;disconnected.bytes="{";disconnected.closeAtEnd=true;
   assert(!readDataBody(disconnected,12,body));
   Response unknown;unknown.bytes=std::string(2048,' ');unknown.closeAtEnd=true;
@@ -83,11 +83,11 @@ int main() {
   Response empty;empty.closeAtEnd=true;assert(!readDataBody(empty,0,body));
   assert(!readDataBody(empty,-1,body));
   Response idleJson;idleJson.bytes="{}"; // silence is not EOF for an unknown length
-  assert(!readDataBody(idleJson,-1,body) && idleJson.elapsed==3000);
+  assert(!readDataBody(idleJson,-1,body) && idleJson.elapsed==DataTimeoutMs);
   Response slow;slow.bytes="{\"value\":42}";slow.spacing=900;
-  assert(!readDataBody(slow,12,body) && slow.elapsed==3000);
+  assert(!readDataBody(slow,12,body) && slow.elapsed==DataTimeoutMs);
   Response wrapped;wrapped.start=0xfffffff0;wrapped.bytes="{";
-  assert(!readDataBody(wrapped,12,body) && wrapped.elapsed==3000);
+  assert(!readDataBody(wrapped,12,body) && wrapped.elapsed==DataTimeoutMs);
   Response cancelled;cancelled.cancel=true;
   assert(!readDataBody(cancelled,12,body) && cancelled.elapsed==0);
 
