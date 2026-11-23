@@ -166,6 +166,8 @@ void resetUpload() {
 void receiveUpload() {
   HTTPUpload& up = server->upload();
   if (up.status == UPLOAD_FILE_START) {
+    // Close a stale handle before deleting/recreating the staging path.
+    upload.close();
     ++uploadParts;
     if (uploadParts > 1) {
       uploadError = "Upload exactly one package";
@@ -209,7 +211,8 @@ void receiveUpload() {
     if (!upload) uploadError = "Cannot create staging file";
   } else if (up.status == UPLOAD_FILE_WRITE) {
     if (!uploadAllowed || uploadError.length()) return;
-    if (!upload || up.currentSize > uploadBudget - uploaded) {
+    if (!upload || !up.currentSize || uploaded > uploadBudget ||
+        up.currentSize > uploadBudget - uploaded) {
       uploadError = "Package exceeds available storage or 3 MiB";
       upload.close();
       return;
@@ -220,10 +223,28 @@ void receiveUpload() {
       return;
     }
     uploaded += up.currentSize;
+    yield();
   } else if (up.status == UPLOAD_FILE_END) {
+    // A successful write() only means that bytes were accepted by the stream;
+    // check deferred LittleFS errors and read the staged size back before the
+    // parser is allowed to consume this package.
+    bool stored = false;
+    if (upload) {
+      upload.flush();
+      stored = !upload.getWriteError() && upload.size() == uploaded;
+    }
     upload.close();
-    uploadEnded = uploadAllowed && !uploadError.length() && uploaded == up.totalSize;
-    if (!uploadEnded && !uploadError.length()) uploadError = "Incomplete upload";
+    if (stored) {
+      File verify = LittleFS.open(staging, "r");
+      stored = verify && verify.size() == uploaded;
+      if (verify) verify.close();
+    }
+    uploadEnded = uploadAllowed && !uploadError.length() && stored &&
+                  uploaded > 0 && uploaded == up.totalSize;
+    if (!uploadEnded && !uploadError.length()) {
+      uploadError = !stored ? "Staged package was not fully written to LittleFS"
+                            : "Incomplete upload";
+    }
   } else if (up.status == UPLOAD_FILE_ABORTED) {
     resetUpload();
     uploadError = "Upload aborted";

@@ -13,6 +13,7 @@
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
 #include "Settings.h"
+#include "Platform.h"
 #include "features/theme/ThemeCatalog.h"
 #include "features/theme/ThemePackage.h"
 #include <algorithm>
@@ -35,6 +36,12 @@ UpdateClass Update;
 EspClass ESP;
 using namespace smalltv;
 using Bytes = std::string;
+
+// Settings.cpp now records bounded memory phases in firmware. The fuzz
+// harness targets parser behavior, not ESP heap telemetry, so provide
+// allocation-free no-op hooks for those platform-only calls.
+void platformMemoryPhaseBegin(PlatformMemoryPhase, bool) {}
+void platformMemoryPhaseEnd(PlatformMemoryPhase, bool) {}
 
 // ---------------------------------------------------------------------------
 // Targets
@@ -231,7 +238,12 @@ void fuzzImport(const Bytes& input, uint64_t) {
   ++accepted[3];
   Settings s;
   s.setDefaults();
-  settingsApplyJson(s, doc.as<JsonObjectConst>());
+  const Settings original = s;
+  const JsonObjectConst root = doc.as<JsonObjectConst>();
+  settingsApplyJson(s, root);
+  // The real request path rejects any silent String/enum fallback caused by
+  // allocation failure while parsing. Exercise the same validator here.
+  if (!settingsAppliedStringsValid(original, s, root)) abort();
   // What saveSettings() would write next. Reading every field back also walks
   // any fixed-size buffer the import filled.
   JsonDocument out;

@@ -3,7 +3,9 @@
 #include "AtomicJson.h"
 #include "DebouncedSave.h"
 #include "SettingsTransaction.h"
+#include <algorithm>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -16,6 +18,8 @@ struct FakeFS {
   std::map<std::string, std::string> files;
   size_t budget = 10000;
   bool renameFails = false;
+  bool openFails = false;
+  bool flushFails = false;
   struct Handle {
     FakeFS* fs;
     std::string path;
@@ -32,12 +36,13 @@ struct FakeFS {
       return count;
     }
     size_t write(uint8_t byte) { return write(&byte, 1); }
-    void flush() {}
+    void flush() { if (h->fs->flushFails) h->failed = true; }
     size_t size() const { return h->fs->files[h->path].size(); }
     bool getWriteError() const { return h->failed; }
     void close() {}
   };
   File open(const char* path, const char*) {
+    if (openFails) return File{};
     files[path] = "";
     return File{std::make_shared<Handle>(Handle{this, path, false})};
   }
@@ -55,17 +60,26 @@ int main() {
   config["hostname"] = "smalltv-1234";
   FakeFS fs;
   fs.files["/config.json"] = "old-settings";
-  // A budget too small to hold the full write: saveJsonAtomically must fail
-  // without ever renaming the short write over the working config.
+  // Failure classes are specific, but all preserve the published config.
+  fs.openFails = true;
+  assert(saveJsonAtomicallyDetailed(fs, config, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::TemporaryOpenFailed);
+  fs.openFails = false;
   fs.budget = 5;
-  assert(!saveJsonAtomically(fs, config, "/config.json", "/config.json.tmp"));
+  assert(saveJsonAtomicallyDetailed(fs, config, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::ShortWrite);
   assert(fs.files["/config.json"] == "old-settings");
   assert(!fs.files.count("/config.json.tmp"));
-  // A complete, correct write whose rename still fails (e.g. no space for
-  // the directory entry): the old config must survive untouched here too.
   fs.budget = 10000;
+  fs.flushFails = true;
+  assert(saveJsonAtomicallyDetailed(fs, config, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::FlushFailed);
+  assert(fs.files["/config.json"] == "old-settings");
+  assert(!fs.files.count("/config.json.tmp"));
+  fs.flushFails = false;
   fs.renameFails = true;
-  assert(!saveJsonAtomically(fs, config, "/config.json", "/config.json.tmp"));
+  assert(saveJsonAtomicallyDetailed(fs, config, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::RenameFailed);
   assert(fs.files["/config.json"] == "old-settings");
   fs.renameFails = false;
   // The success path: the temporary becomes the target and is not left behind.
@@ -74,6 +88,26 @@ int main() {
   assert(!deserializeJson(saved, fs.files["/config.json"]));
   assert(saved["hostname"] == "smalltv-1234");
   assert(!fs.files.count("/config.json.tmp"));
+
+  // Maximum showflow payload: 16 steps with a maximum 48-byte theme ID.
+  JsonDocument maxShowflow;
+  JsonObject flow = maxShowflow["showflow"].to<JsonObject>();
+  flow["enabled"] = true;
+  flow["random"] = false;
+  JsonArray steps = flow["steps"].to<JsonArray>();
+  const char maxThemeId[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV";
+  for (uint8_t i = 0; i < 16; ++i) {
+    JsonObject step = steps.add<JsonObject>();
+    step["type"] = "theme";
+    step["id"] = maxThemeId;
+    step["seconds"] = 3600;
+  }
+  FakeFS flowFs;
+  assert(saveJsonAtomicallyDetailed(flowFs, maxShowflow, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::Ok);
+  JsonDocument flowReloaded;
+  assert(!deserializeJson(flowReloaded, flowFs.files["/config.json"]));
+  assert(flowReloaded["showflow"]["steps"].size() == 16);
 
   // A document that ran out of memory while it was built: ArduinoJson leaves
   // out what did not fit, so it is complete JSON of only part of the settings.
@@ -98,7 +132,8 @@ int main() {
   for (int i = 0; i < 200 && !partial.overflowed(); ++i) partial[std::string("key") + std::to_string(i)] = "a value long enough to need its own copy";
   assert(partial.overflowed());
   fs.files["/config.json"] = "old-settings";
-  assert(!saveJsonAtomically(fs, partial, "/config.json", "/config.json.tmp"));
+  assert(saveJsonAtomicallyDetailed(fs, partial, "/config.json", "/config.json.tmp") ==
+         AtomicJsonResult::DocumentOverflow);
   assert(fs.files["/config.json"] == "old-settings");
   assert(!fs.files.count("/config.json.tmp"));
 
@@ -113,6 +148,48 @@ int main() {
   // A successful save keeps the mutation applied.
   assert(applyAndSaveSettings(state, [](State& s) { s.value = 3; }, [&](const State& s) { return savedState && s.value == 3; }));
   assert(state.value == 3);
+
+  struct SettingsLike {
+    int brightness;
+    std::string password;
+    bool simulateCopyFailure;
+    SettingsLike(int value, const char* secret)
+        : brightness(value), password(secret), simulateCopyFailure(true) {}
+    // Model Arduino String's non-throwing allocation failure: the containing
+    // Settings object exists, but one deep-copied string is incomplete.
+    SettingsLike(const SettingsLike& other)
+        : brightness(other.brightness),
+          password(other.simulateCopyFailure ? "" : other.password),
+          simulateCopyFailure(other.simulateCopyFailure) {}
+    SettingsLike& operator=(SettingsLike&& other) noexcept {
+      brightness = other.brightness;
+      password = std::move(other.password);
+      simulateCopyFailure = other.simulateCopyFailure;
+      return *this;
+    }
+  } settingsLike(72, "saved-secret");
+  SettingsTransactionFailure failure = SettingsTransactionFailure::None;
+  bool saveCalled = false;
+  // A failed deep String copy is rejected before mutation or persistence.
+  assert(!applyAndSaveSettings(settingsLike,
+      [](SettingsLike& candidate) { candidate.brightness = 90; },
+      [&](const SettingsLike&) { saveCalled = true; return true; }, &failure,
+      [](const SettingsLike& original, const SettingsLike& candidate) {
+        return original.password == candidate.password;
+      }));
+  assert(failure == SettingsTransactionFailure::CopyIncomplete);
+  assert(!saveCalled && settingsLike.brightness == 72);
+  settingsLike.simulateCopyFailure = false;
+  // A persistence failure also leaves the original live settings untouched.
+  failure = SettingsTransactionFailure::None;
+  assert(!applyAndSaveSettings(settingsLike,
+      [](SettingsLike& candidate) { candidate.brightness = 90; },
+      [](const SettingsLike&) { return false; }, &failure,
+      [](const SettingsLike& original, const SettingsLike& candidate) {
+        return original.password == candidate.password;
+      }));
+  assert(failure == SettingsTransactionFailure::SaveFailed);
+  assert(settingsLike.brightness == 72);
 
   // The HA brightness write (MqttClient): it waits for 5 s of quiet, and a
   // write that fails (out of memory next to a running theme) stays pending and

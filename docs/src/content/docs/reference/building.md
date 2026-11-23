@@ -57,4 +57,4 @@ npm run build
 
 ## Veröffentlichungsdateien
 
-Der Firmware-Workflow stellt das Hauptimage und Beispiel-Themes als separate Dateien bereit: `smalltv-settings-firmware.bin`, `dynamische-uhr.stheme` und `wetter-bellmerei.stheme`. Ein Git-Tag im Format `vX.Y.Z` veröffentlicht dieselben Dateien als einzelne Release-Assets. Der Firmware-Dateiname muss zum Selbstupdate-Eintrag `UPDATE_ASSET` in `src/config.h` passen.
+Der Firmware-Workflow stellt das Hauptimage und Beispiel-Themes als separate Dateien bereit: `smalltv-settings-firmware.bin`, `dynamische-uhr.stheme` und `wetter-bellmerei.stheme`. Ein Git-Tag im Format `vX.Y.Z` veröffentlicht dieselben Dateien als einzelne Release-Assets. Der Name des Firmware-Assets wird über `FIRMWARE_ASSET` in `src/config.h` geprüft. Das Gerät lädt Releases nicht selbst herunter; Firmware wird lokal über die Weboberfläche manuell eingespielt.

@@ -38,8 +38,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++-multilib
 
-      - name: Check embedded web page
-        run: python tools/gzip_webui_settings.py --check
+      - name: Regenerate and verify embedded web page
+        run: |
+          python tools/gzip_webui_settings.py
+          python tools/gzip_webui_settings.py --check
 
       - name: Check release asset name
         run: python tools/ci_checks.py assets

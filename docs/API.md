@@ -42,23 +42,21 @@ Diese Routen sind im `smalltv_settings`-Build verfügbar.
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/api/photos` | Bibliothek, Dateigrößen und Speicherstatus abfragen |
+| `GET` | `/api/photos` | Bibliothek, Dateigrößen, Speicherstatus und Anzahl alter Restdateien (`legacyFiles`) abfragen |
 | `GET` | `/api/photos/file?id=…` | Vorschaubild einer Foto-ID abrufen |
 | `POST` | `/api/photos/upload` | ein JPEG pro Anfrage streamen und validieren |
 | `POST` | `/api/photos/delete` | einzelne Foto-ID entfernen |
 | `POST` | `/api/photos/delete-all` | gesamte Fotobibliothek löschen |
 
-Mehrfachauswahl im Browser erzeugt mehrere einzelne Upload-Anfragen. Die maximale Bildgröße ist 128 KiB. Die Firmware lehnt ungültige oder nicht vollständig decodierbare JPEGs ab.
+Mehrfachauswahl im Browser erzeugt mehrere einzelne Upload-Anfragen. Die maximale Bildgröße ist 128 KiB. Die Firmware lehnt ungültige oder nicht vollständig decodierbare JPEGs ab. Der explizite Endpunkt `/api/photos/delete-all` entfernt zusätzlich alte GIF-Metadaten, Frame-Dateien und temporäre Uploads aus früheren Firmware-Versionen; ein normales Upgrade löscht diese Dateien nicht.
 
 ## Firmwarepflege
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `POST` | `/update` | manuelles OTA-Image hochladen |
-| `GET` | `/api/checkupdate` | neuesten Release-Tag und passendes Image ermitteln |
-| `POST` | `/api/selfupdate` | Update für den frühen Bootpfad vormerken |
+| `POST` | `/update` | passendes Firmware-Image manuell über die lokale Weboberfläche hochladen |
 
-Die Update-Prüfung liest Repository und Asset-Namen aus `src/config.h`. Vor einem eigenen Release müssen diese Konstanten zum veröffentlichten Firmware-Image passen. OTA ist abhängig vom freien App-Slot; für ein Ultra mit ungünstigem Bestands-Flashlayout kann ein spezieller Erstinstallationsweg erforderlich sein.
+Ein Online-Release-Check und ein automatischer GitHub-Download sind in diesem Profil bewusst nicht enthalten. Der manuelle Upload verwendet den lokalen OTA-Slot und prüft Dateigröße, ESP-Image-Kennung, Upload-Vollständigkeit und Speicherreserven. Für ein Ultra mit ungünstigem Bestands-Flashlayout kann ein spezieller Erstinstallationsweg erforderlich sein.
 
 ## Build-abhängige Endpunkte
 

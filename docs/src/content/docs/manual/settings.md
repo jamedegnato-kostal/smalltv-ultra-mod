@@ -41,7 +41,7 @@ Scan nach 2,4-GHz-WLANs, Zugangsdaten speichern und Hostname festlegen. Zusätzl
 
 ## System
 
-Konfiguration exportieren oder importieren, manuell ein Firmwareimage hochladen, Update-Check ausführen, Neustart anfordern oder Werkseinstellungen wiederherstellen. Der optionale Update-Check lädt Releaseinformationen aus der in `src/config.h` eingetragenen Repository-Adresse. Ein manueller Upload benötigt ein zum ESP8266 und zum verfügbaren OTA-Slot passendes Image.
+Konfiguration exportieren oder importieren, manuell ein Firmwareimage hochladen, Neustart anfordern oder Werkseinstellungen wiederherstellen. Ein manueller Upload benötigt ein zum ESP8266 und zum verfügbaren OTA-Slot passendes Image. Die automatische Release-Prüfung und der GitHub-Download sind aus diesem Profil entfernt, um den TLS-/Download-Speicherbedarf auf dem ESP8266 zu vermeiden.
 
 ## Erweitert
 
