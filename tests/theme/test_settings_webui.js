@@ -9,7 +9,7 @@ assert.ok(script, 'active Settings UI script exists');
 new vm.Script(script[1], { filename: 'src/webui_settings.html' });
 
 for (const [id, title] of [
-  ['status', 'Übersicht'], ['settingsDisplay', 'Anzeige'], ['settingsClock', 'Uhr'],
+  ['status', 'Übersicht'], ['settingsDisplay', 'Anzeige'], ['settingsClock', 'Uhr &amp; Themes'],
   ['settingsThemes', 'Themes'], ['showflow', 'Foto-Flow'], ['photos', 'Fotobibliothek'], ['wifi', 'Netzwerk'],
   ['update', 'System'], ['settingsAdvanced', 'Erweitert']
 ]) {
@@ -18,6 +18,9 @@ for (const [id, title] of [
 }
 
 assert.match(html, /function showTab\(id\)[\s\S]*aria-current/);
+assert.doesNotMatch(html, /data-t="diagnostics"|id="diagnostics"|createDiagnosticLog|copyDiagnosticLog|downloadDiagnosticLog|diagnosticLogText|clearCrash\(/);
+assert.match(html, /<h2>Uhr, Zeit &amp; Themes<\/h2>/);
+assert.match(html, /data-page="settingsClock"><h2>Uhr-Designs \\(\\.stheme\\)<\/h2>/);
 assert.match(html, /id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
 assert.match(html, /prefers-reduced-motion/);
 assert.match(html, /:focus-visible/);
@@ -56,6 +59,7 @@ assert.match(html, /function uploadPhotos\(\)/);
 assert.doesNotMatch(html, /gifToAnimation|data-animation-frames/);
 assert.ok(!html.includes('/api/photos/frame'));
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
+assert.doesNotMatch(portal, /handleCrashClear|\/api\/crash\/clear/);
 assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
 assert.ok(portal.includes('photoValidateJpeg(PhotoUploadPath)'));
 assert.ok(portal.includes('LittleFS.rename(PhotoUploadPath, target)'));
