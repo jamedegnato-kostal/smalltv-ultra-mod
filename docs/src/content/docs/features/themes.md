@@ -68,7 +68,7 @@ Die Theme-Engine unterstützt Paketversionen 1 und 2. Version 2 fügt unter ande
 - Animationsassets dürfen bis zu 240 Frames enthalten; die deklarierte Framerate ist auf 1–15 FPS begrenzt.
 - Das Gerät validiert Manifest, Assetpfade, Bilddaten und Dateigrößen. Der freie LittleFS-Speicher begrenzt zusätzlich, wie viele große Pakete installiert werden können.
 
-Die Weboberfläche kann Animationen global abschalten, ihre Geschwindigkeit und das Renderlimit anpassen und optional einen Fade-Übergang beim Theme-Wechsel aktivieren. Ein individuelles Animationsprofil pro Paket gibt es nicht.
+, ihre Geschwindigkeit und das Renderlimit anpassen und optional einen Fade-Übergang beim Theme-Wechsel aktivieren. Ein individuelles Animationsprofil pro Paket gibt es nicht.
 
 ## Theme-Playlist
 
@@ -86,7 +86,7 @@ Wenn Foto-Wiedergabe aktiv ist, wird nach einem Playlist-Theme ein Shuffle-Batch
 
 ## Datenquellen auf dem ESP8266
 
-HTTPS-Datenquellen benötigen auf dem ESP8266 den vollen BearSSL-Empfangspuffer und können bei knappem Heap ausfallen. Für den Wetterdatensatz des Bellmerei-Themes wird deshalb der JSON-Endpunkt von wttr.in per HTTP verwendet. Die Firmware liest nur die sechs benötigten aktuellen Werte plus Sonnenaufgang/-untergang ein und gibt das geladene Theme für die synchrone Abfrage kurz frei. Nach dem Abruf wird es automatisch neu geladen. Der Abruf benötigt keinen API-Schlüssel; der öffentliche Dienst ist ein externer Anbieter und dessen Verfügbarkeit bleibt von dessen Betrieb abhängig.
+HTTPS-Datenquellen benötigen auf dem ESP8266 den vollen BearSSL-Empfangspuffer und können bei knappem Heap ausfallen. Für den Wetterdatensatz des Bellmerei-Themes wird deshalb der kleine JSON-Modus `j2` des wttr-Dienstes per HTTP verwendet. Dieser Modus ist ausdrücklich als kleinere JSON-Antwort ohne Stundenwerte für Geräte mit wenig Speicher dokumentiert. Die Firmware filtert nur die sechs benötigten aktuellen Felder und Sonnenaufgang/-untergang heraus und gibt das geladene Theme für die synchrone Abfrage kurz frei. Nach dem Abruf wird es automatisch neu geladen. Bei einem Fehler wird der alternative Hostname des Dienstes versucht; bei erneutem Fehler folgt nach spätestens einer Minute ein neuer Versuch. Der Abruf benötigt keinen API-Schlüssel. Der öffentliche Wetterdienst bleibt eine externe Abhängigkeit.
 
 ## Beispiele und Werkzeuge
 
