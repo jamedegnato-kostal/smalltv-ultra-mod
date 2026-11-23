@@ -158,7 +158,7 @@ bool ThemeMode::refreshData() {
     // A failed source is retried after at most one minute; a healthy one
     // keeps its manifest-defined interval.
     const uint32_t interval = sources[result->index].interval;
-    dataNextMs_[result->index] = millis() + (result->success ? interval : std::min(interval, 60UL)) * 1000UL;
+    dataNextMs_[result->index] = millis() + (result->success ? interval : std::min<uint32_t>(interval, 60U)) * 1000UL;
   }
   if (dataAges_.publish(sources, dataValues_)) valuesChanged = true;
   if (valuesChanged) engine_.setValues(dataValues_);
