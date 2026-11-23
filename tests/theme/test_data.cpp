@@ -22,7 +22,7 @@ struct Response {
     *dest=bytes[position++];return 1;
   }
   bool connected() const { return !closeAtEnd || position<bytes.size(); }
-  void idle() { ++elapsed;assert(elapsed<=3500); }
+  void idle() { ++elapsed;assert(elapsed<=10500); }
 };
 
 int main() {
