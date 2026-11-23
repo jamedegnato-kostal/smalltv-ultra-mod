@@ -1042,18 +1042,25 @@ __attribute__((noinline)) static bool parseHeader(JsonObjectConst root, const Ma
       for (JsonObjectConst field : fields) {
         ThemeDataField item;
         Fields ff(field, "data[" + std::to_string(t.data.size()) + "].fields[" + std::to_string(data.fields.size()) + "]", error);
-        if (!ff.keys("|id|path|") || !ff.text("id", item.id, 24) || !ff.text("path", item.path, 96)) return false;
+        if (!ff.keys("|id|path|transform|") || !ff.text("id", item.id, 24) || !ff.text("path", item.path, 96)) return false;
         if (!validId(item.id) || item.id.find('.') != std::string::npos) return ff.fail("id", "use ASCII letters, digits, '-' or '_'");
+        if (ff.has("transform")) {
+          std::string transform;
+          if (!ff.text("transform", transform, 32)) return false;
+          if (transform == "wwo-wmo") item.transform = ThemeDataTransform::WwoWeatherCode;
+          else if (transform == "wttr-daylight") item.transform = ThemeDataTransform::WttrDaylight;
+          else return ff.fail("transform", "expected wwo-wmo or wttr-daylight");
+        }
         for (const auto& old : data.fields) if (old.id == item.id) return ff.fail("id", "duplicate field ID");
         size_t pathPart = 0;
         for (size_t p = 0; p <= item.path.size(); ++p) {
           if (p == item.path.size() || item.path[p] == '.') {
-            if (p == pathPart) return ff.fail("path", "use non-empty dotted JSON object keys");
+            if (p == pathPart) return ff.fail("path", "use non-empty dotted object keys or numeric array indices");
             pathPart = p + 1;
             continue;
           }
           char c = item.path[p];
-          if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return ff.fail("path", "use a dotted JSON object path");
+          if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return ff.fail("path", "use dotted object keys or numeric array indices");
         }
         data.fields.push_back(std::move(item));
       }
