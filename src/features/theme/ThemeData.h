@@ -17,7 +17,7 @@ constexpr size_t MaxDataResponseBytes = 16 * 1024;
 // 4677 groups used by the Bellmerei clock theme's existing sprite bindings.
 inline int wwoWeatherCodeToWmo(int code) {
   switch (code) {
-    case 113: return 0;                 // clear / sunny
+    case 113: return 1;                 // clear / sunny (WMO mainly clear group)
     case 116: return 2;                 // partly cloudy
     case 119: case 122: return 3;       // cloudy / overcast
     case 143: case 248: case 260: return 48; // mist / fog
@@ -67,7 +67,10 @@ inline bool wttrClockMinutes(const char* value, bool hasDate, int& minutes) {
 inline bool wttrIsDaylight(const char* observation, const char* sunrise,
                            const char* sunset, int& isDay) {
   int now = 0, rise = 0, set = 0;
-  if (!wttrClockMinutes(observation, true, now) ||
+  // j2's documented observation_time is local HH:MM AM/PM. Accept the older
+  // full localObsDateTime form too, in case the provider returns it.
+  if ((!wttrClockMinutes(observation, false, now) &&
+       !wttrClockMinutes(observation, true, now)) ||
       !wttrClockMinutes(sunrise, false, rise) ||
       !wttrClockMinutes(sunset, false, set) || rise == set) return false;
   isDay = now >= rise && now < set ? 1 : 0;
