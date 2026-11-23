@@ -19,9 +19,9 @@
 // ESP.getMaxFreeBlockSize() reports whole blocks. So a 4096 B request needs
 // a free run of 513 blocks = 4104 B.
 //
-// Pure functions, no Arduino types: tests/update/test_update_buffer.cpp builds
-// them on the host. WebPortal.cpp calls them for the ESP8266 only; the ESP32
-// updater has no such rule.
+// Pure functions, no Arduino types: tests/theme/test_upload_buffer.py checks
+// the configured buffer limit and the matching firmware compile-time guard.
+// WebPortal.cpp calls them for the ESP8266 only; the ESP32 updater has no such rule.
 #pragma once
 #include <stddef.h>
 #include <stdint.h>

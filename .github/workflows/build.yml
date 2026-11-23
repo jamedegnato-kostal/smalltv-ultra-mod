@@ -2,7 +2,7 @@ name: Firmware build
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2/v2.0.0]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -38,8 +38,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++-multilib
 
-      - name: Check embedded web page
-        run: python tools/gzip_webui_settings.py --check
+      - name: Regenerate and verify embedded web page
+        run: |
+          python tools/gzip_webui_settings.py
+          python tools/gzip_webui_settings.py --check
 
       - name: Check release asset name
         run: python tools/ci_checks.py assets
@@ -62,6 +64,8 @@ jobs:
           node tests/theme/test_settings_webui.js
           node tests/theme/test_settings_webui_poll.js
           sh tests/backlight/run.sh
+          c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc tests/photos/test_jpeg_validator.cpp -o /tmp/smalltv-photo-jpeg-tests
+          /tmp/smalltv-photo-jpeg-tests
 
       - name: Check untrusted input parsers
         run: sh tests/fuzz/run.sh

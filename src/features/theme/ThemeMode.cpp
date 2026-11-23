@@ -126,18 +126,11 @@ bool ThemeMode::playlistLoadFailed() const {
 }
 #endif
 void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
-  if (!package_ || (ESP.getFreeHeap() >= needFree && platformMaxFreeBlock() >= needLargestBlock)) return;
-  // A fetch in flight is dropped; its source is still due, so the reload
-  // fetches it again.
-  dataRequests_.cancel();
-  dataRequests_.take();
-  dataRequests_.releaseStorage();
-  package_.reset();
-  file_.reset();
-  engine_.setValues({});
-  engine_.setTheme(smalltv::Theme{}, millis());
-  attempted_ = messageDrawn_ = false;
-  keepData_ = true;
+  if (ESP.getFreeHeap() >= needFree && platformMaxFreeBlock() >= needLargestBlock) return;
+  // A settings save needs one contiguous Settings-sized block. Drop all
+  // theme-owned allocations (including reusable vectors) so the allocator can
+  // coalesce the heap. The next service() call reloads the selected theme.
+  unload();
 }
 // Collects a finished fetch (if any) and, with at most one request in flight
 // at a time, starts the next source whose interval has elapsed, round-robin

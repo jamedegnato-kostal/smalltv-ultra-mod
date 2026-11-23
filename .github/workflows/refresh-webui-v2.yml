@@ -1,0 +1,54 @@
+name: Regenerate embedded V2 Web UI
+
+on:
+  push:
+    branches: [v2/stable-esp8266-hardening, v2/v2.0.0]
+    paths:
+      - 'src/webui_settings.html'
+      - 'tools/gzip_webui_settings.py'
+      - '.github/workflows/refresh-webui-v2.yml'
+
+concurrency:
+  group: refresh-webui-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Regenerate and push against the latest branch head
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Multiple commits may land while the generator is running. Always
+          # regenerate from the latest HTML and retry a non-fast-forward race.
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard FETCH_HEAD
+            python tools/gzip_webui_settings.py
+
+            if git diff --quiet -- src/webui_settings.h; then
+              echo "Embedded Web UI is already current."
+              exit 0
+            fi
+
+            git add src/webui_settings.h
+            git commit -m "chore: regenerate embedded V2 Web UI"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "Branch advanced during push (attempt ${attempt}); retrying from its latest head."
+          done
+
+          echo "Unable to publish the generated Web UI after three retries."
+          exit 1

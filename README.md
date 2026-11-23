@@ -30,9 +30,9 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 | **Uhr & Zeit** | NTP, Zeitzone, 12-/24-Stunden-Format, Datum, Sekunden und zeitgesteuerter Nachtmodus |
 | **Themes** | Installierbare `.stheme`-Pakete, Suche, Filter, Vorschau, Metadaten, Ebenenreihenfolge und Verwaltung |
 | **Playlist** | Bis zu 8 Einträge, feste oder zufällige Reihenfolge, Zeitfenster und individuelle Laufzeiten |
-| **Fotos** | JPEG- und GIF-Import, Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe |
+| **Fotos** | JPEG-Fotobibliothek, Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe |
 | **Renderer** | Text, Bilder, Formen, Animationen, transparente Ebenen und optionale PNG-Schriftatlanten |
-| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionale Digest-Authentifizierung, Konfigurations-Backup, Firmware-Upload und Recovery |
+| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionale Digest-Authentifizierung, Konfigurations-Backup, manueller Firmware-Upload und Recovery |
 
 ## Unterstützte Hardware
 

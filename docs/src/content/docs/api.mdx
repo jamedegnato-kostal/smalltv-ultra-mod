@@ -45,27 +45,28 @@ Diese Endpunkte sind im Profil `smalltv_settings` aktiv.
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/api/photos` | Fotoliste, Größen und Speicherstatus |
+| `GET` | `/api/photos` | Fotoliste, Größen, Speicherstatus und Anzahl alter Restdateien (`legacyFiles`) |
 | `GET` | `/api/photos/file?id=…` | Vorschaubild laden |
-| `POST` | `/api/photos/upload` | JPEG oder vorbereitete GIF-Framegruppe hochladen und prüfen |
+| `POST` | `/api/photos/upload` | ein JPEG pro Anfrage streamen und validieren |
 | `POST` | `/api/photos/delete` | ein Foto löschen |
 | `POST` | `/api/photos/delete-all` | alle Fotos entfernen |
 
-Mehrere Bilder werden als einzelne Anfragen gesendet. JPEGs und die gesamte
-GIF-Framegruppe dürfen jeweils höchstens 128 KiB groß sein. Der Web-Client
-wandelt GIFs in einen internen PGA1-Container aus 2 bis 12 vollständigen
-240×240-JPEG-Frames um; externe Clients sollten JPEGs verwenden.
+Mehrere Bilder werden als einzelne Anfragen gesendet. Ein JPEG darf höchstens
+128 KiB groß sein. Die Firmware prüft Dateigröße, vollständiges Schreiben und
+die Decodierbarkeit des 240×240-Bildes. GIF-Animationen werden nicht importiert.
+Beim expliziten Endpunkt `POST /api/photos/delete-all` werden zusätzlich alte
+GIF-Metadaten, Frame-Dateien und temporäre Foto-Uploads aus früheren Firmware-
+Versionen entfernt. Ein normales Upgrade löscht diese Dateien nicht.
 
-## System und Updates
+## Firmwarepflege
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `POST` | `/update` | Firmware manuell per OTA übertragen |
-| `GET` | `/api/checkupdate` | konfiguriertes Release und Firmware-Asset prüfen |
-| `POST` | `/api/selfupdate` | passendes Update vormerken |
+| `POST` | `/update` | Firmware manuell über die lokale Weboberfläche per OTA übertragen |
 
-Repository und Binärname stammen aus `src/config.h`. Das Image muss zum
-Gerätemodell und verfügbaren OTA-Bereich passen.
+Online-Release-Prüfung und automatischer GitHub-Download sind in diesem
+ESP8266-Profil entfernt. Der manuelle Upload prüft das Image-Magic-Byte, den
+verfügbaren OTA-Slot, Upload-Vollständigkeit und Heap-Reserven.
 
 Die genaue JSON-Struktur der Themes und Konfiguration kann sich mit der
 Firmwareversion ändern. Für Implementierungen sollten die aktuelle UI und die

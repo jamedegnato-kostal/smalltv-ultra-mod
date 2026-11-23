@@ -3,7 +3,7 @@
 
   size    Compare each env's firmware.bin with its OTA app slot and fail when
           the free space drops below a threshold.
-  assets  Check that every UPDATE_ASSET string in src/config.h is a file name
+  assets  Check that the manual firmware release asset in src/config.h is a file name
           that the workflow stages into dist/.
 
 Run from the repo root:
@@ -157,11 +157,11 @@ def cmd_size(args):
 
 def cmd_assets(args):
     with open(args.config_h, encoding="utf-8") as f:
-        wanted = re.findall(r'#\s*define\s+UPDATE_ASSET\s+"([^"]+)"', f.read())
+        wanted = re.findall(r'#\s*define\s+FIRMWARE_ASSET\s+"([^"]+)"', f.read())
     with open(args.workflow, encoding="utf-8") as f:
         staged = set(re.findall(r"^\s*copy\s+\S+\s+dist/(\S+)\s*$", f.read(), re.M))
     if not wanted:
-        print("::error::asset check: no UPDATE_ASSET found in %s" % args.config_h)
+        print("::error::asset check: no FIRMWARE_ASSET found in %s" % args.config_h)
         return 1
     if not staged:
         print("::error::asset check: no `copy <src> dist/<name>` lines found in %s"
@@ -173,9 +173,9 @@ def cmd_assets(args):
         print("%-40s %s" % (a, "staged" if ok else "NOT STAGED"))
         if not ok:
             bad = True
-            print("::error::asset check: UPDATE_ASSET \"%s\" in %s is not staged "
+            print("::error::asset check: FIRMWARE_ASSET \"%s\" in %s is not staged "
                   "into dist/ by %s (staged: %s). A device on that variant would "
-                  "find no matching release asset and could never self-update."
+                  "be missing the binary used for manual firmware upload."
                   % (a, args.config_h, args.workflow, ", ".join(sorted(staged))))
     return 1 if bad else 0
 

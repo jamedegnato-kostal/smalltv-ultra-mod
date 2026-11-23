@@ -56,7 +56,6 @@ static StatusData busyData() {
   StatusData d;
   d.fw = "smalltv-mod"; d.version = "3.2.1"; d.variant = "esp8266";
   d.repo = "https://github.com/giovi321/smalltv-mod";
-  d.updateMsg = "up to date";
   d.mode = "sta"; d.connected = true;
   d.activeTheme = "work-clock"; d.brightness = 72;
   d.ssid = "home-wifi-01"; d.ip = "198.51.100.177"; d.rssi = -67;
@@ -97,7 +96,6 @@ static size_t oldWay() {
   JsonDocument doc;
   JsonObject o = doc.to<JsonObject>();
   o["fw"] = d.fw; o["version"] = d.version; o["variant"] = d.variant; o["repo"] = d.repo;
-  o["updateMsg"] = std::string(d.updateMsg);
   o["mode"] = d.mode; o["activeTheme"] = d.activeTheme; o["brightness"] = d.brightness; o["connected"] = d.connected;
   o["ssid"] = std::string(d.ssid); o["ip"] = std::string(d.ip); o["rssi"] = d.rssi;
   o["heap"] = d.heap; o["maxblk"] = d.maxblk; o["contstk"] = d.contstk; o["uptime"] = d.uptime;
