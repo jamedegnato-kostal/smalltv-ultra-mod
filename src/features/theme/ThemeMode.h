@@ -70,10 +70,15 @@ class ThemeMode : public DisplayMode {
   // A complete Settings copy must fit as one contiguous allocation; a fixed
   // 3 KiB threshold can be smaller than Settings on this ESP8266 profile.
   static constexpr uint32_t RequestLargestBlock = sizeof(Settings) + 256UL;
+  // A theme-data refresh temporarily releases its renderer/package before the
+  // plain-HTTP request. The remaining filtered JSON parser needs only a small
+  // bounded block; the theme is loaded again on the next display tick.
+  static constexpr uint32_t DataFetchFreeHeap = 6144;
+  static constexpr uint32_t DataFetchLargestBlock = 1024;
   void freeForRequest() override { release(RequestFreeHeap, RequestLargestBlock); }
  private:
   void unload();
-  void refreshData();
+  bool refreshData();
   smalltv::Engine engine_;
   std::unique_ptr<smalltv::Source> file_;
   std::unique_ptr<smalltv::Package> package_;
