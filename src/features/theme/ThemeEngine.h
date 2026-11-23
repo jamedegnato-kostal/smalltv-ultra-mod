@@ -138,8 +138,10 @@ struct LocalizedText {
   uint8_t language = 0;
   std::string text;
 };
+enum class ThemeDataTransform : uint8_t { None, WwoWeatherCode, WttrDaylight };
 struct ThemeDataField {
   std::string id, path;
+  ThemeDataTransform transform = ThemeDataTransform::None;
 };
 // One periodic JSON endpoint declared by a theme. `interval` is seconds
 // between refreshes; `insecureTls` is the explicit opt-in an HTTPS source

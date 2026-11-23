@@ -630,12 +630,6 @@ static void handleReboot() {
   scheduleReboot(400);
 }
 
-static void handleCrashClear() {
-  if (!requireAuth()) return;
-  platformCrashRecordClear();
-  server.send(200, "application/json", "{\"ok\":true}");
-}
-
 static void handleFactory() {
   if (!requireAuth()) return;
   appRelease();  // Free theme/runtime allocations before serializing defaults.
@@ -952,7 +946,6 @@ void webPortalBegin(Settings& settings) {
   server.on("/api/config", HTTP_GET, handleGetConfig);
   server.on("/api/config", HTTP_POST, handlePostConfig);
   server.on("/api/status", HTTP_GET, handleStatus);
-  server.on("/api/crash/clear", HTTP_POST, handleCrashClear);
   server.on("/api/scan", HTTP_GET, handleScan);
   server.on("/api/reboot", HTTP_POST, handleReboot);
   server.on("/api/factory", HTTP_POST, handleFactory);

@@ -34,6 +34,25 @@ class ThemeUploadDurability(unittest.TestCase):
         self.assertIn("uploaded > uploadBudget", source)
         self.assertIn("up.currentSize > uploadBudget - uploaded", source)
 
+
+    def test_deleting_selected_theme_leaves_theme_mode_before_removing_package(self):
+        source = read("src/features/theme/ThemeWeb.cpp")
+        start = source.index("void deleteTheme()")
+        end = source.index("\nuint16_t blend565", start)
+        block = source[start:end]
+
+        self.assertIn("const bool leaveThemeMode", block)
+        self.assertIn("candidate.mode = MODE_CAROUSEL", block)
+        self.assertIn("candidate.carouselTheme = false", block)
+        self.assertIn('if (candidate.themeId == id) candidate.themeId = "";', block)
+        self.assertNotIn("Switch away from theme mode", block)
+
+        transaction = block.index("applyAndSaveSettings")
+        invalidate = block.index("if (settingsChanged) appInvalidate()")
+        remove = block.index("LittleFS.remove(path)")
+        self.assertLess(transaction, invalidate)
+        self.assertLess(invalidate, remove)
+
     def test_new_upload_closes_stale_staging_handle_first(self):
         source = read("src/features/theme/ThemeWeb.cpp")
         start = source.index("if (up.status == UPLOAD_FILE_START)")

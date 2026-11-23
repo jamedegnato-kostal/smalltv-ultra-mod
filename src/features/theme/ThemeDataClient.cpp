@@ -4,6 +4,8 @@
 #include "ThemeMode.h"
 #include <ArduinoJson.h>
 #include <cstring>
+#include <climits>
+#include <cstdlib>
 #if !defined(SMALLTV_ESP8266)
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -61,20 +63,34 @@ class BoundedClient : public Transport {
   Deadline& deadline_;
 };
 
-// After GET(), read the body through HTTPClient's stream (the same pattern
-// StockClient and OtaUpdate use): HTTPClient owns the response from that
-// point, and on ESP8266 the raw client behind it never yields body bytes, so
-// every theme-data fetch failed at the body-read stage despite HTTP 200.
-struct BodyStream {
-  Stream& stream;
-  NetClient& client;
-  Deadline& deadline;
-  uint32_t now() const { return millis(); }
-  bool cancelled() const { return deadline.expired(); }
-  int available() { return stream.available(); }
-  bool connected() { return client.connected(); }
-  int read(uint8_t* buffer, size_t count) { return (int)stream.readBytes(buffer, count); }
-  void idle() { delay(1); }
+// A deadline- and byte-limited Stream lets ArduinoJson filter large provider
+// replies in place instead of allocating a complete JSON body on the ESP8266.
+class BoundedBodyStream : public Stream {
+ public:
+  BoundedBodyStream(Stream& source, Deadline& deadline)
+      : source_(source), deadline_(deadline) {}
+  int available() override {
+    if (deadline_.expired() || bytes_ >= smalltv::MaxDataResponseBytes) return 0;
+    const size_t remaining = smalltv::MaxDataResponseBytes - bytes_;
+    return std::min(source_.available(), static_cast<int>(remaining));
+  }
+  int read() override {
+    if (deadline_.expired() || bytes_ >= smalltv::MaxDataResponseBytes) return -1;
+    int value = source_.read();
+    if (value >= 0) ++bytes_;
+    return value;
+  }
+  int peek() override {
+    if (deadline_.expired() || bytes_ >= smalltv::MaxDataResponseBytes) return -1;
+    return source_.peek();
+  }
+  size_t write(uint8_t) override { return 0; }
+  void flush() override {}
+  size_t bytesRead() const { return bytes_; }
+ private:
+  Stream& source_;
+  Deadline& deadline_;
+  size_t bytes_ = 0;
 };
 
 void jsonValue(JsonVariantConst value, std::string& out) {
@@ -94,36 +110,135 @@ void jsonValue(JsonVariantConst value, std::string& out) {
   if (n >= sizeof(encoded) - 1) { out = "--"; return; }
   out.assign(encoded, n);
 }
+static bool pathIndex(const char* value, size_t length, size_t& index) {
+  if (!length || length > 2) return false;
+  index = 0;
+  for (size_t i = 0; i < length; ++i) {
+    if (value[i] < '0' || value[i] > '9') return false;
+    index = index * 10 + size_t(value[i] - '0');
+  }
+  return index <= 15;
+}
 JsonVariantConst jsonPath(JsonVariantConst root, std::string& path) {
   size_t start = 0;
   while (start < path.size()) {
     size_t dot = path.find('.', start);
     if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return JsonVariantConst();
-    if (!root.is<JsonObjectConst>()) return JsonVariantConst();
-    // Temporarily terminate this component in the already-owned path string.
-    // JsonObject lookup consumes the key immediately; restore the delimiter
-    // before the next field/update, without creating a substring allocation.
-    char separator = 0;
-    if (dot != std::string::npos) {
-      separator = path[dot];
-      path[dot] = '\0';
-    }
-    root = root[path.c_str() + start];
-    if (dot != std::string::npos) path[dot] = separator;
+    const size_t end = dot == std::string::npos ? path.size() : dot;
+    size_t index = 0;
+    if (root.is<JsonArrayConst>()) {
+      if (!pathIndex(path.c_str() + start, end - start, index)) return JsonVariantConst();
+      root = root[index];
+    } else if (root.is<JsonObjectConst>()) {
+      // Temporarily terminate this component in the already-owned path string.
+      // JsonObject lookup consumes the key immediately; restore the delimiter.
+      char separator = 0;
+      if (dot != std::string::npos) {
+        separator = path[dot];
+        path[dot] = '\0';
+      }
+      root = root[path.c_str() + start];
+      if (dot != std::string::npos) path[dot] = separator;
+    } else return JsonVariantConst();
     if (dot == std::string::npos) break;
     start = dot + 1;
   }
   return root;
 }
-bool fetchThemeSource(smalltv::DataFetch& request) {
+static bool addFilterPath(JsonVariant node, const std::string& path, size_t start) {
+  size_t dot = path.find('.', start);
+  if (dot == start || (dot != std::string::npos && dot + 1 == path.size())) return false;
+  const size_t end = dot == std::string::npos ? path.size() : dot;
+  const bool last = dot == std::string::npos;
+  if (node.is<JsonArray>()) {
+    size_t index = 0;
+    if (!pathIndex(path.c_str() + start, end - start, index)) return false;
+    JsonArray array = node.as<JsonArray>();
+    while (array.size() <= index) {
+      JsonVariant slot = array.add();
+      if (!last) {
+        size_t nextDot = path.find('.', dot + 1);
+        size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+        size_t nextIndex = 0;
+        if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+          slot.to<JsonArray>();
+        else
+          slot.to<JsonObject>();
+      }
+    }
+    JsonVariant child = array[index];
+    if (last) return child.set(true);
+    if (child.isNull()) {
+      size_t nextDot = path.find('.', dot + 1);
+      size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+      size_t nextIndex = 0;
+      if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+        child.to<JsonArray>();
+      else
+        child.to<JsonObject>();
+    }
+    return addFilterPath(child, path, dot + 1);
+  }
+  if (!node.is<JsonObject>()) return false;
+  JsonObject object = node.as<JsonObject>();
+  std::string key(path.data() + start, end - start);
+  JsonVariant child = object[key.c_str()];
+  if (last) return child.set(true);
+  if (child.isNull()) {
+    size_t nextDot = path.find('.', dot + 1);
+    size_t nextEnd = nextDot == std::string::npos ? path.size() : nextDot;
+    size_t nextIndex = 0;
+    if (pathIndex(path.c_str() + dot + 1, nextEnd - dot - 1, nextIndex))
+      child.to<JsonArray>();
+    else
+      child.to<JsonObject>();
+  }
+  return addFilterPath(child, path, dot + 1);
+}
+static bool addFilterPath(JsonDocument& filter, const std::string& path) {
+  return addFilterPath(filter.to<JsonObject>(), path, 0);
+}
+static bool jsonInteger(JsonVariantConst value, int& result) {
+  if (value.is<int>()) { result = value.as<int>(); return true; }
+  if (value.is<long>()) { long n = value.as<long>(); if (n < INT32_MIN || n > INT32_MAX) return false; result = int(n); return true; }
+  if (!value.is<const char*>()) return false;
+  const char* text = value.as<const char*>();
+  if (!text || !*text) return false;
+  char* end = nullptr;
+  long n = strtol(text, &end, 10);
+  if (!end || *end || n < INT32_MIN || n > INT32_MAX) return false;
+  result = int(n);
+  return true;
+}
+static void assignTransform(JsonVariantConst root, const smalltv::ThemeDataField& field,
+                            std::string& output) {
+  if (field.transform == smalltv::ThemeDataTransform::WwoWeatherCode) {
+    int code = 0;
+    if (!jsonInteger(jsonPath(root, const_cast<std::string&>(field.path)), code)) { output = "--"; return; }
+    output = std::to_string(smalltv::wwoWeatherCodeToWmo(code));
+    return;
+  }
+  if (field.transform == smalltv::ThemeDataTransform::WttrDaylight) {
+    // The field path points at current_condition[0].localObsDateTime. Sunrise
+    // and sunset are included by the same filtered response.
+    JsonVariantConst observation = jsonPath(root, const_cast<std::string&>(field.path));
+    const char* local = observation.as<const char*>();
+    const char* sunrise = root["weather"][0]["astronomy"][0]["sunrise"].as<const char*>();
+    const char* sunset = root["weather"][0]["astronomy"][0]["sunset"].as<const char*>();
+    int day = 0;
+    output = smalltv::wttrIsDaylight(local, sunrise, sunset, day) ? (day ? "1" : "0") : "--";
+    return;
+  }
+  jsonValue(jsonPath(root, const_cast<std::string&>(field.path)), output);
+}
+bool fetchThemeSourceAttempt(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
   PlatformMemoryPhaseScope dataMemory(PLATFORM_MEM_THEME_DATA, true);
 #if defined(SMALLTV_ESP8266)
-  // Keep external fetches below the same conservative request limits used
-  // by the web portal; the active theme cannot be released while it is the
-  // caller of this fetch.
-  if (ESP.getFreeHeap() < ThemeMode::RequestFreeHeap ||
-      platformMaxFreeBlock() < ThemeMode::RequestLargestBlock) return false;
+  // ThemeMode releases the renderer/package before calling this synchronous
+  // ESP8266 path. Keep a conservative reserve for WiFi and the JSON filter.
+  if (ESP.getFreeHeap() < ThemeMode::DataFetchFreeHeap ||
+      platformMaxFreeBlock() < ThemeMode::DataFetchLargestBlock) return false;
 #endif
   Deadline deadline(request);
   std::unique_ptr<NetClient> client;
@@ -156,36 +271,64 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   if (!http.begin(*client, request.source.url.c_str())) return false;
   http.addHeader("Accept", "application/json");
   if (http.GET() != HTTP_CODE_OK || deadline.expired()) return false;
-  BodyStream stream{http.getStream(), *client, deadline};
-  // The response is bounded to MaxDataBody and held only for this request.
-  // Parsing the mutable string in place avoids a second copy of every JSON
-  // key/value while returning the body allocation to the heap afterwards.
-  std::string body;
-  bool complete = smalltv::readDataBody(stream, http.getSize(), body);
-  http.end();
-  if (!complete || request.cancelled() || body.empty()) return false;
+  const int contentLength = http.getSize();
+  if (contentLength == 0 || contentLength > static_cast<int>(smalltv::MaxDataResponseBytes)) {
+    http.end();
+    return false;
+  }
+  JsonDocument filter;
+  for (const auto& field : request.source.fields) {
+    if (!addFilterPath(filter, field.path)) { http.end(); return false; }
+    if (field.transform == smalltv::ThemeDataTransform::WttrDaylight) {
+      filter["weather"][0]["astronomy"][0]["sunrise"] = true;
+      filter["weather"][0]["astronomy"][0]["sunset"] = true;
+    }
+  }
   JsonDocument doc;
-#if defined(SMALLTV_ESP8266)
-  if (deserializeJson(doc, &body[0], DeserializationOption::NestingLimit(8))) return false;
-#else
-  if (deserializeJson(doc, body, DeserializationOption::NestingLimit(8))) return false;
-#endif
-  // Sample while the parsed JSON document and retained body buffer are both
-  // live; this is the peak-memory phase of a data refresh.
+  BoundedBodyStream stream(http.getStream(), deadline);
+  const auto parsed = deserializeJson(doc, stream,
+      DeserializationOption::Filter(filter), DeserializationOption::NestingLimit(8));
+  const bool complete = !parsed && !deadline.expired() &&
+      stream.bytesRead() <= smalltv::MaxDataResponseBytes;
+  http.end();
+  if (!complete || request.cancelled()) return false;
+  // Filtering keeps only declared paths (plus the two sun times required for
+  // wttr-daylight), so the full provider forecast never resides in heap.
   platformMemorySample(true);
-  // Resize preserves existing ThemeValue/string capacities for repeated
-  // polls of the same source; assign() below only grows when a value is longer.
   request.values.resize(request.source.fields.size());
   size_t valueIndex = 0;
+  JsonVariantConst root = doc.as<JsonVariantConst>();
   for (auto& field : request.source.fields) {
     smalltv::ThemeValue& output = request.values[valueIndex++];
     output.key.assign(request.source.id);
     output.key += '.';
     output.key += field.id;
-    jsonValue(jsonPath(doc.as<JsonVariantConst>(), field.path), output.value);
+    assignTransform(root, field, output.value);
   }
   platformMemorySample(true);
   return !request.cancelled();
+}
+bool fetchThemeSource(smalltv::DataFetch& request) {
+  const std::string primary = request.source.url;
+  if (fetchThemeSourceAttempt(request)) return true;
+  if (request.cancelled()) return false;
+
+  // wttr.is and wttr.in are documented equivalent hostnames served by the
+  // same backend. Try the peer domain once when DNS, routing or edge service
+  // for the first host fails; never persist the fallback in the theme.
+  std::string fallback = primary;
+  const size_t host = fallback.find("wttr.is");
+  if (host != std::string::npos) fallback.replace(host, 7, "wttr.in");
+  else {
+    const size_t alternate = fallback.find("wttr.in");
+    if (alternate == std::string::npos) return false;
+    fallback.replace(alternate, 7, "wttr.is");
+  }
+  request.source.url = fallback;
+  request.values.clear();
+  const bool ok = fetchThemeSourceAttempt(request);
+  request.source.url = primary;
+  return ok;
 }
 #if !defined(SMALLTV_ESP8266)
 void runFetch(void* parameter) {

@@ -1,4 +1,5 @@
 #include "ThemeData.h"
+#include <ArduinoJson.h>
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -21,15 +22,57 @@ struct Response {
     *dest=bytes[position++];return 1;
   }
   bool connected() const { return !closeAtEnd || position<bytes.size(); }
-  void idle() { ++elapsed;assert(elapsed<=3500); }
+  void idle() { ++elapsed;assert(elapsed<=10500); }
 };
 
 int main() {
+  // Weather provider codes are translated into the WMO groups used by the
+  // installed clock theme's sprite positions.
+  assert(wwoWeatherCodeToWmo(113) == 1);
+  assert(wwoWeatherCodeToWmo(116) == 2);
+  assert(wwoWeatherCodeToWmo(122) == 3);
+  assert(wwoWeatherCodeToWmo(248) == 48);
+  assert(wwoWeatherCodeToWmo(293) == 61);
+  assert(wwoWeatherCodeToWmo(305) == 65);
+  assert(wwoWeatherCodeToWmo(338) == 75);
+  assert(wwoWeatherCodeToWmo(353) == 80);
+  assert(wwoWeatherCodeToWmo(368) == 85);
+  assert(wwoWeatherCodeToWmo(200) == 95);
+  assert(wwoWeatherCodeToWmo(999) == 3);
+
+  int daylight = -1;
+  assert(wttrIsDaylight("12:30 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 1);
+  assert(wttrIsDaylight("2026-06-01 12:30 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 1);
+  assert(wttrIsDaylight("2026-06-01 04:30 AM", "05:15 AM", "09:20 PM", daylight) && daylight == 0);
+  assert(wttrIsDaylight("2026-06-01 10:00 PM", "05:15 AM", "09:20 PM", daylight) && daylight == 0);
+  assert(!wttrIsDaylight("bad", "05:15 AM", "09:20 PM", daylight));
+
+  // ArduinoJson filtering retains only the selected array members, including
+  // current conditions and sunrise/sunset, rather than the full 3-day forecast.
+  const char* weatherJson =
+      R"({"current_condition":[{"temp_C":"12","weatherCode":"116","observation_time":"12:30 PM","extra":"drop"}],)"
+      R"("weather":[{"astronomy":[{"sunrise":"05:15 AM","sunset":"09:20 PM"}],)"
+      R"("hourly":[{"tempC":"13"},{"tempC":"14"}]}]})";
+  JsonDocument filter;
+  filter["current_condition"][0]["temp_C"] = true;
+  filter["current_condition"][0]["weatherCode"] = true;
+  filter["current_condition"][0]["observation_time"] = true;
+  filter["weather"][0]["astronomy"][0]["sunrise"] = true;
+  filter["weather"][0]["astronomy"][0]["sunset"] = true;
+  JsonDocument selected;
+  assert(!deserializeJson(selected, weatherJson, DeserializationOption::Filter(filter),
+                         DeserializationOption::NestingLimit(8)));
+  assert(selected["current_condition"][0]["temp_C"] == "12");
+  assert(selected["current_condition"][0]["observation_time"] == "12:30 PM");
+  assert(selected["current_condition"][0]["extra"].isNull());
+  assert(selected["weather"][0]["astronomy"][0]["sunrise"] == "05:15 AM");
+  assert(selected["weather"][0]["hourly"].isNull());
+
   std::string body;
   Response complete;complete.bytes="{\"value\":42}";
   assert(readDataBody(complete,12,body) && body==complete.bytes && complete.elapsed==0);
   Response stalled;stalled.bytes="{";
-  assert(!readDataBody(stalled,12,body) && stalled.elapsed==3000);
+  assert(!readDataBody(stalled,12,body) && stalled.elapsed==DataTimeoutMs);
   Response disconnected;disconnected.bytes="{";disconnected.closeAtEnd=true;
   assert(!readDataBody(disconnected,12,body));
   Response unknown;unknown.bytes=std::string(2048,' ');unknown.closeAtEnd=true;
@@ -40,11 +83,11 @@ int main() {
   Response empty;empty.closeAtEnd=true;assert(!readDataBody(empty,0,body));
   assert(!readDataBody(empty,-1,body));
   Response idleJson;idleJson.bytes="{}"; // silence is not EOF for an unknown length
-  assert(!readDataBody(idleJson,-1,body) && idleJson.elapsed==3000);
+  assert(!readDataBody(idleJson,-1,body) && idleJson.elapsed==DataTimeoutMs);
   Response slow;slow.bytes="{\"value\":42}";slow.spacing=900;
-  assert(!readDataBody(slow,12,body) && slow.elapsed==3000);
+  assert(!readDataBody(slow,12,body) && slow.elapsed==DataTimeoutMs);
   Response wrapped;wrapped.start=0xfffffff0;wrapped.bytes="{";
-  assert(!readDataBody(wrapped,12,body) && wrapped.elapsed==3000);
+  assert(!readDataBody(wrapped,12,body) && wrapped.elapsed==DataTimeoutMs);
   Response cancelled;cancelled.cancel=true;
   assert(!readDataBody(cancelled,12,body) && cancelled.elapsed==0);
 
