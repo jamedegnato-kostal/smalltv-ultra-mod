@@ -31,6 +31,23 @@ class PhotoUploadDurability(unittest.TestCase):
         self.assertIn("LittleFS.remove(PhotoUploadPath)", block)
         self.assertIn("photoValidateJpeg(PhotoUploadPath)", source)
 
+
+    def test_upload_validation_is_marker_only_and_heap_guard_is_not_redundant(self):
+        slideshow = read("src/PhotoSlideshow.cpp")
+        header = read("src/PhotoJpeg.h")
+        source = read("src/WebPortal.cpp")
+        self.assertIn("validateBaselineJpeg240(reader)", slideshow)
+        self.assertNotIn("TJpgDec.drawFsJpg", slideshow[:slideshow.index("void PhotoSlideshow::begin()")])
+        self.assertIn("width != 240 || height != 240", header)
+        self.assertIn("marker == 0xc0", header)
+        self.assertIn("marker == 0xda", header)
+        upload_end = source[source.index("} else if (up.status == UPLOAD_FILE_END) {"):source.index("} else if (up.status == UPLOAD_FILE_ABORTED) {")]
+        self.assertIn("photoValidateJpeg(PhotoUploadPath)", upload_end)
+        self.assertNotIn("g_themeMode.release", upload_end)
+        self.assertNotIn("MinFreeHeap", upload_end)
+        self.assertIn("MinFreeHeap = 3UL * 1024UL", slideshow)
+        self.assertIn("MinLargestBlock = 1280UL", slideshow)
+
     def test_old_gif_upload_and_playback_paths_are_absent(self):
         portal = read("src/WebPortal.cpp")
         library = read("src/PhotoLibrary.cpp")
