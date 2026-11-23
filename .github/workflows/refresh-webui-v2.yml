@@ -2,7 +2,7 @@ name: Regenerate embedded V2 Web UI
 
 on:
   push:
-    branches: [v2/stable-esp8266-hardening]
+    branches: [v2/stable-esp8266-hardening, v2/v2.0.0]
     paths:
       - 'src/webui_settings.html'
       - 'tools/gzip_webui_settings.py'
