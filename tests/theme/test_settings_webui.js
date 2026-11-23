@@ -10,7 +10,7 @@ new vm.Script(script[1], { filename: 'src/webui_settings.html' });
 
 for (const [id, title] of [
   ['status', 'Übersicht'], ['settingsDisplay', 'Anzeige'], ['settingsClock', 'Uhr'],
-  ['settingsThemes', 'Themes'], ['showflow', 'Showflow'], ['photos', 'Fotobibliothek'], ['wifi', 'Netzwerk'],
+  ['settingsThemes', 'Themes'], ['showflow', 'Foto-Flow'], ['photos', 'Fotobibliothek'], ['wifi', 'Netzwerk'],
   ['update', 'System'], ['settingsAdvanced', 'Erweitert']
 ]) {
   assert.match(html, new RegExp(`data-t="${id}"[^>]*>${title}`), `navigation entry: ${title}`);
