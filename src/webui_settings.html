@@ -568,8 +568,9 @@ function loadConfig(){return j('/api/config').then(function(c){C=c;
  sv('tz',ck.tz||''); sc('nightEnabled',!!ck.nightEnabled);
  sv('nightStart',ck.nightStart||'22:00'); sv('nightEnd',ck.nightEnd||'07:00');
  sv('nightLevel',ck.nightLevel!=null?ck.nightLevel:0); $('nlVal')&&($('nlVal').textContent=(ck.nightLevel!=null?ck.nightLevel:0));
- $('mode').value=f.theme===true?'theme':'';
- C.mode=f.theme===true?'theme':'';
+ var activeMode=c.mode||(f.theme===true?'theme':'');
+ $('mode').value=activeMode;
+ C.mode=activeMode;
  var sf=c.showflow||{};sc('showflowEnabled',!!sf.enabled);sc('showflowRandom',!!sf.random);
  showflowSteps=Array.isArray(sf.steps)?sf.steps.slice(0,16).map(function(x){return {type:x.type==='photo'?'photo':'theme',id:String(x.id||''),seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||10)),randomPhoto:x.random!==false,photoId:Math.max(0,Math.min(239,parseInt(x.photoId,10)||0))}}):[];
  renderShowflowSteps();showflowPhotoModeChanged();
@@ -1054,8 +1055,13 @@ function selectTheme(){var id=$('themeSelect').value;var theme=themeEntries.find
  if(!theme||theme.valid===false){toast('Wähle zuerst ein gültiges installiertes Theme');return}
  themeRequest('/api/themes/select',{id:id}).then(function(){C.mode='theme';C.themeId=id;sv('mode','theme');sc('showflowEnabled',false);toast('Theme ausgewählt');loadThemes()}).catch(function(e){toast(e.message)})}
 function deleteTheme(requestedId){var id=requestedId||gv('themeSelect');if(!id)return;var theme=themeEntries.find(function(t){return t.id===id});var displayName=theme?(theme.name||theme.id):id;
+ var wasSelected=C.themeId===id;
  if(!confirm('„'+displayName+'“ endgültig löschen?'))return;
- themeRequest('/api/themes/delete',{id:id}).then(function(){showflowSteps=showflowSteps.filter(function(x){return x.type!=='theme'||x.id!==id});renderShowflowSteps();markSettingsDirty();toast('Theme gelöscht');loadThemes()}).catch(function(e){toast(e.message)})}
+ themeRequest('/api/themes/delete',{id:id}).then(function(){
+  if(wasSelected){C.themeId='';C.mode='carousel';sv('mode','carousel')}
+  showflowSteps=showflowSteps.filter(function(x){return x.type!=='theme'||x.id!==id});renderShowflowSteps();markSettingsDirty();
+  toast(wasSelected?'Theme gelöscht · Theme-Modus verlassen':'Theme gelöscht');loadThemes()
+ }).catch(function(e){toast(e.message)})}
 function installTheme(inputId){inputId=inputId||'themeFile';var f=$(inputId).files[0];if(!f){toast('Wähle ein .stheme-Paket aus');return}
  var data=new FormData();data.append('theme',f);$('themeStatus').textContent='Installation läuft …';
  var uploadBtn=$(inputId==='themeFile'?'themeUploadBtn':'clockThemeUploadBtn');if(uploadBtn)uploadBtn.disabled=true;
