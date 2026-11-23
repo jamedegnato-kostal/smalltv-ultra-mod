@@ -38,7 +38,7 @@ class ThemeUploadDurability(unittest.TestCase):
     def test_deleting_selected_theme_leaves_theme_mode_before_removing_package(self):
         source = read("src/features/theme/ThemeWeb.cpp")
         start = source.index("void deleteTheme()")
-        end = source.index("\\nuint16_t blend565", start)
+        end = source.index("\nuint16_t blend565", start)
         block = source[start:end]
 
         self.assertIn("const bool leaveThemeMode", block)
