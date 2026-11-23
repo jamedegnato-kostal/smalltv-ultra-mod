@@ -169,7 +169,6 @@ bool ThemeMode::refreshData() {
   for (size_t offset = 0; offset < sources.size(); ++offset) {
     size_t i = (dataCursor_ + offset) % sources.size();
     if (dataScheduled_[i] && static_cast<int32_t>(millis() - dataNextMs_[i]) < 0) continue;
-    const uint32_t sourceInterval = sources[i].interval;
     const size_t sourceCount = sources.size();
     auto request = dataRequests_.start(sources[i], i);
     if (!request) return false;
