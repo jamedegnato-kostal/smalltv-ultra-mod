@@ -3,11 +3,76 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 
 namespace smalltv {
 constexpr size_t MaxDataBody = 2048;
 constexpr uint32_t DataTimeoutMs = 3000;
+
+constexpr size_t MaxDataResponseBytes = 16 * 1024;
+
+// wttr.in uses WorldWeatherOnline condition codes. Convert them to the WMO
+// 4677 groups used by the Bellmerei clock theme's existing sprite bindings.
+inline int wwoWeatherCodeToWmo(int code) {
+  switch (code) {
+    case 113: return 0;                 // clear / sunny
+    case 116: return 2;                 // partly cloudy
+    case 119: case 122: return 3;       // cloudy / overcast
+    case 143: case 248: case 260: return 48; // mist / fog
+    case 176: case 263: case 266: return 51;
+    case 179: case 323: case 326: return 71;
+    case 182: case 185: case 281: case 284:
+    case 311: case 314: case 317: case 320: return 67;
+    case 200: case 386: case 389: case 392: case 395: return 95;
+    case 227: case 230: case 329: case 332:
+    case 335: case 338: return 75;
+    case 293: case 296: return 61;
+    case 299: case 302: return 63;
+    case 305: case 308: return 65;
+    case 350: return 77;
+    case 353: return 80;
+    case 356: return 81;
+    case 359: return 82;
+    case 362: case 365: case 368: return 85;
+    case 371: return 86;
+    case 374: case 377: return 87;
+    default: return 3;                  // safe cloudy fallback for new codes
+  }
+}
+
+// wttr.in returns its observation time, sunrise and sunset in local 12-hour
+// format. All three share the same location timezone, so no device timezone
+// conversion or NTP clock comparison is needed.
+inline bool wttrClockMinutes(const char* value, bool hasDate, int& minutes) {
+  if (!value || !*value) return false;
+  const char* time = value;
+  if (hasDate) {
+    const char* lastSpace = strrchr(value, ' ');
+    if (!lastSpace) return false;
+    time = lastSpace;
+    while (time > value && time[-1] != ' ') --time;
+  }
+  int hour = 0, minute = 0;
+  char meridiem[4] = {};
+  if (sscanf(time, "%d:%d %3s", &hour, &minute, meridiem) != 3 ||
+      hour < 1 || hour > 12 || minute < 0 || minute > 59) return false;
+  if (!strcmp(meridiem, "AM")) hour %= 12;
+  else if (!strcmp(meridiem, "PM")) hour = hour % 12 + 12;
+  else return false;
+  minutes = hour * 60 + minute;
+  return true;
+}
+inline bool wttrIsDaylight(const char* observation, const char* sunrise,
+                           const char* sunset, int& isDay) {
+  int now = 0, rise = 0, set = 0;
+  if (!wttrClockMinutes(observation, true, now) ||
+      !wttrClockMinutes(sunrise, false, rise) ||
+      !wttrClockMinutes(sunset, false, set) || rise == set) return false;
+  isDay = now >= rise && now < set ? 1 : 0;
+  return true;
+}
 
 // Stream supplies a monotonic clock and nonblocking socket reads. Limit total
 // elapsed time, including slow trickles; a socket's idle timeout is insufficient.
