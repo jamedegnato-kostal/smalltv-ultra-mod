@@ -9,7 +9,9 @@
 
 namespace smalltv {
 constexpr size_t MaxDataBody = 2048;
-constexpr uint32_t DataTimeoutMs = 3000;
+// Public weather endpoints can take several seconds to answer from an ESP8266.
+// Three seconds caused valid requests to time out before the filtered JSON arrived.
+constexpr uint32_t DataTimeoutMs = 10000;
 
 constexpr size_t MaxDataResponseBytes = 16 * 1024;
 
