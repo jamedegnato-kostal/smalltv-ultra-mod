@@ -226,12 +226,12 @@ static void assignTransform(JsonVariantConst root, const smalltv::ThemeDataField
     const char* sunrise = root["weather"][0]["astronomy"][0]["sunrise"].as<const char*>();
     const char* sunset = root["weather"][0]["astronomy"][0]["sunset"].as<const char*>();
     int day = 0;
-    output = smalltv::wttrClockMinutes(local, false, day) && smalltv::wttrIsDaylight(local, sunrise, sunset, day) ? (day ? "1" : "0") : "--";
+    output = smalltv::wttrIsDaylight(local, sunrise, sunset, day) ? (day ? "1" : "0") : "--";
     return;
   }
   jsonValue(jsonPath(root, const_cast<std::string&>(field.path)), output);
 }
-bool fetchThemeSource(smalltv::DataFetch& request) {
+bool fetchThemeSourceAttempt(smalltv::DataFetch& request) {
   if (request.cancelled()) return false;
   PlatformMemoryPhaseScope dataMemory(PLATFORM_MEM_THEME_DATA, true);
 #if defined(SMALLTV_ESP8266)
@@ -307,6 +307,28 @@ bool fetchThemeSource(smalltv::DataFetch& request) {
   }
   platformMemorySample(true);
   return !request.cancelled();
+}
+bool fetchThemeSource(smalltv::DataFetch& request) {
+  const std::string primary = request.source.url;
+  if (fetchThemeSourceAttempt(request)) return true;
+  if (request.cancelled()) return false;
+
+  // wttr.is and wttr.in are documented equivalent hostnames served by the
+  // same backend. Try the peer domain once when DNS, routing or edge service
+  // for the first host fails; never persist the fallback in the theme.
+  std::string fallback = primary;
+  const size_t host = fallback.find("wttr.is");
+  if (host != std::string::npos) fallback.replace(host, 7, "wttr.in");
+  else {
+    const size_t alternate = fallback.find("wttr.in");
+    if (alternate == std::string::npos) return false;
+    fallback.replace(alternate, 7, "wttr.is");
+  }
+  request.source.url = fallback;
+  request.values.clear();
+  const bool ok = fetchThemeSourceAttempt(request);
+  request.source.url = primary;
+  return ok;
 }
 #if !defined(SMALLTV_ESP8266)
 void runFetch(void* parameter) {
