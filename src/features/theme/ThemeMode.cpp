@@ -135,7 +135,7 @@ void ThemeMode::release(uint32_t needFree, uint32_t needLargestBlock) {
 // Collects a finished fetch (if any) and, with at most one request in flight
 // at a time, starts the next source whose interval has elapsed, round-robin
 // over sources so no single slow/failing one starves the others.
-void ThemeMode::refreshData() {
+bool ThemeMode::refreshData() {
   const auto& sources = engine_.theme().data;
   dataAges_.tick(millis());
   bool valuesChanged = false;
@@ -155,35 +155,50 @@ void ThemeMode::refreshData() {
       valuesChanged = true;
     }
     // Schedule from completion, preserving the interval even for slow sources.
-    dataNextMs_[result->index] = millis() + sources[result->index].interval * 1000UL;
+    // A failed source is retried after at most one minute; a healthy one
+    // keeps its manifest-defined interval.
+    const uint32_t interval = sources[result->index].interval;
+    dataNextMs_[result->index] = millis() + (result->success ? interval : std::min(interval, 60UL)) * 1000UL;
   }
   if (dataAges_.publish(sources, dataValues_)) valuesChanged = true;
   if (valuesChanged) engine_.setValues(dataValues_);
-  if (sources.empty() || dataRequests_.busy() || WiFi.status() != WL_CONNECTED) return;
+  if (sources.empty() || dataRequests_.busy() || WiFi.status() != WL_CONNECTED) return false;
   // Scan forward from `dataCursor_` for the first source that is due (an
   // unscheduled one always is), start it, and advance the cursor past it --
   // so a source that just fired goes to the back of the round-robin queue.
   for (size_t offset = 0; offset < sources.size(); ++offset) {
     size_t i = (dataCursor_ + offset) % sources.size();
     if (dataScheduled_[i] && static_cast<int32_t>(millis() - dataNextMs_[i]) < 0) continue;
-#if defined(SMALLTV_ESP8266)
-    // Check before DataRequests::start(), because its first shared allocation
-    // is itself heap-backed. If memory is too fragmented, defer this source
-    // by its configured interval rather than aborting while creating a request.
-    if (ESP.getFreeHeap() < RequestFreeHeap ||
-        platformMaxFreeBlock() < RequestLargestBlock) {
-      dataScheduled_[i] = true;
-      dataNextMs_[i] = millis() + (sources[i].interval ? sources[i].interval : 60UL) * 1000UL;
-      dataCursor_ = (i + 1) % sources.size();
-      break;
-    }
-#endif
+    const uint32_t sourceInterval = sources[i].interval;
+    const size_t sourceCount = sources.size();
     auto request = dataRequests_.start(sources[i], i);
-    if (!startThemeDataFetch(request)) request->finish(false);
+    if (!request) return false;
     dataScheduled_[i] = true;
-    dataCursor_ = (i + 1) % sources.size();
+    dataCursor_ = (i + 1) % sourceCount;
+#if defined(SMALLTV_ESP8266)
+    // The live theme itself holds most of the scarce heap. Keep the request's
+    // source copy, release only the renderer/package, fetch from that free-heap
+    // window, then reload and repaint with the merged values next tick.
+    package_.reset();
+    file_.reset();
+    engine_.setValues({});
+    engine_.setTheme(smalltv::Theme{}, millis());
+    keepData_ = true;
+    attempted_ = false;
+    messageDrawn_ = false;
+    error_ = "";
+    transitionActive_ = false;
+    transitionPending_ = false;
+    if (ESP.getFreeHeap() < DataFetchFreeHeap ||
+        platformMaxFreeBlock() < DataFetchLargestBlock ||
+        !startThemeDataFetch(request)) request->finish(false);
+    return true;
+#else
+    if (!startThemeDataFetch(request)) request->finish(false);
     break;
+#endif
   }
+  return false;
 }
 // Called when the theme should be redrawn from scratch, e.g. when a
 // notification overlay just finished. Switches to a different theme by
@@ -343,7 +358,7 @@ void ThemeMode::service(const Settings& s) {
       gfxSetBrightness(brightness, s.backlightInverted);
     }
   }
-  refreshData();
+  if (refreshData()) return;  // ESP8266 renderer was released for a synchronous data fetch
   const uint32_t renderInterval = 1000U / constrain((int)s.display.refreshFps, 1, 15);
   if (lastRenderMs_ && (uint32_t)(millis() - lastRenderMs_) < renderInterval) return;
   lastRenderMs_ = millis();
