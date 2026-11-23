@@ -85,9 +85,10 @@ jobs:
       - name: Stage firmware files
         if: always()
         run: |
-          mkdir -p dist
+          mkdir -p dist dist-loader
           copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
           copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-settings-firmware.bin
+          copy .pio/build/smalltv_loader/firmware.bin dist-loader/smalltv-loader-firmware.bin
           copy examples/themes/dynamische-uhr.stheme dist/dynamische-uhr.stheme
           copy examples/themes/wetter-bellmerei.stheme dist/wetter-bellmerei.stheme
 
@@ -100,6 +101,14 @@ jobs:
         with:
           name: smalltv-settings-firmware
           path: dist/
+          if-no-files-found: warn
+
+      - name: Upload loader artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smalltv-loader-firmware
+          path: dist-loader/
           if-no-files-found: warn
 
   release:
