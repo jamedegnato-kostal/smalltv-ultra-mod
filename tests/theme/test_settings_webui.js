@@ -66,6 +66,8 @@ for (const endpoint of [
 ]) assert.ok(html.includes(endpoint), `active UI still uses ${endpoint}`);
 
 assert.doesNotMatch(html, /\/api\/checkupdate|\/api\/selfupdate|Online-Update/);
+assert.doesNotMatch(html, /Passwortschutz|authEnabled|authPass|removePassword/);
+assert.doesNotMatch(fs.readFileSync('src/WebPortal.cpp', 'utf8'), /server\.authenticate\(|requestAuthentication\(/);
 assert.match(html, /\/update/);
 assert.doesNotMatch(portal, /OtaUpdate\.h|handleCheckUpdate|handleSelfUpdate|\/api\/checkupdate|\/api\/selfupdate/);
 assert.match(portal, /server\.on\("\/update", HTTP_POST, handleUpdateDone, handleUpdateUpload\)/);
