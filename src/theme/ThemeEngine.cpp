@@ -2276,6 +2276,8 @@ static Rect bounds(const Theme& theme, const Layer& l, const ResolvedLayer& reso
 // dirty rectangle, since every layer's previous on-screen footprint is gone.
 void Engine::setTheme(Theme theme, uint32_t now) {
   theme_ = std::move(theme);
+  values_.clear();  // discard cached network fields when a theme is replaced or stopped
+  valuesChanged_ = true;
   states_.assign(theme_.layers.size(), LayerState{});
   for (size_t i = 0; i < states_.size(); ++i) {
     states_[i].lastMs = now;
