@@ -4,10 +4,11 @@
 #include <LittleFS.h>
 #include <algorithm>
 
+extern void appShowNetworkStatus();
+
 namespace {
 WebServerClass* g_server = nullptr;
 Settings* g_settings = nullptr;
-extern void appShowNetworkStatus();
 File g_upload;
 String g_uploadError;
 bool g_uploadAllowed = false;
