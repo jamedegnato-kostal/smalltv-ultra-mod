@@ -37,7 +37,6 @@ selected package through row-based output without a full-screen framebuffer.
 - Physical button support
 - Web login or access-password system
 - ESP32-C2 / classic ESP32 / SmallTV Pro board targets
-- Separate loader image
 
 ## Photo gallery and slideshow
 
@@ -102,6 +101,13 @@ The setup access point and web interface are open without a password. Use the
 device only on a trusted local network. Configuration backups contain Wi-Fi
 credentials and should be treated as secrets.
 
+For initial installation on SmallTV Ultra units whose stock updater rejects
+the full image, use the separately published `smalltv-clean-loader.bin` first.
+After the loader boots, connect to its `SmallTV-Loader` Wi-Fi access point,
+open `http://192.168.4.1/update`, and upload `smalltv-clean-firmware.bin`.
+The loader is a temporary installation helper, not a normal firmware update;
+subsequent firmware updates use the regular device web interface.
+
 ## Flash layout and migration
 
 The firmware target is configured for an ESP-12E module with **4 MB flash**:
@@ -131,6 +137,12 @@ Install Python 3 and PlatformIO Core. From the repository root run:
 pio run -e smalltv_clean
 ```
 
+Build the optional first-install loader with:
+
+```sh
+pio run -e smalltv_loader
+```
+
 The separate non-headless renderer check can be built with:
 
 ```sh
@@ -145,6 +157,10 @@ Firmware output:
 
 Use `python tools/pack_stheme.py examples/open-meteo/theme.json --output examples/open-meteo/open-meteo.stheme`
 to rebuild the manifest-only demo package after changing its location or text.
+
+Every release publishes both `smalltv-clean-firmware.bin` and
+`smalltv-clean-loader.bin`; the loader is available for first installation
+when a stock OTA slot cannot accept the full firmware image.
 
 GitHub Actions also verifies that the checked-in demo package matches its
 manifest. It builds the standard target and publishes the file as
