@@ -1,10 +1,13 @@
 #include "ThemeWeb.h"
 #include "ThemeCatalog.h"
+#include "ThemeRuntime.h"
 #include <LittleFS.h>
 #include <algorithm>
 
 namespace {
 WebServerClass* g_server = nullptr;
+Settings* g_settings = nullptr;
+extern void appShowNetworkStatus();
 File g_upload;
 String g_uploadError;
 bool g_uploadAllowed = false;
@@ -115,6 +118,10 @@ void receiveUpload() {
     g_uploadEnded = false;
     g_uploadAllowed = true;
 
+    if (smalltv::themeRuntimeActive()) {
+      g_uploadError = "Deactivate the running theme before installing a package (RAM reserve)";
+      return;
+    }
     if (!incoming.filename.endsWith(".stheme")) {
       g_uploadError = "Expected a .stheme file";
       return;
@@ -221,7 +228,7 @@ void finishUpload() {
   resetUpload();
 }
 
-bool requestThemeId(String& id) {
+bool requestThemeId(String& id, bool allowEmpty = false) {
   if (!g_server->hasArg("plain")) {
     reply(400, "Expected JSON containing an id");
     return false;
@@ -237,7 +244,7 @@ bool requestThemeId(String& id) {
     return false;
   }
   id = document["id"].as<String>();
-  if (!smalltv::validId(id.c_str()) || id.length() != strlen(id.c_str())) {
+  if ((!allowEmpty && !id.length()) || (id.length() && !smalltv::validId(id.c_str())) || id.length() != strlen(id.c_str())) {
     reply(400, "Invalid theme ID");
     return false;
   }
@@ -321,13 +328,15 @@ struct CountSink : smalltv::Sink {
 };
 
 void sendList(const Listing& list, size_t storage) {
+  const char* selected = smalltv::themeRuntimeActiveId();
+  const char* error = smalltv::themeRuntimeError();
   CountSink count;
-  smalltv::writeThemeList<128>("", "", static_cast<uint32_t>(storage), list, count);
+  smalltv::writeThemeList<128>(selected, error, static_cast<uint32_t>(storage), list, count);
   g_server->setContentLength(count.bytes);
   g_server->send(200, "application/json", "");
   ReplySink sink;
   g_server->client().setTimeout(1500);
-  smalltv::writeThemeList<128>("", "", static_cast<uint32_t>(storage), list, sink);
+  smalltv::writeThemeList<128>(selected, error, static_cast<uint32_t>(storage), list, sink);
 }
 
 void listThemes() {
@@ -353,7 +362,11 @@ void listThemes() {
   const uint32_t indexed = fillFromIndex(list, rewrite);
   for (unsigned i = 0; i < list.size(); ++i) {
     if (indexed & (1u << i)) continue;
-    if (inspectInto(list[i])) rewrite = true;
+    if (smalltv::themeRuntimeActive()) {
+      list[i].set(list[i].id(), list[i].id(), "", "", "Deactivate active theme to validate this package");
+    } else if (inspectInto(list[i])) {
+      rewrite = true;
+    }
     yield();
   }
   if (rewrite) writeIndex(list);
@@ -363,6 +376,10 @@ void listThemes() {
 void deleteTheme() {
   String id;
   if (!requestThemeId(id)) return;
+  if (g_settings && strcmp(g_settings->activeTheme, id.c_str()) == 0) {
+    reply(409, "Deactivate this theme before deleting it");
+    return;
+  }
   const String path = String(ThemeDirectory) + "/" + id + ".stheme";
   if (!LittleFS.exists(path)) {
     reply(404, "Theme not found");
@@ -375,10 +392,72 @@ void deleteTheme() {
   updateIndex(id, nullptr);
   reply(200, id);
 }
+void selectTheme() {
+  String id;
+  if (!requestThemeId(id, true)) return;
+  if (!g_settings) {
+    reply(500, "Settings are not initialized");
+    return;
+  }
+
+  if (id.length() && smalltv::themeRuntimeActive() &&
+      strcmp(g_settings->activeTheme, id.c_str()) == 0) {
+    reply(200, id);
+    return;
+  }
+
+  char previous[sizeof(g_settings->activeTheme)];
+  memcpy(previous, g_settings->activeTheme, sizeof(previous));
+  const bool restorePrevious = smalltv::themeRuntimeActive() && previous[0];
+
+  // Release the old Engine and package index before parsing the next package.
+  smalltv::themeRuntimeStop();
+  strncpy(g_settings->activeTheme, id.c_str(), sizeof(g_settings->activeTheme) - 1);
+  g_settings->activeTheme[sizeof(g_settings->activeTheme) - 1] = '\0';
+  if (!saveSettings(*g_settings)) {
+    memcpy(g_settings->activeTheme, previous, sizeof(previous));
+    bool restored = false;
+    if (restorePrevious) {
+      std::string ignored;
+      restored = smalltv::themeRuntimeSelect(previous, ignored);
+    }
+    if (!restored) appShowNetworkStatus();
+    reply(500, restored ? "Could not save selection; previous theme restored" : "Could not save theme selection");
+    return;
+  }
+
+  if (id.length()) {
+    std::string error;
+    if (!smalltv::themeRuntimeSelect(id.c_str(), error)) {
+      if (restorePrevious) {
+        memcpy(g_settings->activeTheme, previous, sizeof(previous));
+        const bool savedPrevious = saveSettings(*g_settings);
+        std::string restoreError;
+        const bool restored = savedPrevious && smalltv::themeRuntimeSelect(previous, restoreError);
+        if (!restored) {
+          g_settings->activeTheme[0] = '\0';
+          saveSettings(*g_settings);
+          appShowNetworkStatus();
+        }
+        if (restored) error += " (previous theme restored)";
+      } else {
+        g_settings->activeTheme[0] = '\0';
+        if (!saveSettings(*g_settings)) error += " (could not clear saved selection)";
+        appShowNetworkStatus();
+      }
+      reply(503, String(error.c_str()));
+      return;
+    }
+  } else {
+    appShowNetworkStatus();
+  }
+  reply(200, id);
+}
 }  // namespace
 
-void themeWebBegin(WebServerClass& server) {
+void themeWebBegin(WebServerClass& server, Settings& settings) {
   g_server = &server;
+  g_settings = &settings;
   LittleFS.mkdir(ThemeDirectory);
   // An interrupted upload must never appear as an installed package.
   LittleFS.remove(UploadStagingPath);
@@ -386,4 +465,5 @@ void themeWebBegin(WebServerClass& server) {
   server.on("/api/themes", HTTP_GET, listThemes);
   server.on("/api/themes/install", HTTP_POST, finishUpload, receiveUpload);
   server.on("/api/themes/delete", HTTP_POST, deleteTheme);
+  server.on("/api/themes/select", HTTP_POST, selectTheme);
 }
