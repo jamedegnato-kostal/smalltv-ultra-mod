@@ -5,6 +5,7 @@
 #include "ThemeEngine.h"
 
 namespace smalltv {
+constexpr int Turn16 = 5760;
 struct Segment {
   int x0, y0, x1, y1;
 };
