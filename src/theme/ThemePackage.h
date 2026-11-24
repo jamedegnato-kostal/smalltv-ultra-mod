@@ -1,5 +1,8 @@
 #pragma once
 #include "ThemeEngine.h"
+#if !defined(SMALLTV_THEME_HEADLESS)
+#include "ThemeDisplay.h"
+#endif
 namespace smalltv {
 constexpr uint32_t MaxPackage = 3 * 1024 * 1024;
 constexpr size_t MaxEntries = 256;
