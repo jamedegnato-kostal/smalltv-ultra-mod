@@ -6,6 +6,7 @@
 #include "Net.h"
 #include "OtaUpdate.h"
 #include "theme/ThemeWeb.h"
+#include "PhotoSlideshow.h"
 #include "theme/ThemeRuntime.h"
 #include "Clock.h"
 #include "config.h"
@@ -79,6 +80,8 @@ static void handleStatus() {
   doc["reset"] = appResetReason();
   doc["storageReady"] = settingsStorageReady();
   doc["themeLoaded"] = smalltv::themeRuntimeActive();
+  doc["photoSlideshow"] = smalltv::photos::active();
+  doc["photoCount"] = smalltv::photos::count();
   doc["theme"] = smalltv::themeRuntimeActiveId();
   doc["themeError"] = smalltv::themeRuntimeError();
   doc["themeHeap"] = smalltv::themeRuntimeFreeHeap();
@@ -407,6 +410,7 @@ static void handleNotFound() {
 void webPortalBegin(Settings& settings) {
   S = &settings;
   themeWebBegin(server, settings);
+  smalltv::photos::webBegin(server);
   g_updateMsg = otaTakeBootResult();
 
   server.on("/", HTTP_GET, handleRoot);

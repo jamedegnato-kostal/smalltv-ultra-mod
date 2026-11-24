@@ -29,15 +29,35 @@ selected package through row-based output without a full-screen framebuffer.
 - Persistent German/English theme language selection for localized spec 2 text
 - Bounded JSON data-source fetching with streaming extraction and an in-memory field cache
 - Open-Meteo weather demo theme with current conditions and a one-day forecast
+- LittleFS photo gallery with browser-side 240×240 JPEG conversion and slideshow controls
 
 ## Not included yet
 
 - Language/locale scheduling or night mode
-- Photos, JPEG decoding or slideshow
 - Physical button support
 - Web login or access-password system
 - ESP32-C2 / classic ESP32 / SmallTV Pro board targets
 - Separate loader image
+
+## Photo gallery and slideshow
+
+The **Fotos** tab converts selected browser images to 240×240 JPEG before upload,
+preserving aspect ratio on a black canvas. Up to 16 photos are stored separately
+under `/photos` in LittleFS, with a 256 KiB limit per converted JPEG and dynamic
+free-space checks. Images are streamed to a staging file and published only
+after the JPEG signature and dimensions are checked.
+
+The firmware uses [TJpg_Decoder](https://github.com/Bodmer/TJpg_Decoder) to decode
+from LittleFS directly into small display blocks. It does not allocate a
+240×240 framebuffer. The decoder reserves about 3.5 KiB for its workspace;
+decoding starts only with a minimum free-heap and contiguous-block reserve.
+Baseline colour JPEG is supported; progressive and grayscale JPEG files are
+not supported by this decoder. The browser conversion normally produces the
+required format. The slideshow interval is adjustable from 5 seconds to
+60 minutes. Stop an active theme before starting the slideshow, and stop the
+slideshow before activating a theme or changing the photo collection. Photo
+files remain stored after the slideshow stops; playback is not automatically
+started after reboot.
 
 ## .stheme package management
 

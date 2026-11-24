@@ -138,6 +138,7 @@ button.btn:disabled{filter:saturate(.35)}
  <button data-t="display" type="button">Display</button>
  <button data-t="update" type="button">System</button>
  <button data-t="themes" type="button">Themes</button>
+ <button data-t="photos" type="button">Fotos</button>
 </nav>
 <main>
  <section id="status" class="tab active">
@@ -260,7 +261,37 @@ button.btn:disabled{filter:saturate(.35)}
   </div>
  </section>
 
- <section id="update" class="tab">
+ <section id="photos" class="tab">
+  <div class="page-intro"><p class="eyebrow">FOTOSPEICHER</p><h2>Foto-Slideshow</h2><p>Bilder aus LittleFS auf dem 240×240-Display zeigen. Die ausgewählten Dateien werden im Browser verkleinert und als JPEG übertragen.</p></div>
+  <div class="card">
+   <h2>Fotos hinzufügen</h2>
+   <input id="photoFiles" type="file" accept="image/*" multiple>
+   <div style="margin-top:12px"><button class="btn" type="button" onclick="uploadPhotos()" id="photoUploadBtn">Fotos verkleinern und hochladen</button></div>
+   <div class="bar"><div id="photoUploadBar"></div></div>
+   <div id="photoUploadMsg" class="muted" style="margin-top:8px" role="status"></div>
+   <small class="hint">Mehrere Bilder werden nacheinander verarbeitet. Der Browser passt sie ohne Verzerrung in 240×240 Pixel ein und speichert sie als JPEG. Maximal 16 Fotos, je 256 KiB nach der Umwandlung. Vorher ein aktives Theme deaktivieren.</small>
+  </div>
+  <div class="card">
+   <h2>Slideshow</h2>
+   <label for="photoInterval">Anzeigedauer pro Bild (Sekunden)</label>
+   <input id="photoInterval" type="number" min="5" max="3600" step="1" value="15">
+   <div class="row" style="margin-top:12px;flex-wrap:wrap">
+    <button class="btn" id="photoStartBtn" type="button" onclick="startPhotos()">Slideshow starten</button>
+    <button class="btn sec" id="photoStopBtn" type="button" onclick="stopPhotos()" disabled>Stoppen</button>
+    <button class="btn sec" type="button" onclick="movePhoto('previous')" id="photoPreviousBtn" disabled>Zurück</button>
+    <button class="btn sec" type="button" onclick="movePhoto('next')" id="photoNextBtn" disabled>Weiter</button>
+   </div>
+   <div id="photoStatus" class="muted" style="margin-top:10px" role="status">Status wird geladen …</div>
+   <small class="hint">Ein laufendes .stheme und die Foto-Slideshow verwenden dasselbe Display und können nicht gleichzeitig aktiv sein. Die Slideshow startet nicht automatisch nach einem Neustart.</small>
+  </div>
+  <div class="card">
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Gespeicherte Fotos</h2><button class="btn sec" type="button" onclick="loadPhotos()">Aktualisieren</button></div>
+   <div id="photoStorage" class="muted" style="margin:8px 0 12px">Freier Dateispeicher: wird geladen …</div>
+   <div id="photoList" aria-live="polite" class="muted">Fotoliste wird geladen …</div>
+  </div>
+ </section>
+
+<section id="update" class="tab">
   <div class="page-intro"><p class="eyebrow">Geräteverwaltung</p><h2>System</h2><p>Firmware aktualisieren, Einstellungen sichern und das Gerät warten.</p></div>
   <div class="card">
    <h2>Online-Update</h2>
@@ -367,6 +398,7 @@ function showTab(name) {
   });
   window.scrollTo(0, 0);
   if (name === "themes") loadThemes();
+  if (name === "photos") loadPhotos();
 }
 document.querySelectorAll("nav [data-t]").forEach(function(button){
   button.addEventListener("click", function(){ showTab(button.dataset.t); });
@@ -870,6 +902,184 @@ function factory() {
   if (!confirm("Alle Einstellungen löschen und das Gerät auf Werkseinstellungen zurücksetzen?")) return;
   api("/api/factory", {method:"POST"}).then(function(){ toast("Werksreset ausgeführt. Gerät startet neu."); })
     .catch(function(error){ toast("Werksreset fehlgeschlagen: " + error.message); });
+}
+
+function loadPhotos() {
+  var list = $("photoList");
+  if (!list) return;
+  list.textContent = "Fotoliste wird geladen …";
+  api("/api/photos").then(function(data) {
+    var photos = Array.isArray(data.photos) ? data.photos : [];
+    $("photoStorage").textContent = "Freier Dateispeicher: " + (Number(data.freeBytes)||0).toLocaleString("de-DE") + " Byte · " + (Number(data.count)||0) + "/16 Fotos";
+    $("photoStatus").textContent = data.active
+      ? "Slideshow aktiv · " + (data.current || "Bild wird geladen") + " · Wechsel alle " + data.interval + " Sekunden"
+      : "Slideshow gestoppt. " + photos.length + " Foto(s) gespeichert.";
+    $("photoStartBtn").disabled = !!data.active || !photos.length;
+    $("photoStopBtn").disabled = !data.active;
+    $("photoNextBtn").disabled = !data.active || !photos.length;
+    $("photoPreviousBtn").disabled = !data.active || !photos.length;
+    $("photoUploadBtn").disabled = !!data.active || photos.length >= 16;
+    list.textContent = "";
+    if (!photos.length) {
+      list.textContent = "Noch keine Fotos gespeichert. Wähle oben Bilder aus.";
+      return;
+    }
+    photos.forEach(function(photo) {
+      var row = document.createElement("div");
+      row.className = "theme-item";
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var name = document.createElement("strong");
+      name.textContent = photo.name || "Foto";
+      var details = document.createElement("small");
+      details.textContent = (Number(photo.bytes)||0).toLocaleString("de-DE") + " Byte";
+      meta.appendChild(name);
+      meta.appendChild(details);
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn danger";
+      remove.textContent = "Löschen";
+      remove.disabled = !!data.active;
+      remove.title = data.active ? "Slideshow zuerst stoppen" : "Foto löschen";
+      remove.addEventListener("click", function(){ deletePhoto(photo.name); });
+      row.appendChild(meta);
+      row.appendChild(remove);
+      list.appendChild(row);
+    });
+  }).catch(function(error) {
+    list.textContent = "Fotoliste konnte nicht geladen werden: " + error.message;
+  });
+}
+function makeSmallJpeg(file) {
+  return new Promise(function(resolve, reject) {
+    var url = URL.createObjectURL(file);
+    var image = new Image();
+    image.onload = function() {
+      var width = image.naturalWidth || image.width;
+      var height = image.naturalHeight || image.height;
+      if (!width || !height) {
+        URL.revokeObjectURL(url);
+        reject(new Error("Bildgröße konnte nicht gelesen werden."));
+        return;
+      }
+      var canvas = document.createElement("canvas");
+      canvas.width = 240;
+      canvas.height = 240;
+      var context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(url);
+        reject(new Error("Bildbearbeitung wird vom Browser nicht unterstützt."));
+        return;
+      }
+      context.fillStyle = "#000";
+      context.fillRect(0, 0, 240, 240);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      var scale = Math.min(240 / width, 240 / height);
+      var drawWidth = Math.max(1, Math.round(width * scale));
+      var drawHeight = Math.max(1, Math.round(height * scale));
+      context.drawImage(image, Math.round((240 - drawWidth) / 2), Math.round((240 - drawHeight) / 2), drawWidth, drawHeight);
+      canvas.toBlob(function(blob) {
+        URL.revokeObjectURL(url);
+        if (!blob) reject(new Error("JPEG-Umwandlung fehlgeschlagen."));
+        else resolve(blob);
+      }, "image/jpeg", 0.82);
+    };
+    image.onerror = function() {
+      URL.revokeObjectURL(url);
+      reject(new Error("Bild kann vom Browser nicht geöffnet werden: " + file.name));
+    };
+    image.src = url;
+  });
+}
+function sendPhotoBlob(blob, name, index, total) {
+  return new Promise(function(resolve, reject) {
+    var request = new XMLHttpRequest();
+    var data = new FormData();
+    data.append("photo", blob, name.replace(/\.[^.]*$/, "") + ".jpg");
+    request.upload.addEventListener("progress", function(event) {
+      var fraction = event.lengthComputable && event.total ? event.loaded / event.total : 0;
+      $("photoUploadBar").style.width = Math.round(((index + fraction) * 100) / total) + "%";
+      $("photoUploadMsg").textContent = "Foto " + (index + 1) + "/" + total + " wird übertragen …";
+    });
+    request.addEventListener("load", function() {
+      var result = {};
+      try { result = JSON.parse(request.responseText || "{}"); } catch (_) {}
+      if (request.status >= 200 && request.status < 300) resolve(result);
+      else reject(new Error(result.error || request.responseText || ("HTTP " + request.status)));
+    });
+    request.addEventListener("error", function(){ reject(new Error("Verbindung beim Foto-Upload unterbrochen.")); });
+    request.open("POST", "/api/photos/upload");
+    request.send(data);
+  });
+}
+function uploadPhotos() {
+  var files = Array.prototype.slice.call($("photoFiles").files || []);
+  if (!files.length) { toast("Bitte zuerst Bilder auswählen."); return; }
+  $("photoUploadBtn").disabled = true;
+  $("photoUploadBar").style.width = "0%";
+  $("photoUploadMsg").textContent = "Bilder werden für das Display vorbereitet …";
+  var chain = Promise.resolve();
+  files.forEach(function(file, index) {
+    chain = chain.then(function() {
+      return makeSmallJpeg(file).then(function(blob) {
+        if (blob.size > 256 * 1024) throw new Error(file.name + " bleibt nach der Umwandlung größer als 256 KiB.");
+        return sendPhotoBlob(blob, file.name, index, files.length);
+      });
+    });
+  });
+  chain.then(function() {
+    $("photoUploadBar").style.width = "100%";
+    $("photoUploadMsg").textContent = files.length + " Foto(s) wurden gespeichert.";
+    $("photoFiles").value = "";
+    toast("Foto-Upload abgeschlossen.");
+  }).catch(function(error) {
+    $("photoUploadMsg").textContent = "Foto-Upload fehlgeschlagen: " + error.message;
+    toast("Foto-Upload fehlgeschlagen: " + error.message);
+  }).then(function() {
+    $("photoUploadBtn").disabled = false;
+    loadPhotos();
+  });
+}
+function startPhotos() {
+  var interval = Number($("photoInterval").value || 15);
+  if (!Number.isFinite(interval) || interval < 5 || interval > 3600) {
+    toast("Anzeigedauer muss zwischen 5 und 3600 Sekunden liegen.");
+    return;
+  }
+  api("/api/photos/start", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({interval:Math.round(interval)})
+  }).then(function() {
+    toast("Foto-Slideshow gestartet.");
+    loadPhotos();
+  }).catch(function(error) {
+    toast("Slideshow konnte nicht gestartet werden: " + error.message);
+    loadPhotos();
+  });
+}
+function stopPhotos() {
+  api("/api/photos/stop", {method:"POST"}).then(function() {
+    toast("Foto-Slideshow gestoppt.");
+    loadPhotos();
+  }).catch(function(error){ toast("Stoppen fehlgeschlagen: " + error.message); });
+}
+function movePhoto(direction) {
+  api("/api/photos/" + (direction === "previous" ? "previous" : "next"), {method:"POST"})
+    .then(loadPhotos)
+    .catch(function(error){ toast("Bildwechsel fehlgeschlagen: " + error.message); loadPhotos(); });
+}
+function deletePhoto(name) {
+  if (!confirm("Foto '" + name + "' aus LittleFS löschen?")) return;
+  api("/api/photos/delete", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:name})
+  }).then(function() {
+    toast("Foto gelöscht.");
+    loadPhotos();
+  }).catch(function(error){ toast("Foto konnte nicht gelöscht werden: " + error.message); });
 }
 
 function initialise() {

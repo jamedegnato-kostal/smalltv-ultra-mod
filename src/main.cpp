@@ -11,6 +11,7 @@
 #include "display/DisplayStatus.h"
 #include "theme/ThemeRuntime.h"
 #include "Clock.h"
+#include "PhotoSlideshow.h"
 #include <string>
 
 static Settings g_settings;
@@ -31,7 +32,7 @@ static void bootProgress(const char* message) {
 }
 
 static void showNetworkStatus() {
-  if (!g_displayReady || smalltv::themeRuntimeActive()) return;
+  if (!g_displayReady || smalltv::themeRuntimeActive() || smalltv::photos::active()) return;
   const String ip = netIP();
   if (g_safeMode) {
     smalltv::display::showSafeMode(g_display, g_resetReason.c_str(), ip.c_str());
@@ -67,6 +68,7 @@ void applyDisplaySettings(const Settings& settings) {
   g_display.setBrightness(settings.displayBrightness,
                           smalltv::display::BacklightActiveLow);
   if (smalltv::themeRuntimeActive()) smalltv::themeRuntimeInvalidate();
+  else if (smalltv::photos::active()) smalltv::photos::redraw();
   else showNetworkStatus();
 }
 
@@ -95,6 +97,7 @@ void setup() {
   profile.blueGain = g_settings.displayBlueGain;
   g_display.setColorProfile(profile);
   g_displayReady = g_display.begin();
+  smalltv::photos::begin(g_display);
   if (g_displayReady) {
     g_display.setBrightness(g_settings.displayBrightness,
                             smalltv::display::BacklightActiveLow);
@@ -146,9 +149,11 @@ void loop() {
     showNetworkStatus();
   }
 
+  smalltv::photos::loop();
+
   // Background Wi-Fi retries can change the failure reason while the setup AP
   // remains active. Refresh its diagnostic screen only when that reason changes.
-  if (g_displayReady && !smalltv::themeRuntimeActive() && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
+  if (g_displayReady && !smalltv::themeRuntimeActive() && !smalltv::photos::active() && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
     showNetworkStatus();
   }
 

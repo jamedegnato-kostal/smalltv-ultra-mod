@@ -1,6 +1,7 @@
 #include "ThemeWeb.h"
 #include "ThemeCatalog.h"
 #include "ThemeRuntime.h"
+#include "../PhotoSlideshow.h"
 #include <LittleFS.h>
 #include <algorithm>
 
@@ -119,8 +120,8 @@ void receiveUpload() {
     g_uploadEnded = false;
     g_uploadAllowed = true;
 
-    if (smalltv::themeRuntimeActive()) {
-      g_uploadError = "Deactivate the running theme before installing a package (RAM reserve)";
+    if (smalltv::themeRuntimeActive() || smalltv::photos::active()) {
+      g_uploadError = "Deactivate the running theme or stop the photo slideshow before installing a package";
       return;
     }
     if (!incoming.filename.endsWith(".stheme")) {
@@ -401,6 +402,10 @@ void deleteTheme() {
 void selectTheme() {
   String id;
   if (!requestThemeId(id, true)) return;
+  if (id.length() && smalltv::photos::active()) {
+    reply(409, "Stop the photo slideshow before activating a theme");
+    return;
+  }
   if (!g_settings) {
     reply(500, "Settings are not initialized");
     return;
