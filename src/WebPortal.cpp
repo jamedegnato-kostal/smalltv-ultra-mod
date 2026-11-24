@@ -127,10 +127,10 @@ static bool readSettingsJson(JsonDocument& doc) {
     server.send(400, "application/json", "{\"ok\":false,\"error\":\"JSON root must be an object\"}");
     return false;
   }
-  if (const char* error = settingsValidateJson(doc.as<JsonObjectConst>())) {
+  if (const __FlashStringHelper* error = settingsValidateJson(doc.as<JsonObjectConst>())) {
     String response = F("{\"ok\":false,\"error\":\"");
     response += error;
-    response += "\"}";
+    response += F("\"}");
     server.send(400, "application/json", response);
     return false;
   }

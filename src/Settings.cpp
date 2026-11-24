@@ -94,47 +94,47 @@ static bool validHostname(const char* value) {
 }
 
 // Static error strings and bounded iteration only: this validation allocates no heap memory.
-const char* settingsValidateJson(JsonObjectConst root) {
-  if (root.containsKey("hostname")) {
+const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
+  if (!root["hostname"].isNull()) {
     if (!root["hostname"].is<const char*>() ||
-        !validHostname(root["hostname"].as<const char*>())) return "invalid hostname";
+        !validHostname(root["hostname"].as<const char*>())) return F("invalid hostname");
   }
-  if (root.containsKey("apSsid")) {
-    if (!root["apSsid"].is<const char*>()) return "invalid setup hotspot name";
+  if (!root["apSsid"].isNull()) {
+    if (!root["apSsid"].is<const char*>()) return F("invalid setup hotspot name");
     const char* ap = root["apSsid"].as<const char*>();
     const size_t length = strlen(ap);
-    if (!length || length > 32) return "setup hotspot name must be 1-32 bytes";
+    if (!length || length > 32) return F("setup hotspot name must be 1-32 bytes");
   }
-  if (root.containsKey("httpTimeout")) {
-    if (!root["httpTimeout"].is<int>()) return "invalid HTTP timeout";
+  if (!root["httpTimeout"].isNull()) {
+    if (!root["httpTimeout"].is<int>()) return F("invalid HTTP timeout");
     const int timeout = root["httpTimeout"].as<int>();
-    if (timeout < 1000 || timeout > 20000) return "HTTP timeout must be 1000-20000 ms";
+    if (timeout < 1000 || timeout > 20000) return F("HTTP timeout must be 1000-20000 ms");
   }
-  if (root.containsKey("wifi")) {
-    if (!root["wifi"].is<JsonArrayConst>()) return "wifi must be an array";
+  if (!root["wifi"].isNull()) {
+    if (!root["wifi"].is<JsonArrayConst>()) return F("wifi must be an array");
     JsonArrayConst networks = root["wifi"].as<JsonArrayConst>();
-    if (networks.size() > MAX_WIFI_NETS) return "maximum four Wi-Fi networks";
+    if (networks.size() > MAX_WIFI_NETS) return F("maximum four Wi-Fi networks");
     for (JsonVariantConst value : networks) {
-      if (!value.is<JsonObjectConst>()) return "invalid Wi-Fi entry";
+      if (!value.is<JsonObjectConst>()) return F("invalid Wi-Fi entry");
       JsonObjectConst item = value.as<JsonObjectConst>();
-      if (!item["ssid"].is<const char*>()) return "Wi-Fi SSID is missing";
+      if (!item["ssid"].is<const char*>()) return F("Wi-Fi SSID is missing");
       const char* ssid = item["ssid"].as<const char*>();
       const size_t ssidLength = strlen(ssid);
-      if (!ssidLength || ssidLength > 32) return "Wi-Fi SSID must be 1-32 bytes";
+      if (!ssidLength || ssidLength > 32) return F("Wi-Fi SSID must be 1-32 bytes");
       if (item.containsKey("pass")) {
-        if (!item["pass"].is<const char*>()) return "invalid Wi-Fi password";
-        if (strlen(item["pass"].as<const char*>()) > 64) return "Wi-Fi password exceeds 64 bytes";
+        if (!item["pass"].is<const char*>()) return F("invalid Wi-Fi password");
+        if (strlen(item["pass"].as<const char*>()) > 64) return F("Wi-Fi password exceeds 64 bytes");
       }
     }
   }
   // Legacy single-network backups remain accepted.
-  if (root.containsKey("staSsid")) {
-    if (!root["staSsid"].is<const char*>()) return "invalid legacy Wi-Fi SSID";
-    if (strlen(root["staSsid"].as<const char*>()) > 32) return "legacy Wi-Fi SSID exceeds 32 bytes";
+  if (!root["staSsid"].isNull()) {
+    if (!root["staSsid"].is<const char*>()) return F("invalid legacy Wi-Fi SSID");
+    if (strlen(root["staSsid"].as<const char*>()) > 32) return F("legacy Wi-Fi SSID exceeds 32 bytes");
   }
-  if (root.containsKey("staPass")) {
-    if (!root["staPass"].is<const char*>()) return "invalid legacy Wi-Fi password";
-    if (strlen(root["staPass"].as<const char*>()) > 64) return "legacy Wi-Fi password exceeds 64 bytes";
+  if (!root["staPass"].isNull()) {
+    if (!root["staPass"].is<const char*>()) return F("invalid legacy Wi-Fi password");
+    if (strlen(root["staPass"].as<const char*>()) > 64) return F("legacy Wi-Fi password exceeds 64 bytes");
   }
   return nullptr;
 }
