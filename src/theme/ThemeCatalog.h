@@ -56,19 +56,26 @@ constexpr size_t MaxIndexLine = 768;
 // 16 themes (MaxThemes in ThemeWeb.cpp) of the longest lines. A larger
 // index was not written by this firmware; it is not read at all.
 constexpr size_t MaxIndexBytes = 16 * MaxIndexLine;
-// One entry: a JSON object on a line of its own.
-inline std::string themeIndexLine(const InstalledTheme& entry) {
-  JsonDocument doc;
-  doc["revision"] = MetaRevision;
-  doc["id"] = entry.id;
-  doc["bytes"] = entry.bytes;
-  doc["name"] = entry.name;
-  doc["author"] = entry.author;
-  doc["version"] = entry.version;
-  std::string json;
-  serializeJson(doc, json);
-  json += '\n';
-  return json;
+// One entry: a JSON object on a line of its own. It is written in small
+// pieces so an index update never allocates a complete serialized JSON line.
+inline bool writeThemeIndexLine(const InstalledTheme& entry, Sink& sink) {
+  PieceWriter<64> out(sink);
+  jsonout::raw(out, PSTR("{\"revision\":"));
+  jsonout::number(out, MetaRevision);
+  jsonout::raw(out, PSTR(",\"id\":"));
+  jsonout::text(out, entry.id.c_str());
+  jsonout::raw(out, PSTR(",\"bytes\":"));
+  jsonout::number(out, entry.bytes);
+  jsonout::raw(out, PSTR(",\"name\":"));
+  jsonout::text(out, entry.name.c_str());
+  jsonout::raw(out, PSTR(",\"author\":"));
+  jsonout::text(out, entry.author.c_str());
+  jsonout::raw(out, PSTR(",\"version\":"));
+  jsonout::text(out, entry.version.c_str());
+  out.write('\n');
+  out.flush();
+  if (!out.sent()) sink.abandon();
+  return out.sent();
 }
 enum class IndexEntry { Usable, Unusable, End };
 // Reads the index one line at a time through a 32-byte buffer: the listing
@@ -253,11 +260,9 @@ inline bool copyThemeIndex(Source& from, Sink& to, const std::string& id, const 
   InstalledTheme entry;
   for (IndexEntry kind; (kind = reader.next(entry)) != IndexEntry::End;) {
     if (kind != IndexEntry::Usable || entry.id == id) continue;
-    std::string line = themeIndexLine(entry);
-    if (!to.write(line.data(), line.size())) return false;
+    if (!writeThemeIndexLine(entry, to)) return false;
   }
   if (!added) return true;
-  std::string line = themeIndexLine(*added);
-  return to.write(line.data(), line.size());
+  return writeThemeIndexLine(*added, to);
 }
 }

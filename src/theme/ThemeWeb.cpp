@@ -297,8 +297,7 @@ void writeIndex(const Listing& list) {
       entry.author = theme.author();
       entry.version = theme.version();
       entry.bytes = theme.bytes;
-      const std::string line = smalltv::themeIndexLine(entry);
-      written = sink.write(line.data(), line.size());
+      written = smalltv::writeThemeIndexLine(entry, sink);
     }
   }
   publishIndex(written);
