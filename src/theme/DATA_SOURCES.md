@@ -26,7 +26,7 @@ Text layers and bindings refer to values as `{sample.label}`,
 
 - At most 4 sources and 8 fields per source (32 declared fields total), matching the existing theme format limits. Spec 2 also exposes `source.age` in whole minutes after the first successful fetch.
 - One request at a time, with at least 5 seconds between requests.
-- Source intervals are 10 to 86,400 seconds; manifest URLs are limited to 320 bytes.
+- Source intervals are 10 to 86,400 seconds; manifest URLs are limited to 200 bytes.
 - HTTP response bodies are limited to 2,048 bytes; known `Content-Length` values are checked, and close-delimited HTTP/1.0 replies are streamed to the same cap.
 - JSON nesting is limited to 8; the filter/document allocator has a 2,048-byte
   combined budget. Only selected fields are retained; text values are at most
@@ -43,7 +43,9 @@ Text layers and bindings refer to values as `{sample.label}`,
 HTTPS requires `insecureTls: true` because certificate trust validation is not
 configured in this ESP8266 firmware. This is an explicit opt-in, not secure
 certificate verification. Use only trusted API endpoints. Redirects are
-disabled. The generic fetcher does not add authentication headers or manage API
+disabled, so configure the final HTTPS URL directly (for example,
+`https://api.open-meteo.com/...`); an HTTP URL that returns a 3xx redirect
+will not be followed. The generic fetcher does not add authentication headers or manage API
 secrets; a later provider-specific step must handle those safely if required.
 
 ## Open-Meteo example

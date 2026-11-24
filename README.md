@@ -82,6 +82,25 @@ The setup access point and web interface are open without a password. Use the
 device only on a trusted local network. Configuration backups contain Wi-Fi
 credentials and should be treated as secrets.
 
+## Flash layout and migration
+
+The firmware target is configured for an ESP-12E module with **4 MB flash**:
+`eagle.flash.4m2m.ld` reserves a 2 MB LittleFS partition while retaining an
+OTA-capable firmware area of approximately 1 MB. LittleFS metadata means the
+entire nominal 2 MB is not available for package data. Keep the firmware image
+below the OTA slot limit.
+
+Switching from the previous `4m1m` layout changes the LittleFS partition
+boundary. Files in the old filesystem are not migrated automatically. Before
+updating, export the settings configuration and keep separate copies of the
+`.stheme` packages. Perform the first firmware flash for this layout over
+serial rather than OTA. If the device reports that LittleFS is unavailable
+after boot, open the web interface and use the confirmed **Factory Reset**
+action to initialize the new filesystem. This formats LittleFS and erases its
+stored settings and themes; reconnect to the setup AP if necessary, then import
+the settings backup and upload the theme packages again. This layout must not
+be used on modules with less than 4 MB flash.
+
 ## Build
 
 Install Python 3 and PlatformIO Core. From the repository root run:
