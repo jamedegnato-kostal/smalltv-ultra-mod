@@ -6,6 +6,7 @@
 #include "Net.h"
 #include "OtaUpdate.h"
 #include "theme/ThemeWeb.h"
+#include "theme/ThemeRuntime.h"
 #include "config.h"
 #include "webui_clean.h"
 #include <ArduinoJson.h>
@@ -13,6 +14,7 @@
 #include <WiFiUdp.h>
 
 extern const char* appResetReason();
+extern void appShowNetworkStatus();
 extern void applyDisplaySettings(const Settings& settings);
 
 static WebServerClass server(80);
@@ -74,6 +76,10 @@ static void handleStatus() {
   doc["uptime"] = millis() / 1000;
   doc["reset"] = appResetReason();
   doc["storageReady"] = settingsStorageReady();
+  doc["themeLoaded"] = smalltv::themeRuntimeActive();
+  doc["theme"] = smalltv::themeRuntimeActiveId();
+  doc["themeError"] = smalltv::themeRuntimeError();
+  doc["themeHeap"] = smalltv::themeRuntimeFreeHeap();
   doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
@@ -381,7 +387,7 @@ static void handleNotFound() {
 
 void webPortalBegin(Settings& settings) {
   S = &settings;
-  themeWebBegin(server);
+  themeWebBegin(server, settings);
   g_updateMsg = otaTakeBootResult();
 
   server.on("/", HTTP_GET, handleRoot);

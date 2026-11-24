@@ -9,6 +9,8 @@
 #include "display/DisplayBoard.h"
 #include "display/DisplayPanel.h"
 #include "display/DisplayStatus.h"
+#include "theme/ThemeRuntime.h"
+#include <string>
 
 static Settings g_settings;
 static String g_resetReason;
@@ -28,7 +30,7 @@ static void bootProgress(const char* message) {
 }
 
 static void showNetworkStatus() {
-  if (!g_displayReady) return;
+  if (!g_displayReady || smalltv::themeRuntimeActive()) return;
   const String ip = netIP();
   if (g_safeMode) {
     smalltv::display::showSafeMode(g_display, g_resetReason.c_str(), ip.c_str());
@@ -43,6 +45,10 @@ static void showNetworkStatus() {
   g_displayFailSeq = netFailSeq();
 }
 
+void appShowNetworkStatus() {
+  showNetworkStatus();
+}
+
 void applyDisplaySettings(const Settings& settings) {
   smalltv::display::PanelColorProfile profile;
   profile.rotation = settings.displayRotation;
@@ -55,7 +61,8 @@ void applyDisplaySettings(const Settings& settings) {
   if (!g_displayReady) return;
   g_display.setBrightness(settings.displayBrightness,
                           smalltv::display::BacklightActiveLow);
-  showNetworkStatus();
+  if (smalltv::themeRuntimeActive()) smalltv::themeRuntimeInvalidate();
+  else showNetworkStatus();
 }
 
 void setup() {
@@ -103,18 +110,30 @@ void setup() {
   }
 
   Serial.println("[boot] web server");
+  smalltv::themeRuntimeBegin(g_display);
   webPortalBegin(g_settings);
-  showNetworkStatus();
+  if (g_displayReady && g_settings.activeTheme[0]) {
+    std::string error;
+    if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, error)) {
+      Serial.print("[theme] could not restore selected theme: ");
+      Serial.println(error.c_str());
+      g_settings.activeTheme[0] = '\0';
+      if (settingsStorageReady() && !saveSettings(g_settings))
+        Serial.println("[theme] could not clear unavailable theme selection");
+    }
+  }
+  if (!smalltv::themeRuntimeActive()) showNetworkStatus();
   Serial.println("[boot] ready");
 }
 
 void loop() {
   netLoop();
   webPortalLoop();
+  if (smalltv::themeRuntimeLoop()) showNetworkStatus();
 
   // Background Wi-Fi retries can change the failure reason while the setup AP
   // remains active. Refresh its diagnostic screen only when that reason changes.
-  if (g_displayReady && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
+  if (g_displayReady && !smalltv::themeRuntimeActive() && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
     showNetworkStatus();
   }
 
