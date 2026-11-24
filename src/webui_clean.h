@@ -75,31 +75,14 @@ small.hint{display:block;color:var(--mut);margin-top:4px;font-size:12px}
 small.hint:not([id]){display:none;line-height:1.55}
 body.show-help small.hint:not([id]){display:block}
 .chip{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;letter-spacing:.03em;background:var(--acc2);color:#fff;vertical-align:middle}
-.theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:14px}
-.photo-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}.photo-stats>span{padding:10px;border:1px solid var(--bd);border-radius:9px;background:rgba(0,0,0,.08);font-size:12px;color:var(--mut)}.photo-stats b{display:block;color:var(--fg);font-size:15px;margin-top:3px}.photo-upload-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}.photo-card{min-width:0;border:1px solid var(--bd);border-radius:10px;padding:8px;background:rgba(0,0,0,.08)}.photo-card img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;background:#080b0f}.photo-card .photo-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;color:var(--mut);font-size:12px}.photo-card .btn{padding:5px 9px;font-size:12px}
-.theme-subnav{display:flex;gap:7px;overflow-x:auto;margin:0 0 14px;padding:3px}.theme-subnav button{background:var(--card);border:1px solid var(--bd);color:var(--mut);padding:9px 13px;border-radius:999px;white-space:nowrap;cursor:pointer}.theme-subnav button.active{color:var(--fg);border-color:var(--acc);background:rgba(114,199,124,.12)}.themePane{display:none}.themePane.active{display:block}
-.theme-tile{border:1px solid var(--bd);border-radius:13px;padding:14px;background:linear-gradient(145deg,#202b21,#172019);min-width:0}
-.theme-tile.selected{border-color:var(--acc);box-shadow:0 0 0 1px rgba(63,185,80,.2)}
-.theme-art{width:100%;height:132px;object-fit:contain;border-radius:9px;margin-bottom:12px;background:radial-gradient(circle at 75% 25%,rgba(114,199,124,.28),transparent 38%),linear-gradient(135deg,#27352a,#141c15);display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px}
-.theme-tile strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.theme-tile .muted{margin-top:5px;min-height:34px}
-.theme-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.theme-actions .btn{flex:1 1 120px}
-.theme-manage{margin-top:9px;border-top:1px solid var(--bd);padding-top:8px}.theme-manage summary{color:var(--acc2);cursor:pointer;font-size:13px}
 .savebar{position:fixed;z-index:20;left:0;right:0;bottom:0;padding:10px 16px;background:rgba(14,17,22,.96);border-top:1px solid var(--bd)}body.light .savebar{background:rgba(244,249,244,.97)}
 .savebar-inner{max-width:900px;margin:auto;display:flex;align-items:center;justify-content:flex-end;gap:12px}.save-status{margin-right:auto;color:var(--mut);font-size:13px}.save-status.dirty{color:#e3b341}.savebar button{min-width:176px}
 dialog{width:min(560px,calc(100vw - 28px));max-height:85vh;overflow:auto;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
-dialog::backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}dialog h2{color:var(--fg);text-transform:none;font-size:19px;letter-spacing:0}
-dialog textarea{width:100%;min-height:86px;resize:vertical;padding:9px 10px;background:#0b0e13;border:1px solid var(--bd);border-radius:8px;color:var(--fg);font:inherit}
-.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.layer-row{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--bd);border-radius:9px;margin:7px 0}.layer-row .layer-name{flex:1;min-width:0;overflow-wrap:anywhere}.layer-row .layer-type{color:var(--mut);font-size:12px}
-body.light dialog textarea{background:#f8fbf8;color:var(--fg)}
 body.light{--bg:#f2f7f1;--card:#fff;--mut:#59695d;--fg:#1b2b20;--bd:#d6e3d7;--acc:#338b4f;--acc2:#347b50;--red:#bd3f43}
 body.light nav{background:rgba(242,247,241,.96)}body.light .stat-card,body.light .theme-tile{background:linear-gradient(145deg,#fff,#f5f9f4)}
 body.light .stat-card{box-shadow:0 5px 18px rgba(28,66,36,.06)}
-body.light .photo-stats>span,body.light .photo-card{background:rgba(38,104,52,.035)}
 body.light input[type=text],body.light input[type=password],body.light input[type=number],body.light input[type=url],body.light input[type=search],body.light input[type=time],body.light select,body.light .req{background:#f8fbf8;color:var(--fg)}
 body.light button.btn.sec{background:#e7f0e7;color:#25432c}body.light header .help-toggle{background:#edf4ec;color:var(--mut)}
-body.light .theme-art{background:radial-gradient(circle at 75% 25%,rgba(75,159,92,.22),transparent 38%),linear-gradient(135deg,#eff7ef,#e7f0e7)}
-body.light .theme-subnav button.active{background:#e8f3e8}
 /* Shared visual system: calm office colours, clear hierarchy and accessible controls. */
 :root{color-scheme:dark;--field:#0b0e13;--shadow:0 10px 28px rgba(0,0,0,.14);--focus:rgba(114,199,124,.28)}
 body{line-height:1.5;padding-bottom:88px}
@@ -123,6 +106,24 @@ body.light .toast{background:var(--card);color:var(--fg);border-color:var(--bd)}
 body.light .status-pill.warn{color:#80520a;border-color:rgba(128,82,10,.28);background:rgba(227,179,65,.15)}
 body.light .save-status.dirty{color:#80520a}
 
+
+/* Clean control UI: consistent green surfaces in both colour modes. */
+:root{--field:#0b100c;--surface2:#1d281f;--nav:rgba(14,20,15,.97);--warn:#e3b341}
+body.light{--field:#f8fbf8;--surface2:#f5f9f4;--nav:rgba(242,247,241,.97)}
+nav{background:var(--nav)}
+input[type=text],input[type=password],input[type=file],select{background:var(--field);color:var(--fg)}
+.stat-card{background:var(--surface2)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+button.btn:disabled{filter:saturate(.35)}
+.status-pill.bad{color:var(--red);border-color:var(--red);background:rgba(237,115,115,.08)}
+.status-pill.warn{color:var(--warn)}
+.toast{max-width:min(560px,calc(100vw - 28px));z-index:30}
+.toast.error{border-color:var(--red)}
+.toast.success{border-color:var(--acc)}
+.net{width:100%;min-height:44px;background:var(--card);color:var(--fg);text-align:left}
+.stat-card .sub{display:block;margin-top:5px;color:var(--mut);font-size:12px}
+.bar>div{will-change:width}
+@media(max-width:600px){.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.status-pill{white-space:normal;text-align:center}}
 </style>
 </head>
 <body>
@@ -147,7 +148,7 @@ body.light .save-status.dirty{color:#80520a}
   <div class="quick-grid">
    <div class="stat-card"><span class="label">WLAN</span><strong id="statusNetwork">Wird geladen …</strong></div>
    <div class="stat-card"><span class="label">Geräteadresse</span><a id="statusAddress" href="#">Adresse öffnen</a></div>
-   <div class="stat-card"><span class="label">Laufzeit</span><strong id="statusUptime">—</strong></div>
+   <div class="stat-card"><span class="label">Laufzeit</span><strong id="statusUptime">—</strong></div><div class="stat-card"><span class="label">Freier RAM</span><strong id="statusHeap">—</strong><span id="statusHeapSub" class="sub">Größter Block: —</span></div>
   </div>
   <div class="home-actions">
    <button class="btn sec" type="button" data-go="wifi">WLAN einrichten</button>
@@ -189,7 +190,7 @@ body.light .save-status.dirty{color:#80520a}
     <button class="btn" style="margin-left:8px" type="button" onclick="selfUpdate()" id="ghUpBtn" disabled>Jetzt aktualisieren</button>
    </div>
    <div id="ghMsg" class="muted" style="margin-top:8px" role="status"></div>
-   <small class="hint">Sucht nach einer neueren Firmware-Version im Online-Repository. Bei Problemen mit dem Online-Update kann die BIN-Datei manuell installiert werden.</small>
+   <small class="hint">Sucht nach einer neueren ESP8266-Firmware. Das Online-Update wird zunächst vorgemerkt und beim Neustart ausgeführt. Bei Problemen kann eine passende BIN-Datei manuell installiert werden. Gerät während eines Updates nicht ausschalten.</small>
   </div>
   <div class="card">
    <h2>Manuelles Firmware-Update (OTA)</h2>
@@ -229,7 +230,7 @@ var config = {};
 var latestUpdate = false;
 var dirty = false;
 var toastTimer = 0;
-var statusTimer = 0;
+var statusTimer = 0;\nvar statusLoading = false;\nvar updateInProgress = false;
 
 function api(path, options) {
   return fetch(path, options || {}).then(function(response) {
@@ -445,12 +446,12 @@ function showStatus(s) {
   $("hi").textContent = s.mode === "ap" ? "Einrichtungsmodus" : (s.ip || "");
   var pill = $("statusPill");
   pill.textContent = s.mode === "ap" ? "Einrichtungsmodus" : (connected ? "Verbunden" : "Offline");
-  pill.className = "status-pill" + (s.mode === "ap" ? " warn" : (connected ? " ok" : ""));
+  pill.className = "status-pill" + (s.mode === "ap" ? " warn" : (connected ? " ok" : " bad"));
   $("statusNetwork").textContent = s.mode === "ap" ? "Einrichtungs-Hotspot" : (connected ? (s.ssid || "Verbunden") : "Nicht verbunden");
   var address = $("statusAddress");
   address.href = s.ip ? ("http://" + s.ip) : "#";
   address.textContent = s.ip || "—";
-  $("statusUptime").textContent = formatUptime(s.uptime);
+  $("statusUptime").textContent = formatUptime(s.uptime);\n  $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";\n  $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
   var rows = kv("Firmware", (s.fw || "SmallTV") + " " + (s.version || "")) +
     kv("Variante", s.variant || "ESP8266 Web-only") +
