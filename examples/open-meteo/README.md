@@ -4,7 +4,7 @@ Upload `open-meteo.stheme` from this directory in the SmallTV Themes tab.
 
 The manifest is also provided as `theme.json` for editing. Before uploading,
 replace `latitude=52.52&longitude=13.41` with coordinates for the installation
-and rebuild the STH1 package if the location differs from Berlin.
+and rebuild the STH1 package with `python tools/pack_stheme.py theme.json --output open-meteo.stheme`.
 
 The package requests eight fields only, refreshes every 30 minutes, and limits
 the daily forecast horizon to one day. It contains text layers only; no image,

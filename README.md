@@ -100,7 +100,11 @@ Firmware output:
 .pio/build/smalltv_clean/firmware.bin
 ```
 
-GitHub Actions builds the standard target and publishes the file as
+Use `python tools/pack_stheme.py examples/open-meteo/theme.json --output examples/open-meteo/open-meteo.stheme`
+to rebuild the manifest-only demo package after changing its location or text.
+
+GitHub Actions also verifies that the checked-in demo package matches its
+manifest. It builds the standard target and publishes the file as
 `smalltv-clean-firmware.bin` for tags named `clean-v*`. The display-check
 target is compile-only; it does not upload or flash anything.
 

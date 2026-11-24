@@ -26,7 +26,7 @@ Text layers and bindings refer to values as `{sample.label}`,
 
 - At most 4 sources and 16 fields total (up to 8 fields per source).
 - One request at a time, with at least 5 seconds between requests.
-- Source intervals are 10 to 86,400 seconds.
+- Source intervals are 10 to 86,400 seconds; manifest URLs are limited to 320 bytes.
 - HTTP response `Content-Length` must be present and no larger than 3,072 bytes.
 - JSON nesting is limited to 8; the filter/document allocator has a 768-byte
   combined budget. Only selected fields are retained; text values are at most
