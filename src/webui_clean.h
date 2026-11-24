@@ -208,6 +208,20 @@ button.btn:disabled{filter:saturate(.35)}
    <small class="hint">RGB/BGR wählt die Farbfolge des Panels. Invertierung schaltet den entsprechenden ST7789-Panelmodus um.</small>
   </div>
   <div class="card">
+   <h2>Uhrzeit und Zeitzone</h2>
+   <label for="timezone">Zeitzone</label>
+   <select id="timezone">
+    <option value="CET-1CEST,M3.5.0,M10.5.0/3">Europe/Berlin – Mitteleuropa (CET/CEST)</option>
+    <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London – Großbritannien (GMT/BST)</option>
+    <option value="UTC0">UTC – koordinierte Weltzeit</option>
+    <option value="EST5EDT,M3.2.0/2,M11.1.0/2">America/New_York – US Eastern</option>
+    <option value="PST8PDT,M3.2.0/2,M11.1.0/2">America/Los_Angeles – US Pacific</option>
+    <option value="JST-9">Asia/Tokyo – Japan</option>
+    <option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Australia/Sydney – Eastern Australia</option>
+   </select>
+   <small class="hint">Die automatische Sommerzeit wird über die Zeitzonenregel berechnet. NTP wird nur benötigt, wenn das aktive Theme Zeitwerte verwendet; dafür muss das Gerät Internetzugang haben.</small>
+  </div>
+  <div class="card">
    <h2>Farbkorrektur</h2>
    <label for="displayRedGain">Rot <span id="displayRedGainValue">100 %</span></label>
    <input id="displayRedGain" type="range" min="50" max="150" step="1" value="100">
@@ -481,6 +495,7 @@ function loadConfig() {
     $("displayRedGain").value = config.displayRedGain == null ? 100 : config.displayRedGain;
     $("displayGreenGain").value = config.displayGreenGain == null ? 100 : config.displayGreenGain;
     $("displayBlueGain").value = config.displayBlueGain == null ? 100 : config.displayBlueGain;
+    $("timezone").value = config.timezone || "CET-1CEST,M3.5.0,M10.5.0/3";
     updateDisplayLabels();
     setClean("Alle Einstellungen sind gespeichert.");
   }).catch(function(error){ toast("Einstellungen konnten nicht geladen werden: " + error.message); });
@@ -498,7 +513,8 @@ function saveAll() {
     displayInvert: $("displayInvert").checked,
     displayRedGain: Number($("displayRedGain").value),
     displayGreenGain: Number($("displayGreenGain").value),
-    displayBlueGain: Number($("displayBlueGain").value)
+    displayBlueGain: Number($("displayBlueGain").value),
+    timezone: $("timezone").value
   };
   $("saveSettingsBtn").disabled = true;
   lockSettingsControls(true);
@@ -545,6 +561,7 @@ $("apSsid").addEventListener("input", setDirty);
   $(id).addEventListener("change", setDirty);
 });
 $("displayInvert").addEventListener("change", setDirty);
+$("timezone").addEventListener("change", setDirty);
 
 function formatUptime(seconds) {
   var total = Math.max(0, Number(seconds) || 0);
@@ -585,6 +602,7 @@ function showStatus(s) {
     kv("Größter freier Block", (s.maxBlock || 0) + " Byte") +
     kv("Laufzeit", formatUptime(s.uptime)) +
     kv("Letzter Reset", s.reset || "—") +
+    kv("NTP-Uhrzeit", s.timeSynced ? (s.localTime + " · " + (s.timezone || "")) : "Noch nicht synchronisiert / nicht benötigt") +
     kv("Theme", s.themeLoaded ? ("Aktiv: " + s.theme) : "Kein aktives Theme") +
     (s.themeError ? kv("Theme-Fehler", s.themeError) : "") +
     kv("Heap für Theme-Runtime", (Number(s.themeHeap)||0) + " Byte") +
