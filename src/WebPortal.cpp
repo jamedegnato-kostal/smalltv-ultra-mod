@@ -62,7 +62,7 @@ static String           g_uploadError;
 static constexpr uint32_t MinFirmwareImageSize = 16UL * 1024UL;
 #if WITH_PHOTOS
 static bool guardAllowed();
-static bool requireAuth();
+static bool requestAllowed();
 namespace {
 File photoUpload;
 String photoUploadError;
@@ -114,8 +114,7 @@ void receivePhotoUpload() {
       photoUploadError = "Nur JPEG-Fotos sind erlaubt";
       return;
     }
-    photoUploadAllowed = guardAllowed() && (!S->auth.enabled || !S->auth.pass.length() ||
-      server.authenticate(S->auth.user.c_str(), S->auth.pass.c_str()));
+    photoUploadAllowed = guardAllowed();
     if (!photoUploadAllowed) return;
     photoUploadSlot = smalltv_photo::nextFreeSlot();
     if (photoUploadSlot < 0) { photoUploadError = "Die Fotobibliothek ist voll (maximal 240 Fotos)"; return; }
@@ -178,7 +177,7 @@ void receivePhotoUpload() {
 }
 void finishPhotoUpload() {
   PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
-  if (!requireAuth()) { abortPhotoUpload("Authentifizierung fehlgeschlagen"); return; }
+  if (!requestAllowed()) { abortPhotoUpload("Anfrage abgelehnt"); return; }
   photoUpload.close();
   if (!photoUploadAllowed || !photoUploadEnded || photoUploadError.length() || photoUploadSlot < 0) {
     const String error = photoUploadError.length() ? photoUploadError : "Kein vollständiges Bild empfangen";
@@ -202,7 +201,7 @@ void finishPhotoUpload() {
   String body; serializeJson(doc, body); server.send(201, "application/json", body);
 }
 void handlePhotoList() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   appRelease();
   const uint32_t total = smalltv_photo::filesystemTotalBytes();
   const uint32_t free = smalltv_photo::filesystemFreeBytes();
@@ -228,7 +227,7 @@ void handlePhotoList() {
   server.sendContent("", 0);
 }
 void handlePhotoFile() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   uint8_t id;
   if (!requestPhotoId(id) || !smalltv_photo::contains(id)) {
     server.send(404, "text/plain", "Foto nicht gefunden"); return;
@@ -241,7 +240,7 @@ void handlePhotoFile() {
   file.close();
 }
 void handlePhotoDelete() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   uint8_t id;
   if (!server.hasArg("plain")) { photoReply(400, "error", "Foto-ID fehlt"); return; }
   JsonDocument doc;
@@ -254,7 +253,7 @@ void handlePhotoDelete() {
   photoReply(200, "ok", "true");
 }
 void handlePhotoDeleteAll() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   appRelease();
   const uint16_t removed = smalltv_photo::removeAll();
   JsonDocument doc; doc["deleted"] = removed;
@@ -275,10 +274,8 @@ static void scheduleReboot(uint32_t inMs) {
 }
 
 // ---- CSRF and DNS-rebinding guard ------------------------------------------
-// Every handler goes through requireAuth(), which calls this first (the usage
-// push calls it directly). The two upload callbacks (OTA, theme install) run
-// before their final handler, so they only ask guardAllowed() and write nothing
-// when it says no; the final handler then answers 403 through requireAuth().
+// Every handler goes through requestAllowed(), which enforces Host and Origin
+// checks. Streaming uploads also call guardAllowed() before writing to flash.
 // Rules in WebGuard.h.
 //   - Host: checked on every request, but not in AP mode. There the phone's
 //     captive-portal probe arrives with whatever name it is checking
@@ -314,19 +311,10 @@ static bool guardRequest() {
   return false;
 }
 
-// ---- optional web UI password ---------------------------------------------
-// Off by default. When on, every handler below starts with this line and every
-// page and endpoint needs the credentials. Digest, not basic, so the password
-// is never sent over a plain-HTTP LAN. Captive-portal probes remain open so a
-// phone can reach the setup page before anyone can type a password.
-// Returns true when the request may proceed; on false it has already answered.
-static bool requireAuth() {
-  if (!guardRequest()) return false;
-  if (!S->auth.enabled || !S->auth.pass.length()) return true;
-  if (server.authenticate(S->auth.user.c_str(), S->auth.pass.c_str())) return true;
-  server.requestAuthentication(HTTPAuthMethod::DIGEST_AUTH, AUTH_REALM,
-                               "Authentication required");
-  return false;
+// All portal handlers pass through the Host/Origin request guard.
+// This stable firmware has no optional web login or password system.
+static bool requestAllowed() {
+  return guardRequest();
 }
 
 // ---------------------------------------------------------------------------
@@ -337,14 +325,14 @@ static void sendJson(JsonDocument& doc, int code = 200) {
 }
 
 static void handleRoot() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   server.sendHeader("Cache-Control", "no-cache");
   server.sendHeader("Content-Encoding", "gzip");
   server.send_P(200, "text/html", (PGM_P)WEBUI_SETTINGS_HTML_GZ, WEBUI_SETTINGS_HTML_GZ_LEN);
 }
 
 static void handleGetConfig() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   // The full settings need about 4 KB of heap to send, which a running theme
   // on the ESP8266 does not leave free; the theme reloads on its next frame.
   appRelease();
@@ -410,7 +398,7 @@ static smalltv::StatusTicker statusTicker(size_t i) {
 // 3.2.1 built a document and a String of it; six requests at once then left
 // the ESP8266 with a 648-byte largest block, and a diag build crashed.
 static void handleStatus() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   const String ssid = netSSID(), ip = netIP();
   const String clockText = clockTimeStr();
   smalltv::StatusData d;
@@ -561,7 +549,7 @@ static void sendSettingsTransactionError(SettingsTransactionFailure failure) {
 }
 
 static void handlePostConfig() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   if (!server.hasArg("plain")) { server.send(400, "text/plain", "no body"); return; }
   PlatformMemoryPhaseScope requestMemory(PLATFORM_MEM_WEB_REQUEST, true);
 
@@ -607,7 +595,7 @@ static void handlePostConfig() {
   if (wifiChanged) scheduleReboot(800);
 }
 static void handleScan() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   // Scan results and the JSON reply need temporary heap; release feature
   // caches first so scanning cannot compete with a loaded theme.
   appRelease();
@@ -625,19 +613,19 @@ static void handleScan() {
 }
 
 static void handleReboot() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   server.send(200, "application/json", "{\"ok\":true}");
   scheduleReboot(400);
 }
 
 static void handleCrashClear() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   platformCrashRecordClear();
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
 static void handleFactory() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   appRelease();  // Free theme/runtime allocations before serializing defaults.
   if (!applyAndSaveSettings(*S,
         [](Settings& settings) { factoryReset(settings); },
@@ -650,7 +638,7 @@ static void handleFactory() {
 }
 
 static void handleStorageFormat() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   if (settingsStorageReady()) {
     server.send(409, "application/json", "{\"ok\":false,\"error\":\"storage is already mounted\"}");
     return;
@@ -670,7 +658,7 @@ static void handleStorageFormat() {
 // Full settings backup: stream the persisted config.json verbatim. It includes
 // the WiFi passwords — same trust domain as typing them into this page.
 static void handleExport() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   File f = LittleFS.open("/config.json", "r");
   if (!f) { server.send(404, "text/plain", "no config saved yet"); return; }
   server.sendHeader("Content-Disposition", "attachment; filename=smalltv-config.json");
@@ -680,7 +668,7 @@ static void handleExport() {
 
 // Restore a backup: apply everything, persist, reboot (WiFi/hostname may change).
 static void handleImport() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   if (!server.hasArg("plain")) { server.send(400, "text/plain", "no body"); return; }
   PlatformMemoryPhaseScope requestMemory(PLATFORM_MEM_WEB_REQUEST, true);
   appRelease();
@@ -712,7 +700,7 @@ static void handleImport() {
 }
 
 static void handleRefresh() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
 #if WITH_TICKER
   stocksForceRefresh();
 #endif
@@ -729,7 +717,7 @@ static void handleRefresh() {
 // offline when the screen was deleted) are unknowable from here and survive;
 // "broker" in the reply tells the UI whether the broker side was purged at all.
 static void handleHaClear() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   char names[HA_MAX_SCREENS][HA_SLOT_LEN];
   uint8_t n = haScreensClearAll(names, HA_MAX_SCREENS);
   bool broker = mqttConnected();
@@ -761,7 +749,7 @@ static void handleHaClear() {
 // open on a device you deliberately locked.
 #if WITH_NOTIFY
 static void handleNotify() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   if (!server.hasArg("plain")) { server.send(400, "text/plain", "no body"); return; }
   JsonDocument doc;
   if (deserializeJson(doc, server.arg("plain"))) {
@@ -805,7 +793,7 @@ static void handleNotify() {
 
 // ---- OTA ------------------------------------------------------------------
 static void handleUpdateDone() {
-  if (!requireAuth()) return;
+  if (!requestAllowed()) return;
   bool ok = g_uploadError.length() == 0 && !Update.hasError();
   server.sendHeader("Connection", "close");
   const String error = g_uploadError.length() ? g_uploadError : platformUpdateError();
@@ -828,18 +816,11 @@ static void abortFirmwareUpload(const char* reason) {
 }
 
 // The upload callback runs while the body streams in, ahead of
-// handleUpdateDone, so the password has to be checked here too: guarding only
-// the final handler would let an unauthenticated POST write a whole image to
-// flash and merely lose the 200 at the end.
+// handleUpdateDone. Apply Host/Origin checks before writing any firmware bytes.
 static void handleUpdateUpload() {
   HTTPUpload& up = server.upload();
   if (!guardAllowed()) {
     if (up.status != UPLOAD_FILE_START) abortFirmwareUpload("request rejected");
-    return;
-  }
-  if (S->auth.enabled && S->auth.pass.length() &&
-      !server.authenticate(S->auth.user.c_str(), S->auth.pass.c_str())) {
-    if (up.status != UPLOAD_FILE_START) abortFirmwareUpload("authentication failed");
     return;
   }
   if (up.status == UPLOAD_FILE_START) {
@@ -933,7 +914,7 @@ void webPortalBegin(Settings& settings) {
   S = &settings;
 
 #if WITH_THEME
-  themeWebBegin(server, settings, requireAuth, guardAllowed);
+  themeWebBegin(server, settings, requestAllowed, guardAllowed);
 #endif
 #if WITH_PHOTOS
   server.on("/api/photos", HTTP_GET, handlePhotoList);

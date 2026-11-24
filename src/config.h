@@ -1,21 +1,27 @@
-// config.h — compile-time constants for SmallTV Settings Firmware
+// config.h — compile-time constants for SmallTV Stable Firmware
 //
 // Hardware: GeekMagic SmallTV / SmallTV Ultra with ESP8266.
 #pragma once
 #include "Target.h"
 
+// Stable ESP8266 image deliberately ships without a web login/password system.
+// Keep Host/Origin request guards enabled in WebPortal.
+#ifndef WITH_WEB_AUTH
+#define WITH_WEB_AUTH 0
+#endif
+
 // ---------------------------------------------------------------------------
 // Firmware identity
 // ---------------------------------------------------------------------------
-#define FW_NAME    "smalltv-settings"
-#define FW_VERSION "2.0.0-rc1"
+#define FW_NAME    "smalltv-stable"
+#define FW_VERSION "2.0.0"
 
 // Project reference shown in the web UI; owner/name also back the optional quote source.
 #define REPO_URL      "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
 #define REPO_OWNER    "jamedegnato-kostal"
 #define REPO_NAME     "smalltv-ultra-mod"
-#define FW_VARIANT   "esp8266-settings-photo-only"
-#define FIRMWARE_ASSET "smalltv-settings-firmware.bin"
+#define FW_VARIANT   "esp8266-stable"
+#define FIRMWARE_ASSET "smalltv-stable-firmware.bin"
 
 // ---------------------------------------------------------------------------
 // Display wiring + panel quirks — board-specific, pulled from the right header.

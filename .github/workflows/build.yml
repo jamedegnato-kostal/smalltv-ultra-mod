@@ -88,10 +88,12 @@ jobs:
         if: always()
         run: |
           mkdir -p dist
-          copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
-          copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-settings-firmware.bin
-          copy examples/themes/dynamische-uhr.stheme dist/dynamische-uhr.stheme
-          copy examples/themes/wetter-bellmerei.stheme dist/wetter-bellmerei.stheme
+          copy() { test -s "$1" && cp "$1" "$2"; }
+          copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-stable-firmware.bin
+          copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-stable-loader.bin
+          copy examples/themes/pixel-room.stheme dist/pixel-room.stheme
+          copy examples/themes/terminal-ops.stheme dist/terminal-ops.stheme
+          copy examples/themes/live-status.stheme dist/live-status.stheme
 
       - name: Check app-slot space
         run: python tools/ci_checks.py size --envs smalltv_settings,smalltv_loader --min-free 8192
@@ -100,7 +102,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smalltv-settings-firmware
+          name: smalltv-stable-firmware
           path: dist/
           if-no-files-found: warn
 
@@ -113,7 +115,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: smalltv-settings-firmware
+          name: smalltv-stable-firmware
           path: dist
 
       - uses: softprops/action-gh-release@v2

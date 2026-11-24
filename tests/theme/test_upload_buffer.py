@@ -16,11 +16,11 @@ def flag(section_text, name):
     return match.group(1) if match else ""
 class UploadBufferConfig(unittest.TestCase):
     def test_one_kib_buffer_is_a_build_flag_for_all_firmware_sources(self):
-        ini=read("platformio.ini"); clean=section(ini,"smalltv_clean")
-        self.assertRegex(flag(clean,"build_flags"),r"-D\s*HTTP_UPLOAD_BUFLEN=1024\b")
-        self.assertNotIn("HTTP_UPLOAD_BUFLEN",flag(clean,"build_src_flags"))
+        ini=read("platformio.ini"); base=section(ini,"smalltv_base")
+        self.assertRegex(flag(base,"build_flags"),r"-D\s*HTTP_UPLOAD_BUFLEN=1024\b")
+        self.assertNotIn("HTTP_UPLOAD_BUFLEN",flag(base,"build_src_flags"))
         settings=section(ini,"smalltv_settings")
-        self.assertIn("smalltv_clean.build_flags",flag(settings,"build_flags"))
+        self.assertIn("smalltv_base.build_flags",flag(settings,"build_flags"))
     def test_firmware_compile_fails_if_buffer_grows_again(self):
         self.assertRegex(read("src/WebPortal.cpp"),r"static_assert\(HTTP_UPLOAD_BUFLEN\s*<=\s*1024")
 if __name__ == "__main__":

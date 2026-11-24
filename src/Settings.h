@@ -100,11 +100,8 @@ struct ClockSettings {
   void fromJson(JsonObjectConst o);
 };
 
-// ---- Web UI password slice (device-wide) -----------------------------------
-// Off by default: the settings page is open on the LAN, as it always was.
-// Turning it on puts every page and every API endpoint behind HTTP digest auth,
-// with the exceptions listed in WebPortal.cpp. Like the other secrets here, the
-// password reaches the config file and the settings export, never the web API.
+#if WITH_WEB_AUTH
+// ---- Optional web UI password slice ----------------------------------------
 struct AuthSettings {
   bool   enabled;
   String user;
@@ -114,6 +111,7 @@ struct AuthSettings {
   void toJson(JsonObject o, bool includeSecrets) const;
   void fromJson(JsonObjectConst o);
 };
+#endif
 
 // ---- Panel colour slice (device-wide) --------------------------------------
 // Same firmware, different panels: the SmallTV variants and even units of one
@@ -273,7 +271,9 @@ struct Settings {
 #endif
   ClockSettings   clock;
   DisplaySettings display;   // panel colour correction
+#if WITH_WEB_AUTH
   AuthSettings    auth;      // optional web UI password
+#endif
   ButtonSettings  button;    // physical button behaviour (boards with BTN_PIN)
 
   void setDefaults();
