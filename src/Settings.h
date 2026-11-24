@@ -13,7 +13,6 @@ struct Settings {
   WifiCred wifi[MAX_WIFI_NETS];
   uint8_t wifiCount;
   String apSsid;
-  String apPass;
   String hostname;
   uint16_t httpTimeout;
   void setDefaults();

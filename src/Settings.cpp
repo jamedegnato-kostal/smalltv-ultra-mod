@@ -12,7 +12,6 @@ void Settings::setDefaults() {
     wifi[i].pass = "";
   }
   apSsid = DEFAULT_AP_SSID;
-  apPass = DEFAULT_AP_PASS;
   hostname = String(DEFAULT_HOSTNAME) + "-" + String(platformChipId() & 0xFFFF, HEX);
   httpTimeout = DEFAULT_HTTP_TIMEOUT;
 }
@@ -48,7 +47,6 @@ void factoryReset(Settings& s) {
 void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["hostname"] = s.hostname;
   root["apSsid"] = s.apSsid;
-  root["apPassSet"] = s.apPass.length() > 0;
   root["httpTimeout"] = s.httpTimeout;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
@@ -62,7 +60,6 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["staPassSet"] = s.wifiCount && s.wifi[0].pass.length() > 0;
   if (includeSecrets) {
     root["staPass"] = s.wifiCount ? s.wifi[0].pass : "";
-    root["apPass"] = s.apPass;
   }
 }
 
@@ -116,10 +113,6 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
   if (root["apSsid"].is<const char*>()) {
     s.apSsid = root["apSsid"].as<String>();
     if (s.apSsid.length() > 32) s.apSsid.remove(32);
-  }
-  if (root["apPass"].is<const char*>()) {
-    s.apPass = root["apPass"].as<String>();
-    if (s.apPass.length() > 63) s.apPass.remove(63);
   }
   if (root["httpTimeout"].is<int>()) {
     s.httpTimeout = constrain((int)root["httpTimeout"], 1000, 20000);

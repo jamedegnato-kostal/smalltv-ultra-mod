@@ -31,9 +31,9 @@ static const char WEBUI_CLEAN_HTML[] PROGMEM = R"HTML(
 <h2>Setup-Hotspot</h2>
 <div class="grid">
 <div><label for="apSsid">Hotspot-Name</label><input id="apSsid" type="text" maxlength="32"></div>
-<div><label for="apPass">Hotspot-Passwort (optional)</label><input id="apPass" type="password" maxlength="63" placeholder="leer = unverändert"></div>
+
 </div>
-<p class="muted">Der ESP8266 unterstützt 2,4-GHz-WLAN. Ohne gespeicherte Verbindung startet der Hotspot unter 192.168.4.1. Die Weboberfläche ist ohne Login erreichbar.</p>
+<p class="muted">Der ESP8266 unterstützt 2,4-GHz-WLAN. Ohne gespeicherte Verbindung startet der Hotspot unter 192.168.4.1. Setup-Hotspot und Weboberfläche sind ohne Passwort erreichbar.</p>
 </section>
 <section>
 <h2>Firmware und System</h2>
@@ -83,7 +83,6 @@ function showWifiRows(rows) {
 function loadConfigFields(c) {
   $("hostname").value = c.hostname || "smalltv";
   $("apSsid").value = c.apSsid || "SmallTV-Setup";
-  $("apPass").value = "";
   showWifiRows(c.wifi || []);
 }
 async function load() {
@@ -130,7 +129,6 @@ async function saveConfig() {
     pass: row.querySelector(".password").value
   })).filter(row => row.ssid);
   const body = {wifi, hostname:$("hostname").value.trim(), apSsid:$("apSsid").value.trim()};
-  if ($("apPass").value) body.apPass = $("apPass").value;
   try {
     const result = await api("/api/config", {
       method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)

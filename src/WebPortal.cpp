@@ -83,8 +83,6 @@ static String netFingerprint(const Settings& settings) {
   fingerprint += settings.hostname;
   fingerprint += '\n';
   fingerprint += settings.apSsid;
-  fingerprint += '\x01';
-  fingerprint += settings.apPass;
   return fingerprint;
 }
 

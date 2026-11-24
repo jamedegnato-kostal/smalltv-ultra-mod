@@ -108,11 +108,7 @@ static void startAP(const Settings& s) {
   WiFi.mode(s.wifiCount ? WIFI_AP_STA : WIFI_AP);
   IPAddress apIP(192, 168, 4, 1);
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  if (s.apPass.length() >= 8) {
-    WiFi.softAP(s.apSsid.c_str(), s.apPass.c_str());
-  } else {
-    WiFi.softAP(s.apSsid.c_str());           // open AP (WPA2 needs >=8 chars)
-  }
+  WiFi.softAP(s.apSsid.c_str());             // open setup AP, no access password
   g_apSsid = s.apSsid;
   // Captive portal: answer every DNS query with our own IP.
   g_dns.setErrorReplyCode(DNSReplyCode::NoError);
