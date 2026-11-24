@@ -79,7 +79,6 @@ body.show-help small.hint:not([id]){display:block}
 .savebar-inner{max-width:900px;margin:auto;display:flex;align-items:center;justify-content:flex-end;gap:12px}.save-status{margin-right:auto;color:var(--mut);font-size:13px}.save-status.dirty{color:#e3b341}.savebar button{min-width:176px}
 dialog{width:min(560px,calc(100vw - 28px));max-height:85vh;overflow:auto;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.45)}
 body.light{--bg:#f2f7f1;--card:#fff;--mut:#59695d;--fg:#1b2b20;--bd:#d6e3d7;--acc:#338b4f;--acc2:#347b50;--red:#bd3f43}
-body.light nav{background:rgba(242,247,241,.96)}body.light .stat-card,body.light .theme-tile{background:linear-gradient(145deg,#fff,#f5f9f4)}
 body.light .stat-card{box-shadow:0 5px 18px rgba(28,66,36,.06)}
 body.light input[type=text],body.light input[type=password],body.light input[type=number],body.light input[type=url],body.light input[type=search],body.light input[type=time],body.light select,body.light .req{background:#f8fbf8;color:var(--fg)}
 body.light button.btn.sec{background:#e7f0e7;color:#25432c}body.light header .help-toggle{background:#edf4ec;color:var(--mut)}
@@ -96,9 +95,7 @@ button.btn{padding:11px 17px;border-radius:10px;font-size:14px;font-weight:650;t
 :focus-visible{outline:3px solid var(--acc);outline-offset:3px;box-shadow:0 0 0 4px var(--focus)}input[type=range],input[type=checkbox]{accent-color:var(--acc)}
 .savebar{padding:12px 22px;backdrop-filter:blur(14px)}body.light .savebar{background:rgba(242,247,241,.95)}.savebar-inner{max-width:996px;min-height:46px}.savebar button{min-width:190px;min-height:44px}.save-status.dirty{font-weight:600}
 .toast{z-index:30;bottom:82px;max-width:min(560px,calc(100vw - 32px));text-align:center;line-height:1.4;box-shadow:var(--shadow)}.status-pill{font-weight:600}.stat-card{box-shadow:var(--shadow)}.details summary{padding:9px 0}
-@media(min-width:900px){.quick-grid{gap:14px}.card{padding:24px}.theme-grid{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
-@media(max-width:600px){body{padding-bottom:92px}header{padding:12px 14px;min-height:58px}header h1{font-size:15px}header .logo{width:25px;height:25px}header .help-toggle{padding:7px 9px}nav{padding:8px 10px;gap:3px}nav button{padding:9px 11px;font-size:13px}main{padding:22px 13px 30px}.quick-grid{grid-template-columns:1fr 1fr;gap:9px}.stat-card{padding:13px}.stat-card strong{font-size:15px}.welcome h2{font-size:21px}.page-intro h2{font-size:23px}.card{padding:17px;border-radius:14px}.savebar{padding:8px 12px}.savebar-inner{gap:8px}.save-status{font-size:11px;line-height:1.3}.savebar button{min-width:0;white-space:nowrap;padding:10px 12px}.row{flex-wrap:wrap}.row>*{min-width:min(100%,220px)}.photo-upload-actions button{flex:1 1 140px}.dialog-actions{position:sticky;bottom:-20px;background:var(--card);padding:12px 0 0}}
 
 /* Keep feedback messages readable in the light theme. */
 .toast{color:var(--fg)}
@@ -174,6 +171,7 @@ button.btn:disabled{filter:saturate(.35)}
    <small class="hint">Im lokalen Netzwerk unter <code>http://&lt;hostname&gt;.local</code> erreichbar, sofern mDNS unterstützt wird.</small>
   </div>
   <div class="card">
+   <div class="req"><b>Offener Zugriff:</b> Der Hotspot und die Weboberfläche sind nicht passwortgeschützt. Verwende sie nur in einer vertrauenswürdigen Umgebung.</div>
    <h2>Einrichtungs-Hotspot</h2>
    <label for="apSsid">Hotspot-Name</label><input id="apSsid" type="text" maxlength="32">
    <small class="hint">Der Hotspot ist unverschlüsselt und die Weboberfläche ohne Anmeldung erreichbar. Er wird zur Einrichtung bereitgestellt, wenn keine WLAN-Verbindung verfügbar ist. Standardadresse: <b>192.168.4.1</b>.</small>
@@ -233,8 +231,6 @@ var toastTimer = 0;
 var statusTimer = 0;
 var statusLoading = false;
 var updateInProgress = false;
-var statusLoading = false;
-var updateInProgress = false;
 
 function api(path, options) {
   return fetch(path, options || {}).then(function(response) {
@@ -274,7 +270,11 @@ function showTab(name) {
   var target = $(name);
   if (!target || !target.classList.contains("tab")) return;
   document.querySelectorAll("main .tab").forEach(function(tab){ tab.classList.toggle("active", tab.id === name); });
-  document.querySelectorAll("nav [data-t]").forEach(function(button){ button.classList.toggle("active", button.dataset.t === name); });
+  document.querySelectorAll("nav [data-t]").forEach(function(button){
+    var active = button.dataset.t === name;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
+  });
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav [data-t]").forEach(function(button){
@@ -312,6 +312,7 @@ function addWifiRow(network) {
   ssid.maxLength = 32;
   ssid.autocomplete = "off";
   ssid.placeholder = "SSID";
+  ssid.setAttribute("aria-label", "WLAN-Name (SSID)");
   ssid.value = network.ssid || "";
   ssid.addEventListener("input", setDirty);
   ssidCell.appendChild(ssid);
@@ -319,6 +320,7 @@ function addWifiRow(network) {
   var pass = document.createElement("input");
   pass.className = "wp";
   pass.type = "password";
+  pass.setAttribute("aria-label", "WLAN-Passwort");
   pass.maxLength = 64;
   pass.autocomplete = "new-password";
   pass.placeholder = network.passSet ? "(unverändert)" : "Passwort";
@@ -456,8 +458,6 @@ function showStatus(s) {
   address.href = s.ip ? ("http://" + s.ip) : "#";
   address.textContent = s.ip || "—";
   $("statusUptime").textContent = formatUptime(s.uptime);
-  $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
-  $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
   $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
