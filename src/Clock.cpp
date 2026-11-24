@@ -8,8 +8,7 @@
 
 namespace {
 char g_timezone[65] = {};
-bool g_themeRequested = false;
-bool g_nightModeRequested = false;
+bool g_requested = false;
 bool g_started = false;
 bool g_callbackRegistered = false;
 volatile bool g_syncedByNtp = false;
@@ -25,7 +24,7 @@ void applyTimezone(const char* timezone) {
 }
 
 void startNtpWhenOnline() {
-  if ((!g_themeRequested && !g_nightModeRequested) || g_started || !netConnected()) return;
+  if (!g_requested || g_started || !netConnected()) return;
   if (!g_callbackRegistered) {
     settimeofday_cb(onTimeSet);
     g_callbackRegistered = true;
@@ -36,18 +35,12 @@ void startNtpWhenOnline() {
   Serial.println(F("[clock] SNTP started"));
 }
 
-void stopNtpIfUnused() {
-  if (g_themeRequested || g_nightModeRequested) return;
-  if (g_started) sntp_stop();
-  g_started = false;
-  g_syncedByNtp = false;
-}
 }  // namespace
 
 namespace smalltv {
 void clockBegin(const char* timezone) {
   applyTimezone(timezone);
-  g_themeRequested = true;
+  g_requested = true;
   startNtpWhenOnline();
 }
 
@@ -61,25 +54,15 @@ void clockReconfigure(const char* timezone) {
   }
 }
 
-void clockSetNightMode(bool enabled, const char* timezone) {
-  applyTimezone(timezone);
-  g_nightModeRequested = enabled;
-  if (g_started) {
-    // Keep SNTP's timezone rule in sync when display settings change.
-    configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
-  } else {
-    startNtpWhenOnline();
-  }
-  if (!enabled) stopNtpIfUnused();
-}
-
 void clockService() {
   startNtpWhenOnline();
 }
 
 void clockStop() {
-  g_themeRequested = false;
-  stopNtpIfUnused();
+  g_requested = false;
+  if (g_started) sntp_stop();
+  g_started = false;
+  g_syncedByNtp = false;
 }
 
 bool clockSynced() {
