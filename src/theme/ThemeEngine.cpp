@@ -2099,7 +2099,6 @@ int textPixelWidth(const Theme& theme, const Layer& l, int size, const std::stri
 // Bhaskara I's rational approximation (error under 0.002) and a pixel's angle
 // from a quadratic arctangent (error under 0.2 degrees), which keeps both
 // within about a pixel at the edge of the canvas.
-constexpr int Turn16 = 5760;
 static int wrap16(int a) {
   a %= Turn16;
   return a < 0 ? a + Turn16 : a;
