@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 // Firmware identity
 // ---------------------------------------------------------------------------
-#define FW_NAME    "smalltv-settings"
+#define FW_NAME    "smalltv-clean"
 #define FW_VERSION "0.1.0"
 
 // Project / update references (shown in the web UI; used by the GitHub self-update)
@@ -15,8 +15,8 @@
 #define REPO_OWNER    "jamedegnato-kostal"
 #define REPO_NAME     "smalltv-ultra-mod"
 // Release asset pulled by the GitHub self-updater.
-#define UPDATE_ASSET "smalltv-settings-firmware.bin"
-#define FW_VARIANT   "esp8266-settings"
+#define UPDATE_ASSET "smalltv-clean-firmware.bin"
+#define FW_VARIANT   "esp8266-clean"
 #define GH_API_HOST   "api.github.com"
 
 // ---------------------------------------------------------------------------
@@ -364,7 +364,7 @@
 #define NIGHT_NTP_TRUST_MS      300000UL  // 5 min: max age of the sync that unlocks night
 #define NIGHT_NTP_RESYNC_MS      30000UL  // re-sync attempt cadence while held off
 
-// The Settings Firmware always includes theme packages and their playlist.
+// The Clean Image keeps the theme renderer; playlist automation and photos are excluded.
 #ifndef WITH_THEME
 #define WITH_THEME 1
 #endif
