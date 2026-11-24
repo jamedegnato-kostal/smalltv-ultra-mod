@@ -22,19 +22,27 @@ class Source {
 // STI2 (spec 2 only): the palette, one u32 offset per row into the row
 // data, then each row as runs (see walkRow() in ThemePackage.cpp).
 // Font (spec 2 only): fonts/<name>.stf, see checkFont() in ThemePackage.cpp.
+#if defined(SMALLTV_THEME_HEADLESS)
+class Package {
+#else
 class Package : public Assets {
+#endif
  public:
   explicit Package(Source& source) : source_(source) {}
   bool load(Theme& theme, std::string& error);
+#if !defined(SMALLTV_THEME_HEADLESS)
   AssetHandle resolve(const std::string& path) override;
   using Assets::row;
   bool row(AssetHandle handle, int y, int x, int count, uint16_t* colors, uint8_t* alpha) override;
   bool blendRow(AssetHandle handle, int y, int x, int count, uint16_t* pixels) override;
   bool glyphRow(AssetHandle font, uint8_t code, int y, uint8_t* coverage, int& left, int& width) override;
+#endif
  private:
   // What row() and blendRow() both do: reads the pixels of a row and hands
   // them back in `colors`/`alpha`, or, when `pixels` is set, blends them over it.
+#if !defined(SMALLTV_THEME_HEADLESS)
   inline bool readRow(AssetHandle handle, int y, int x, int count, uint16_t* colors, uint8_t* alpha, uint16_t* pixels);
+#endif
   // Every animation frame is an entry, so an entry is kept small: its path
   // is not held in RAM (that took ~45 bytes more per frame), only its FNV-1a
   // hash and length. The path itself stays in the package, just before the
@@ -54,22 +62,24 @@ class Package : public Assets {
   // In blocks: in one vector, a package with many frames needed a block of
   // several KiB.
   BlockList<Entry> entries_;
-  // The glyph records glyphRow() read last, in GlyphSlots slots by code
-  // point: every row of a text needs the same records again, and reading
-  // them was half of a redraw's reads (#31 review). Allocated by loadFonts()
-  // when a layer uses a font, so nothing is allocated while drawing (#69
-  // review); a package without font layers holds none.
+#if !defined(SMALLTV_THEME_HEADLESS)
+  // Glyph-row cache is only needed by the display renderer.
   static constexpr unsigned GlyphSlots = 16;
   struct Glyph {
-    uint8_t font = 0, code = 0;   // code 0: an empty slot
+    uint8_t font = 0, code = 0;
     uint8_t left = 0, top = 0, width = 0, rows = 0;
     uint16_t bitmap = 0;
   };
   std::vector<Glyph> glyphs_;
+#endif
   bool samePath(const Entry& entry, const std::string& path) const;
   bool checkRows(const Entry& entry) const;
   bool checkFont(const Entry& entry) const;
+#if defined(SMALLTV_THEME_HEADLESS)
+  bool validateFonts(const Theme& theme, std::string& error) const;
+#else
   bool loadFonts(Theme& theme, std::string& error);
+#endif
   size_t indexOf(const std::string& path) const;
   const Entry* find(const std::string& path) const;
   bool readIndex(std::string& error);

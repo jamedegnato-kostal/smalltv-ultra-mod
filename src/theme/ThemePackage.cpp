@@ -93,15 +93,21 @@ bool Package::load(Theme& theme, std::string& error) {
   // by itself exceed what the ESP8266 has free next to a running theme.
   EntryManifest json(source_, manifest->offset, manifest->length);
   Theme candidate;
-  if (!parseTheme(json, candidate, error) || !checkSpec(candidate, error) || !checkAssets(candidate, error) ||
-      !loadFonts(candidate, error)) return false;
+  if (!parseTheme(json, candidate, error) || !checkSpec(candidate, error) || !checkAssets(candidate, error)) return false;
+#if defined(SMALLTV_THEME_HEADLESS)
+  if (!validateFonts(candidate, error)) return false;
+#else
+  if (!loadFonts(candidate, error)) return false;
+#endif
   theme = std::move(candidate);
   error.clear();
   return true;
 }
 __attribute__((noinline)) bool Package::readIndex(std::string& error) {
   entries_.clear();
+#if !defined(SMALLTV_THEME_HEADLESS)
   std::vector<Glyph>().swap(glyphs_);
+#endif
   error = "Invalid or truncated .stheme package";
   uint8_t b[12];
   uint32_t size = source_.size();
@@ -228,10 +234,13 @@ __attribute__((noinline)) bool Package::checkAssets(Theme& candidate, std::strin
 // as "is this entry an image, not the manifest" -- the manifest entry always
 // has stride 0 and so can never be resolved as an asset. A font resolves
 // too, for glyphRow(); row() refuses it, and glyphRow() an image.
+#if !defined(SMALLTV_THEME_HEADLESS)
 AssetHandle Package::resolve(const std::string& path) {
   size_t i = indexOf(path);
   return i < entries_.size() && (entries_[i].stride || entries_[i].font()) ? static_cast<AssetHandle>(i) : InvalidAsset;
 }
+#endif  // !SMALLTV_THEME_HEADLESS
+
 namespace {
 // Reads a package byte by byte through a 64-byte window: row() runs while a
 // frame is drawn, when little loop stack is left (a whole 240-pixel row was
@@ -288,12 +297,19 @@ struct RowOut {
   uint8_t* alpha;
   uint16_t* pixels;
   void put(int i, uint16_t color, uint8_t a) const {
+#if defined(SMALLTV_THEME_HEADLESS)
+    // checkRows() validates the run stream but does not emit pixels.
+    (void)i;
+    (void)color;
+    (void)a;
+#else
     if (pixels) {
       if (a) pixels[i] = blend(pixels[i], color, a);
     } else if (colors) {
       colors[i] = color;
       alpha[i] = a;
     }
+#endif
   }
 };
 // Walks an STI2 row's runs up to column `stop` and keeps the pixels from `x`
@@ -374,6 +390,7 @@ bool Package::checkRows(const Entry& e) const {
   }
   return true;
 }
+#if !defined(SMALLTV_THEME_HEADLESS)
 // Reads exactly the `count` pixels of row `y` starting at column `x`. STI1
 // rows are raw pixels (RGB565, plus an alpha byte for a transparent asset);
 // STI2 rows are runs (see walkRow()). Runs before `x` are skipped.
@@ -417,6 +434,8 @@ bool Package::row(AssetHandle handle, int y, int x, int count, uint16_t* colors,
 bool Package::blendRow(AssetHandle handle, int y, int x, int count, uint16_t* pixels) {
   return readRow(handle, y, x, count, nullptr, nullptr, pixels);
 }
+#endif  // !SMALLTV_THEME_HEADLESS
+
 // An STF font (spec 2): the 12-byte header (see readIndex()), one 8-byte
 // record per code point from the first on, then the glyph bitmaps. A record
 // is a u16 bitmap offset (from the start of the bitmaps), the advance, the
@@ -470,6 +489,30 @@ bool Package::checkFont(const Entry& e) const {
   }
   return hasFallback && e.length == bitmaps + at;
 }
+#if defined(SMALLTV_THEME_HEADLESS)
+// In a web-only build the font has already been fully validated by checkFont().
+// Only verify that every font referenced by a text layer has a matching package
+// entry; no glyph advances or draw cache are needed without a renderer.
+bool Package::validateFonts(const Theme& candidate, std::string& error) const {
+  for (size_t i = 0; i < candidate.layers.size(); ++i) {
+    const Layer& layer = candidate.layers[i];
+    if (layer.type != LayerType::Text || !layer.font) continue;
+    if (layer.font > candidate.fonts.size()) {
+      error = "layers[" + std::to_string(i) + "].font: invalid font reference";
+      return false;
+    }
+    const std::string path = "fonts/" + candidate.fonts[layer.font - 1].name + ".stf";
+    const Entry* entry = find(path);
+    if (!entry || !entry->font()) {
+      error = "layers[" + std::to_string(i);
+      appendFlash(error, missingFont);
+      error += path;
+      return false;
+    }
+  }
+  return true;
+}
+#else
 // Reads every font a text layer names (fonts/<name>.stf) into the theme:
 // the glyph advances the engine lays text out with, and the line height as
 // the layer's size. The glyph cache is allocated here too, at load, where a
@@ -503,6 +546,8 @@ __attribute__((noinline)) bool Package::loadFonts(Theme& candidate, std::string&
   }
   return true;
 }
+#endif  // !SMALLTV_THEME_HEADLESS
+#if !defined(SMALLTV_THEME_HEADLESS)
 // Line `y` of glyph `code` as 0-255 coverage (see checkFont()). The packed
 // row is read into the start of `coverage` and spread out from the end, so
 // no second buffer is needed.
