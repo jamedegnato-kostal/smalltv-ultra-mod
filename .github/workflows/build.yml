@@ -25,7 +25,8 @@ jobs:
       - name: Stage firmware
         run: |
           mkdir -p dist
-          cp .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
+          copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
+          copy .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
