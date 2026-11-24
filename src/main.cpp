@@ -1,4 +1,4 @@
-// SmallTV Ultra Clean: Wi-Fi, web interface and firmware recovery only.
+// SmallTV Ultra Clean: web management, firmware recovery and display status.
 #include <Arduino.h>
 #include "Platform.h"
 #include "config.h"
@@ -6,10 +6,16 @@
 #include "Net.h"
 #include "WebPortal.h"
 #include "OtaUpdate.h"
+#include "display/DisplayBoard.h"
+#include "display/DisplayPanel.h"
+#include "display/DisplayStatus.h"
 
 static Settings g_settings;
 static String g_resetReason;
 static bool g_safeMode = false;
+static smalltv::display::DisplayPanel g_display;
+static bool g_displayReady = false;
+static uint16_t g_displayFailSeq = 0;
 
 const char* appResetReason() {
   return g_resetReason.c_str();
@@ -18,16 +24,29 @@ const char* appResetReason() {
 static void bootProgress(const char* message) {
   Serial.print("[net] ");
   Serial.println(message ? message : "");
+  if (g_displayReady) smalltv::display::showBoot(g_display, message);
+}
+
+static void showNetworkStatus() {
+  if (!g_displayReady) return;
+  const String ip = netIP();
+  if (g_safeMode) {
+    smalltv::display::showSafeMode(g_display, g_resetReason.c_str(), ip.c_str());
+  } else if (netMode() == NET_AP) {
+    smalltv::display::showAccessPoint(
+        g_display, g_settings.apSsid.c_str(), ip.c_str(), netFailReason());
+  } else {
+    const String ssid = netSSID();
+    smalltv::display::showConnected(
+        g_display, ssid.c_str(), ip.c_str(), g_settings.hostname.c_str());
+  }
+  g_displayFailSeq = netFailSeq();
 }
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.println(FW_NAME " " FW_VERSION);
-
-  // Original SmallTV backlight is active-low on GPIO5. Keep the panel dark.
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH);
 
   const PlatformReset reset = platformResetInfo();
   g_resetReason = reset.reason;
@@ -37,24 +56,51 @@ void setup() {
   if (!settingsBegin()) Serial.println("[boot] LittleFS unavailable");
   loadSettings(g_settings);
 
+  // Initialize after settings are loaded. The backlight starts dark and is
+  // raised only after the ST7789 controller has initialized successfully.
+  Serial.println("[boot] display");
+  smalltv::display::PanelColorProfile profile;
+  profile.rotation = 0;
+  profile.bgr = smalltv::display::DefaultBgr;
+  g_display.setColorProfile(profile);
+  g_displayReady = g_display.begin();
+  if (g_displayReady) {
+    g_display.setBrightness(smalltv::display::DefaultBrightnessPercent,
+                            smalltv::display::BacklightActiveLow);
+    smalltv::display::showBoot(g_display, g_safeMode ? "safe mode" : "starting");
+  } else {
+    Serial.println("[boot] display initialization failed; continuing headless");
+  }
+
   Serial.println("[boot] Wi-Fi");
   netAllowRetry(!g_safeMode);
   netBegin(g_settings, bootProgress);
 
   if (otaBootRequested()) {
     Serial.println("[boot] applying queued OTA update");
+    if (g_displayReady) smalltv::display::showUpdating(g_display, "please wait");
     otaBootUpdate(g_settings);
+    if (g_displayReady) smalltv::display::showUpdating(g_display, "update failed");
   }
 
   Serial.println("[boot] web server");
   webPortalBegin(g_settings);
+  showNetworkStatus();
   Serial.println("[boot] ready");
 }
 
 void loop() {
   netLoop();
   webPortalLoop();
+
+  // Background Wi-Fi retries can change the failure reason while the setup AP
+  // remains active. Refresh its diagnostic screen only when that reason changes.
+  if (g_displayReady && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
+    showNetworkStatus();
+  }
+
   if (webPortalRebootDue()) {
+    if (g_displayReady) smalltv::display::showBoot(g_display, "restarting");
     delay(120);
     ESP.restart();
   }

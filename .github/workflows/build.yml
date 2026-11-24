@@ -1,4 +1,4 @@
-name: SmallTV web-only firmware
+name: SmallTV web + display-status firmware
 
 on:
   push:
@@ -25,10 +25,10 @@ jobs:
       - name: Verify OTA asset name
         run: grep -q '#define UPDATE_ASSET "smalltv-clean-firmware.bin"' src/config.h
 
-      - name: Build web-only firmware
+      - name: Build web and display-status firmware
         run: pio run -e smalltv_clean
 
-      - name: Compile display hardware stack (not flashed)
+      - name: Compile non-headless theme renderer (not flashed)
         run: pio run -e smalltv_display_check
 
       - name: Stage firmware

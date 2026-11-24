@@ -9,8 +9,6 @@
 #endif
 
 namespace {
-using smalltv::display::DisplayPanel;
-using smalltv::display::PanelColorProfile;
 using smalltv::display::PanelWidth;
 using smalltv::display::PanelHeight;
 
@@ -19,8 +17,8 @@ static Arduino_DataBus* s_bus = nullptr;
 static Arduino_GFX* s_gfx = nullptr;
 
 // The stock ESP8266 Arduino_ST7789 selects SPI mode 2. The SmallTV panel
-// requires mode 3; this small subclass preserves the MADCTL rotation mapping
-// while allowing the RGB/BGR bit to follow the panel profile.
+// requires mode 3; this subclass preserves the rotation mapping and allows
+// the RGB/BGR MADCTL bit to follow the selected panel profile.
 class Arduino_ST7789_SmallTV final : public Arduino_ST7789 {
  public:
   using Arduino_ST7789::Arduino_ST7789;
@@ -50,7 +48,7 @@ static uint8_t clampGain(uint8_t value) {
   return value < 50 ? 50 : (value > 150 ? 150 : value);
 }
 
-static uint16_t applyGain(uint16_t rgb565, const PanelColorProfile& profile) {
+static uint16_t applyGain(uint16_t rgb565, const smalltv::display::PanelColorProfile& profile) {
   if (profile.redGain == 100 && profile.greenGain == 100 && profile.blueGain == 100) return rgb565;
   uint32_t red = (rgb565 >> 11) & 0x1f;
   uint32_t green = (rgb565 >> 5) & 0x3f;
@@ -67,7 +65,7 @@ namespace display {
 bool DisplayPanel::begin() {
   if (ready()) return true;
 
-  // Do not illuminate a panel before the controller has initialized.
+  // Keep the active-low backlight dark until the controller has started.
   backlight_.begin(BacklightActiveLow);
   s_bus = new (std::nothrow) Arduino_HWSPI(PinDc, PinChipSelect);
   if (!s_bus) return false;
@@ -96,6 +94,10 @@ bool DisplayPanel::begin() {
 
 bool DisplayPanel::ready() const {
   return s_gfx != nullptr;
+}
+
+void DisplayPanel::clear(uint16_t rgb565) {
+  if (s_gfx) s_gfx->fillScreen(applyGain(rgb565, profile_));
 }
 
 void DisplayPanel::setColorProfile(const PanelColorProfile& profile) {
@@ -145,8 +147,6 @@ void DisplayPanel::row(int x, int y, const uint16_t* pixels, int count) {
   if (count > PanelWidth - x) count = PanelWidth - x;
   if (count <= 0) return;
 
-  // One 240-pixel scanline is the only conversion buffer. The renderer does
-  // not need a persistent full-screen framebuffer or panel readback.
   uint16_t tinted[PanelWidth];
   for (int i = 0; i < count; ++i) tinted[i] = applyGain(pixels[i], profile_);
 

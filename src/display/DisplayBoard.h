@@ -1,7 +1,5 @@
 #pragma once
 // Board facts for the original GeekMagic SmallTV Ultra display.
-// Kept separate from the web-only configuration so the default firmware
-// does not gain GPIO or panel dependencies.
 #include <Arduino.h>
 
 namespace smalltv {
@@ -17,13 +15,12 @@ constexpr uint8_t PinReset = 2;  // D4
 constexpr int8_t PinChipSelect = 15;  // D8
 constexpr uint8_t PinBacklight = 5;   // D1
 
-// Original 1.54-inch ST7789 IPS panel. Rotation 2/3 uses the unused
-// 80-row controller RAM band as an offset for the 240x240 glass.
 constexpr bool DefaultBgr = false;
 constexpr uint16_t ColumnOffset1 = 0;
 constexpr uint16_t RowOffset1 = 0;
 constexpr uint16_t ColumnOffset2 = 0;
 constexpr uint16_t RowOffset2 = 80;
 constexpr bool BacklightActiveLow = true;
+constexpr uint8_t DefaultBrightnessPercent = 90;  // upstream v3.13.0 default
 }  // namespace display
 }  // namespace smalltv

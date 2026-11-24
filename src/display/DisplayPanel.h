@@ -21,6 +21,7 @@ class DisplayPanel final : public smalltv::Display {
  public:
   bool begin();
   bool ready() const;
+  void clear(uint16_t rgb565 = 0x0000);
 
   void setColorProfile(const PanelColorProfile& profile);
   void setRotation(uint8_t rotation);
