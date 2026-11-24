@@ -24,7 +24,7 @@ Text layers and bindings refer to values as `{sample.label}`,
 
 ## ESP8266 limits
 
-- At most 4 sources and 16 fields total (up to 8 fields per source).
+- At most 4 sources and 8 fields per source (32 fields total), matching the existing theme format limits.
 - One request at a time, with at least 5 seconds between requests.
 - Source intervals are 10 to 86,400 seconds; manifest URLs are limited to 320 bytes.
 - HTTP response `Content-Length` must be present and no larger than 3,072 bytes.

@@ -26,8 +26,8 @@ static_assert(THEME_MAX_LAYERS >= 1 && THEME_MAX_LAYERS <= 255,
 constexpr size_t MaxLayers = THEME_MAX_LAYERS;
 constexpr size_t MaxDataSources = 4;
 constexpr size_t MaxDataFields = 8;
-// ESP8266 runtime budget: at most 16 fetched fields across all sources.
-constexpr size_t MaxDataValues = 16;
+// Preserve the format's existing maximum: 4 sources x 8 fields = 32 values.
+constexpr size_t MaxDataValues = MaxDataSources * MaxDataFields;
 // The RAM all non-English texts of one theme may take together (spec 2
 // localized text): each entry's size plus its text where it spills to the heap.
 constexpr size_t MaxTranslationBytes = 1024;
