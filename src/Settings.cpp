@@ -121,7 +121,7 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
       const char* ssid = item["ssid"].as<const char*>();
       const size_t ssidLength = strlen(ssid);
       if (!ssidLength || ssidLength > 32) return F("Wi-Fi SSID must be 1-32 bytes");
-      if (item.containsKey("pass")) {
+      if (!item["pass"].isNull()) {
         if (!item["pass"].is<const char*>()) return F("invalid Wi-Fi password");
         if (strlen(item["pass"].as<const char*>()) > 64) return F("Wi-Fi password exceeds 64 bytes");
       }
