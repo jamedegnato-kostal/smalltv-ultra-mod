@@ -236,6 +236,7 @@ void ButtonSettings::fromJson(JsonObjectConst o) {
   if (o["longAction"].is<int>())  longAction  = constrain((int)o["longAction"],  0, BTN_ACT_MAX);
 }
 
+#if WITH_WEB_AUTH
 // ===========================================================================
 // Web UI password slice
 // ===========================================================================
@@ -246,24 +247,18 @@ void AuthSettings::setDefaults() {
 }
 
 void AuthSettings::toJson(JsonObject o, bool includeSecrets) const {
-  // Never enable in the saved config without a password to check against; a
-  // blank one would lock the page with a credential nobody can supply.
   o["enabled"] = enabled && pass.length() > 0;
-  o["user"]    = user;
+  o["user"] = user;
   o["passSet"] = pass.length() > 0;
   if (includeSecrets) o["pass"] = pass;
 }
 
 void AuthSettings::fromJson(JsonObjectConst o) {
   if (o["user"].is<const char*>()) user = o["user"].as<String>();
-  // Removing a password is explicit. A blank input still means "keep the
-  // stored one", which prevents an unrelated settings save from unlocking
-  // the device accidentally.
   if (o["clear"].is<bool>() && o["clear"].as<bool>()) {
     pass = "";
     enabled = false;
   }
-  // Blank keeps the stored password, as everywhere else in this file.
   if (o["pass"].is<const char*>()) {
     String p = o["pass"].as<String>();
     if (p.length()) pass = p;
@@ -272,9 +267,9 @@ void AuthSettings::fromJson(JsonObjectConst o) {
   if (user.length() >= MAX_AUTH_USER_LEN) user.remove(MAX_AUTH_USER_LEN - 1);
   if (pass.length() >= MAX_AUTH_PASS_LEN) pass.remove(MAX_AUTH_PASS_LEN - 1);
   if (!user.length()) user = DEFAULT_AUTH_USER;
-  // Same guard as toJson, for a config imported by hand.
   if (!pass.length()) enabled = false;
 }
+#endif
 
 // ===========================================================================
 // Panel colour slice
@@ -532,7 +527,9 @@ void Settings::setDefaults() {
 #endif
   clock.setDefaults();
   display.setDefaults();
+#if WITH_WEB_AUTH
   auth.setDefaults();
+#endif
   button.setDefaults();
 }
 
@@ -663,8 +660,10 @@ bool settingsCopyValid(const Settings& source, const Settings& candidate) {
   if (source.apSsid != candidate.apSsid || source.apPass != candidate.apPass ||
       source.hostname != candidate.hostname || source.themeId != candidate.themeId ||
       source.clock.tz != candidate.clock.tz || source.clock.tzPosix != candidate.clock.tzPosix ||
-      source.clock.dateFormat != candidate.clock.dateFormat || source.clock.lang != candidate.clock.lang ||
-      source.auth.user != candidate.auth.user || source.auth.pass != candidate.auth.pass) return false;
+      source.clock.dateFormat != candidate.clock.dateFormat || source.clock.lang != candidate.clock.lang) return false;
+#if WITH_WEB_AUTH
+  if (source.auth.user != candidate.auth.user || source.auth.pass != candidate.auth.pass) return false;
+#endif
 #if WITH_TICKER
   if (source.ticker.webhookUrl != candidate.ticker.webhookUrl ||
       source.ticker.range != candidate.ticker.range) return false;
@@ -835,6 +834,7 @@ bool settingsAppliedStringsValid(const Settings& original, const Settings& candi
           !settingsJsonStringEquals(candidate.clock.lang, lang)) return false;
     }
   }
+#if WITH_WEB_AUTH
   if (root["auth"].is<JsonObjectConst>()) {
     JsonObjectConst auth = root["auth"].as<JsonObjectConst>();
     if (auth["user"].is<const char*>()) {
@@ -855,6 +855,8 @@ bool settingsAppliedStringsValid(const Settings& original, const Settings& candi
           !settingsJsonStringEquals(candidate.auth.pass, original.auth.pass.c_str())) return false;
     }
   }
+
+#endif
 
 #if WITH_TICKER
   {
@@ -1019,7 +1021,9 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
 #endif
   s.clock.toJson(root["clock"].to<JsonObject>());
   s.display.toJson(root["display"].to<JsonObject>());
+#if WITH_WEB_AUTH
   s.auth.toJson(root["auth"].to<JsonObject>(), includeSecrets);
+#endif
   s.button.toJson(root["button"].to<JsonObject>());
 }
 
@@ -1198,6 +1202,8 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
 #endif
   if (root["clock"].is<JsonObjectConst>()) s.clock.fromJson(root["clock"].as<JsonObjectConst>());
   if (root["display"].is<JsonObjectConst>()) s.display.fromJson(root["display"].as<JsonObjectConst>());
+#if WITH_WEB_AUTH
   if (root["auth"].is<JsonObjectConst>()) s.auth.fromJson(root["auth"].as<JsonObjectConst>());
+#endif
   if (root["button"].is<JsonObjectConst>()) s.button.fromJson(root["button"].as<JsonObjectConst>());
 }
