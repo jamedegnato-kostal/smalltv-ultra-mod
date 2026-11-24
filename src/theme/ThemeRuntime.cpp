@@ -54,6 +54,7 @@ bool validThemeId(const char* id) {
 
 void releaseRuntime() {
   g_active = false;
+  smalltv::clockStop();
   g_activeId[0] = '\0';
   g_needsClock = false;
   g_engine.setTheme(smalltv::Theme{}, millis());

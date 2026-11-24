@@ -1314,6 +1314,21 @@ static const char animationKeys[] PROGMEM = "|id|type|x|y|width|height|source|fr
 static size_t translationCost(size_t length) {
   return sizeof(LocalizedText) + (length > std::string().capacity() ? length + 1 : 0);
 }
+// Whether a validated template includes a built-in clock token. Data fields
+// are deliberately excluded: they do not need SNTP.
+static bool textUsesClock(const std::string& value) {
+  for (size_t i = 0; i < value.size(); ++i) {
+    if (value[i] != '{') continue;
+    const size_t end = value.find('}', i + 1);
+    if (end == std::string::npos) break;
+    const std::string token = value.substr(i + 1, end - i - 1);
+    for (const char* known : tokens) if (token == known) return true;
+    for (const char* known : tokensSpec2) if (token == known) return true;
+    i = end;
+  }
+  return false;
+}
+
 // A text layer's `value`: a string, or under spec 2 an object of strings by
 // language code. `en` is required, so there is always a text to fall back to;
 // every code must be a known one, at most once, and every string passes the
@@ -1322,7 +1337,9 @@ __attribute__((noinline)) static bool parseTextValue(JsonObjectConst o, Theme& t
   JsonObjectConst languages = o["value"].as<JsonObjectConst>();
   if (languages.isNull()) {
     if (!f.text("value", l.value, 128)) return false;
-    return validText(l.value, t) || f.fail("value", "use printable ASCII and declared clock/data variables only");
+    if (!validText(l.value, t)) return f.fail("value", "use printable ASCII and declared clock/data variables only");
+    l.timeBound = textUsesClock(l.value);
+    return true;
   }
   if (t.spec < 2) return f.fail("value", "a text per language needs spec 2");
   bool english = false;
@@ -1334,6 +1351,7 @@ __attribute__((noinline)) static bool parseTextValue(JsonObjectConst o, Theme& t
     std::string text(s.c_str(), s.size());
     if (text.empty() || text.size() > 128) return f.fail("value", "each language expects 1 to 128 bytes");
     if (!validText(text, t)) return f.fail("value", "use printable ASCII and declared clock/data variables only");
+    if (textUsesClock(text)) l.timeBound = true;
     if (index == 0) {
       english = true;
       l.value = std::move(text);

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "Net.h"
 #include <coredecls.h>
+#include <lwip/apps/sntp.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -54,6 +55,13 @@ void clockReconfigure(const char* timezone) {
 
 void clockService() {
   startNtpWhenOnline();
+}
+
+void clockStop() {
+  g_requested = false;
+  if (g_started) sntp_stop();
+  g_started = false;
+  g_syncedByNtp = false;
 }
 
 bool clockSynced() {
