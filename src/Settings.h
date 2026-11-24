@@ -15,6 +15,13 @@ struct Settings {
   String apSsid;
   String hostname;
   uint16_t httpTimeout;
+  uint8_t displayBrightness;
+  uint8_t displayRotation;
+  bool displayBgr;
+  bool displayInvert;
+  uint8_t displayRedGain;
+  uint8_t displayGreenGain;
+  uint8_t displayBlueGain;
   void setDefaults();
 };
 

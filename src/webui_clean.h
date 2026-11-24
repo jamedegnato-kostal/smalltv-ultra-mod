@@ -135,6 +135,7 @@ button.btn:disabled{filter:saturate(.35)}
 <nav aria-label="Hauptnavigation">
  <button data-t="status" class="active" aria-current="page" type="button">Übersicht</button>
  <button data-t="wifi" type="button">Netzwerk</button>
+ <button data-t="display" type="button">Display</button>
  <button data-t="update" type="button">System</button>
  <button data-t="themes" type="button">Themes</button>
 </nav>
@@ -181,6 +182,42 @@ button.btn:disabled{filter:saturate(.35)}
   </div>
  </section>
 
+
+ <section id="display" class="tab">
+  <div class="page-intro"><p class="eyebrow">Bildschirm</p><h2>Display</h2><p>Manuelle Display-Einstellungen. Die Werte werden dauerhaft gespeichert und ohne Neustart übernommen.</p></div>
+  <div class="card">
+   <h2>Helligkeit und Ausrichtung</h2>
+   <label for="displayBrightness">Helligkeit <span id="displayBrightnessValue">90 %</span></label>
+   <input id="displayBrightness" type="range" min="0" max="100" step="1" value="90">
+   <label for="displayRotation">Display-Rotation</label>
+   <select id="displayRotation">
+    <option value="0">0° – normal</option>
+    <option value="1">90° – im Uhrzeigersinn</option>
+    <option value="2">180°</option>
+    <option value="3">270° – im Uhrzeigersinn</option>
+   </select>
+  </div>
+  <div class="card">
+   <h2>Farbdarstellung</h2>
+   <label for="displayColorOrder">Farbfolge</label>
+   <select id="displayColorOrder">
+    <option value="rgb">RGB</option>
+    <option value="bgr">BGR</option>
+   </select>
+   <div class="chk"><input id="displayInvert" type="checkbox"><label for="displayInvert">Display-Farben invertieren</label></div>
+   <small class="hint">RGB/BGR wählt die Farbfolge des Panels. Invertierung schaltet den entsprechenden ST7789-Panelmodus um.</small>
+  </div>
+  <div class="card">
+   <h2>Farbkorrektur</h2>
+   <label for="displayRedGain">Rot <span id="displayRedGainValue">100 %</span></label>
+   <input id="displayRedGain" type="range" min="50" max="150" step="1" value="100">
+   <label for="displayGreenGain">Grün <span id="displayGreenGainValue">100 %</span></label>
+   <input id="displayGreenGain" type="range" min="50" max="150" step="1" value="100">
+   <label for="displayBlueGain">Blau <span id="displayBlueGainValue">100 %</span></label>
+   <input id="displayBlueGain" type="range" min="50" max="150" step="1" value="100">
+   <small class="hint">100 % entspricht neutraler Darstellung. Die Korrektur wird zeilenweise beim Pixel-Output angewendet; es wird kein zusätzlicher Bildpuffer angelegt.</small>
+  </div>
+ </section>
 
  <section id="themes" class="tab">
   <div class="page-intro"><p class="eyebrow">PAKETVERWALTUNG</p><h2>.stheme Themes</h2><p>Pakete hochladen, vollständig prüfen und lokal verwalten. Eine Anzeige auf dem Display ist in dieser Firmware nicht aktiviert.</p></div>
@@ -291,7 +328,7 @@ function setClean(text) {
   $("saveSettingsBtn").disabled = true;
 }
 function lockSettingsControls(locked) {
-  document.querySelectorAll("#wifi input,#wifi button").forEach(function(control) {
+  document.querySelectorAll("#wifi input,#wifi button,#display input,#display select").forEach(function(control) {
     control.disabled = locked;
   });
 }
@@ -424,12 +461,26 @@ function scan() {
   }).catch(function(error){ $("scanList").textContent = "Netzwerksuche fehlgeschlagen: " + error.message; });
 }
 
+function updateDisplayLabels() {
+  $("displayBrightnessValue").textContent = $("displayBrightness").value + " %";
+  $("displayRedGainValue").textContent = $("displayRedGain").value + " %";
+  $("displayGreenGainValue").textContent = $("displayGreenGain").value + " %";
+  $("displayBlueGainValue").textContent = $("displayBlueGain").value + " %";
+}
 function loadConfig() {
   api("/api/config").then(function(data){
     config = data || {};
     $("hostname").value = config.hostname || "smalltv";
     $("apSsid").value = config.apSsid || "SmallTV-Setup";
     renderWifi(config.wifi || []);
+    $("displayBrightness").value = config.displayBrightness == null ? 90 : config.displayBrightness;
+    $("displayRotation").value = String(config.displayRotation == null ? 0 : config.displayRotation);
+    $("displayColorOrder").value = config.displayBgr ? "bgr" : "rgb";
+    $("displayInvert").checked = !!config.displayInvert;
+    $("displayRedGain").value = config.displayRedGain == null ? 100 : config.displayRedGain;
+    $("displayGreenGain").value = config.displayGreenGain == null ? 100 : config.displayGreenGain;
+    $("displayBlueGain").value = config.displayBlueGain == null ? 100 : config.displayBlueGain;
+    updateDisplayLabels();
     setClean("Alle Einstellungen sind gespeichert.");
   }).catch(function(error){ toast("Einstellungen konnten nicht geladen werden: " + error.message); });
 }
@@ -439,7 +490,14 @@ function saveAll() {
   var payload = {
     wifi: collectWifi(),
     hostname: $("hostname").value.trim(),
-    apSsid: $("apSsid").value.trim()
+    apSsid: $("apSsid").value.trim(),
+    displayBrightness: Number($("displayBrightness").value),
+    displayRotation: Number($("displayRotation").value),
+    displayBgr: $("displayColorOrder").value === "bgr",
+    displayInvert: $("displayInvert").checked,
+    displayRedGain: Number($("displayRedGain").value),
+    displayGreenGain: Number($("displayGreenGain").value),
+    displayBlueGain: Number($("displayBlueGain").value)
   };
   $("saveSettingsBtn").disabled = true;
   lockSettingsControls(true);
@@ -479,6 +537,13 @@ function saveAll() {
 }
 $("hostname").addEventListener("input", setDirty);
 $("apSsid").addEventListener("input", setDirty);
+["displayBrightness","displayRedGain","displayGreenGain","displayBlueGain"].forEach(function(id) {
+  $(id).addEventListener("input", function() { updateDisplayLabels(); setDirty(); });
+});
+["displayRotation","displayColorOrder"].forEach(function(id) {
+  $(id).addEventListener("change", setDirty);
+});
+$("displayInvert").addEventListener("change", setDirty);
 
 function formatUptime(seconds) {
   var total = Math.max(0, Number(seconds) || 0);

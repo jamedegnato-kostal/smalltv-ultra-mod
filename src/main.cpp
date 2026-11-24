@@ -43,6 +43,21 @@ static void showNetworkStatus() {
   g_displayFailSeq = netFailSeq();
 }
 
+void applyDisplaySettings(const Settings& settings) {
+  smalltv::display::PanelColorProfile profile;
+  profile.rotation = settings.displayRotation;
+  profile.bgr = settings.displayBgr;
+  profile.invert = settings.displayInvert;
+  profile.redGain = settings.displayRedGain;
+  profile.greenGain = settings.displayGreenGain;
+  profile.blueGain = settings.displayBlueGain;
+  g_display.setColorProfile(profile);
+  if (!g_displayReady) return;
+  g_display.setBrightness(settings.displayBrightness,
+                          smalltv::display::BacklightActiveLow);
+  showNetworkStatus();
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -60,12 +75,16 @@ void setup() {
   // raised only after the ST7789 controller has initialized successfully.
   Serial.println("[boot] display");
   smalltv::display::PanelColorProfile profile;
-  profile.rotation = 0;
-  profile.bgr = smalltv::display::DefaultBgr;
+  profile.rotation = g_settings.displayRotation;
+  profile.bgr = g_settings.displayBgr;
+  profile.invert = g_settings.displayInvert;
+  profile.redGain = g_settings.displayRedGain;
+  profile.greenGain = g_settings.displayGreenGain;
+  profile.blueGain = g_settings.displayBlueGain;
   g_display.setColorProfile(profile);
   g_displayReady = g_display.begin();
   if (g_displayReady) {
-    g_display.setBrightness(smalltv::display::DefaultBrightnessPercent,
+    g_display.setBrightness(g_settings.displayBrightness,
                             smalltv::display::BacklightActiveLow);
     smalltv::display::showBoot(g_display, g_safeMode ? "safe mode" : "starting");
   } else {

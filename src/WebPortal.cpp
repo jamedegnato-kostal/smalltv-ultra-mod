@@ -13,6 +13,7 @@
 #include <WiFiUdp.h>
 
 extern const char* appResetReason();
+extern void applyDisplaySettings(const Settings& settings);
 
 static WebServerClass server(80);
 static Settings* S = nullptr;
@@ -101,6 +102,20 @@ static uint32_t netFingerprint(const Settings& settings) {
   return hash;
 }
 
+static uint32_t displayFingerprint(const Settings& settings) {
+  uint32_t hash = 2166136261UL;
+  const uint8_t values[] = {
+    settings.displayBrightness, settings.displayRotation,
+    (uint8_t)settings.displayBgr, (uint8_t)settings.displayInvert,
+    settings.displayRedGain, settings.displayGreenGain, settings.displayBlueGain
+  };
+  for (uint8_t value : values) {
+    hash ^= value;
+    hash *= 16777619UL;
+  }
+  return hash;
+}
+
 static void sendParseError(DeserializationError error) {
   if (error == DeserializationError::NoMemory) {
     server.send(503, "application/json", "{\"ok\":false,\"error\":\"not enough memory\"}");
@@ -143,6 +158,7 @@ static void handlePostConfig() {
   if (!readSettingsJson(doc)) return;
 
   const uint32_t oldNetwork = netFingerprint(*S);
+  const uint32_t oldDisplay = displayFingerprint(*S);
   const bool saved = applyAndSaveSettings(
     *S,
     [&](Settings& settings) {
@@ -157,6 +173,8 @@ static void handlePostConfig() {
     server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save settings\"}");
     return;
   }
+
+  if (displayFingerprint(*S) != oldDisplay) applyDisplaySettings(*S);
 
   const bool reboot = netFingerprint(*S) != oldNetwork;
   JsonDocument result;

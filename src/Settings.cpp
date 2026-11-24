@@ -16,6 +16,13 @@ void Settings::setDefaults() {
   apSsid = DEFAULT_AP_SSID;
   hostname = String(DEFAULT_HOSTNAME) + "-" + String(platformChipId() & 0xFFFF, HEX);
   httpTimeout = DEFAULT_HTTP_TIMEOUT;
+  displayBrightness = 90;
+  displayRotation = 0;
+  displayBgr = false;
+  displayInvert = false;
+  displayRedGain = 100;
+  displayGreenGain = 100;
+  displayBlueGain = 100;
 }
 
 bool settingsBegin() {
@@ -65,6 +72,13 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["hostname"] = s.hostname;
   root["apSsid"] = s.apSsid;
   root["httpTimeout"] = s.httpTimeout;
+  root["displayBrightness"] = s.displayBrightness;
+  root["displayRotation"] = s.displayRotation;
+  root["displayBgr"] = s.displayBgr;
+  root["displayInvert"] = s.displayInvert;
+  root["displayRedGain"] = s.displayRedGain;
+  root["displayGreenGain"] = s.displayGreenGain;
+  root["displayBlueGain"] = s.displayBlueGain;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
   for (uint8_t i = 0; i < s.wifiCount; ++i) {
@@ -109,6 +123,35 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
     if (!root["httpTimeout"].is<int>()) return F("invalid HTTP timeout");
     const int timeout = root["httpTimeout"].as<int>();
     if (timeout < 1000 || timeout > 20000) return F("HTTP timeout must be 1000-20000 ms");
+  }
+  if (!root["displayBrightness"].isNull()) {
+    if (!root["displayBrightness"].is<int>()) return F("invalid display brightness");
+    const int value = root["displayBrightness"].as<int>();
+    if (value < 0 || value > 100) return F("display brightness must be 0-100 percent");
+  }
+  if (!root["displayRotation"].isNull()) {
+    if (!root["displayRotation"].is<int>()) return F("invalid display rotation");
+    const int value = root["displayRotation"].as<int>();
+    if (value < 0 || value > 3) return F("display rotation must be 0-3");
+  }
+  if (!root["displayBgr"].isNull() && !root["displayBgr"].is<bool>())
+    return F("invalid display color order");
+  if (!root["displayInvert"].isNull() && !root["displayInvert"].is<bool>())
+    return F("invalid display inversion setting");
+  if (!root["displayRedGain"].isNull()) {
+    if (!root["displayRedGain"].is<int>()) return F("invalid red gain");
+    const int value = root["displayRedGain"].as<int>();
+    if (value < 50 || value > 150) return F("red gain must be 50-150 percent");
+  }
+  if (!root["displayGreenGain"].isNull()) {
+    if (!root["displayGreenGain"].is<int>()) return F("invalid green gain");
+    const int value = root["displayGreenGain"].as<int>();
+    if (value < 50 || value > 150) return F("green gain must be 50-150 percent");
+  }
+  if (!root["displayBlueGain"].isNull()) {
+    if (!root["displayBlueGain"].is<int>()) return F("invalid blue gain");
+    const int value = root["displayBlueGain"].as<int>();
+    if (value < 50 || value > 150) return F("blue gain must be 50-150 percent");
   }
   if (!root["wifi"].isNull()) {
     if (!root["wifi"].is<JsonArrayConst>()) return F("wifi must be an array");
@@ -202,4 +245,18 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
   if (root["httpTimeout"].is<int>()) {
     s.httpTimeout = constrain((int)root["httpTimeout"], 1000, 20000);
   }
+  if (root["displayBrightness"].is<int>())
+    s.displayBrightness = (uint8_t)root["displayBrightness"].as<int>();
+  if (root["displayRotation"].is<int>())
+    s.displayRotation = (uint8_t)root["displayRotation"].as<int>();
+  if (root["displayBgr"].is<bool>())
+    s.displayBgr = root["displayBgr"].as<bool>();
+  if (root["displayInvert"].is<bool>())
+    s.displayInvert = root["displayInvert"].as<bool>();
+  if (root["displayRedGain"].is<int>())
+    s.displayRedGain = (uint8_t)root["displayRedGain"].as<int>();
+  if (root["displayGreenGain"].is<int>())
+    s.displayGreenGain = (uint8_t)root["displayGreenGain"].as<int>();
+  if (root["displayBlueGain"].is<int>())
+    s.displayBlueGain = (uint8_t)root["displayBlueGain"].as<int>();
 }

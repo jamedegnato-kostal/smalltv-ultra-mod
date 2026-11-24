@@ -23,6 +23,7 @@ activated by the application. The web interface manages `.stheme` packages
 - ST7789 panel initialization and boot/network status screens
 - SPI mode 3, panel rotation/RGB-order boundary and RGB565 row output
 - Backlight initialization with upstream default brightness (90%)
+- Persistent manual brightness, panel rotation, RGB/BGR order, inversion and per-channel color gains
 - `.stheme` package storage, manifest/container validation, asset validation,
   listing and deletion
 
@@ -32,9 +33,7 @@ activated by the application. The web interface manages `.stheme` packages
 - Clock, NTP, language/locale scheduling or night mode
 - Theme data sources and network fetchers
 - Photos, JPEG decoding or slideshow
-- Ticker, usage monitor, radar, rain radar, MQTT/Home Assistant or notifications
 - Physical button support
-- Display settings in the web UI (brightness, rotation, color correction)
 - Web login or access-password system
 - ESP32-C2 / classic ESP32 / SmallTV Pro board targets
 - Separate loader image
