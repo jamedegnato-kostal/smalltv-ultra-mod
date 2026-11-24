@@ -28,6 +28,9 @@ jobs:
       - name: Build web-only firmware
         run: pio run -e smalltv_clean
 
+      - name: Compile display renderer (not flashed)
+        run: pio run -e smalltv_display_check
+
       - name: Stage firmware
         run: |
           mkdir -p dist
