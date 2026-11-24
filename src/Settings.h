@@ -22,10 +22,6 @@ struct Settings {
   uint8_t displayRedGain;
   uint8_t displayGreenGain;
   uint8_t displayBlueGain;
-  bool nightModeEnabled;
-  uint16_t nightStartMin;   // local minutes since midnight (0..1439)
-  uint16_t nightEndMin;
-  uint8_t nightBrightness;  // 0..100 percent
   char activeTheme[49];
   char timezone[65];  // POSIX TZ rule; includes DST transitions
   char language[3];    // theme language: en or de
