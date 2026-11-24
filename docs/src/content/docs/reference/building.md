@@ -1,40 +1,26 @@
 ---
-title: Clean Image lokal bauen
+title: Web-only Clean Image lokal bauen
 description: Die minimale SmallTV-Ultra-Firmware mit PlatformIO kompilieren.
 ---
 
 ## Voraussetzungen
 
 - PlatformIO Core oder die PlatformIO-Erweiterung für Visual Studio Code
-- Python 3 für die eingebettete Weboberfläche und Prüfwerkzeuge
-- Internetzugang beim ersten Build, damit PlatformIO Framework und Bibliotheken laden kann
+- Python 3
+- Internetzugang beim ersten Build
 
-## Clean Image
+## Firmware bauen
 
-Im Repository-Ordner ausführen:
+Im Repository-Ordner:
 
-```sh
-python tools/gzip_webui_settings.py --check
+~~~sh
 pio run -e smalltv_clean
-```
+~~~
 
-Das Image wird unter `.pio/build/smalltv_clean/firmware.bin` erzeugt.
+Das Image liegt unter .pio/build/smalltv_clean/firmware.bin.
 
-Das Clean Image enthält Display, WLAN-/Captive-Portal-Einrichtung, lokale Weboberfläche, NTP-Uhr, installierbare einzelne Themes, OTA-Wartung und Crash-Recovery. Foto-Bibliothek/JPEG-Decoding, Theme-Playlist und Zeitpläne, Ticker, Usage-Monitor, Radar, Home Assistant/MQTT, Benachrichtigungs-Overlay und das separate Loader-Image sind nicht Bestandteil des Builds.
+Es enthält nur WLAN-Client, Setup-Hotspot, lokale Weboberfläche, Konfigurationsspeicher, Statusdiagnose, Werksreset, Neustart, manuelles OTA und GitHub-OTA. Display, Uhr, Theme-Engine, Fotos, Login und optionale Anzeige-Modi sind nicht Bestandteil des Builds.
 
-## Vorhandene Prüfungen
+## Qualitätssicherung
 
-GitHub Actions baut ausschließlich `smalltv_clean`, prüft die komprimierte Weboberfläche, Theme-Pakete und Parser sowie den verfügbaren Platz im OTA-App-Slot. Lokal können die gleichen relevanten Schritte ausgeführt werden:
-
-```sh
-python tools/gzip_webui_settings.py --check
-pio run -e smalltv_clean
-python tools/ci_checks.py size --envs smalltv_clean --min-free 8192
-python tools/ci_checks.py assets
-```
-
-Die Tests unter `tests/` benötigen je nach Skript einen C++-Compiler und unter Linux teils 32-Bit-Unterstützung. Sie decken Hostcode ab, simulieren aber kein vollständiges ESP8266-Gerät.
-
-## Veröffentlichungsdatei
-
-Der Firmware-Workflow legt `smalltv-clean-firmware.bin` als Build-Artefakt ab. Ein Git-Tag im Format `vX.Y.Z` löst zusätzlich die Release-Erstellung aus. Der Asset-Name entspricht dem Selbstupdate-Eintrag `UPDATE_ASSET` in `src/config.h`.
+GitHub Actions baut ausschließlich smalltv_clean, kontrolliert den Veröffentlichungsdateinamen und prüft den freien Platz im OTA-App-Slot. Das ersetzt keinen Test auf echter SmallTV-Ultra-Hardware.

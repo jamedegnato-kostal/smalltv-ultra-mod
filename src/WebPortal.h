@@ -1,8 +1,6 @@
-// WebPortal.h — HTTP config UI, REST API, and OTA endpoint
+// Minimal local configuration server, no authentication.
 #pragma once
-#include <Arduino.h>
 #include "Settings.h"
-
 void webPortalBegin(Settings& settings);
 void webPortalLoop();
-bool webPortalRebootDue();   // main polls this and calls ESP.restart()
+bool webPortalRebootDue();

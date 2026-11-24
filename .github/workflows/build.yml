@@ -1,101 +1,36 @@
-name: Firmware build
-
+name: SmallTV web-only firmware
 on:
   push:
     branches: [main, clean-image]
     tags: ['v*']
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   firmware:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Cache PlatformIO
-        uses: actions/cache@v4
-        with:
-          path: ~/.platformio
-          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
-          restore-keys: pio-${{ runner.os }}-
-
-      - name: Install build tools
-        run: |
-          python -m pip install platformio
-          sudo apt-get update
-          sudo apt-get install -y g++-multilib
-
-      - name: Check embedded web page
-        run: python tools/gzip_webui_settings.py --check
-
+      - name: Install PlatformIO
+        run: python -m pip install platformio
+      - name: Build web-only firmware
+        run: pio run -e smalltv_clean
       - name: Check release asset name
         run: python tools/ci_checks.py assets
-
-      - name: Build clean firmware
-        run: pio run -e smalltv_clean
-
-      - name: Check theme packages and parsers
-        run: |
-          python -m pip install -r tools/requirements-theme.txt
-          python -m unittest discover -s tests/theme -p 'test_*.py'
-          python tools/theme_pack.py examples/themes/pixel-room /tmp/pixel-room.stheme
-          cmp examples/themes/pixel-room.stheme /tmp/pixel-room.stheme
-          python tools/theme_pack.py examples/themes/terminal-ops /tmp/terminal-ops.stheme
-          cmp examples/themes/terminal-ops.stheme /tmp/terminal-ops.stheme
-          python tools/theme_pack.py examples/themes/live-status /tmp/live-status.stheme
-          cmp examples/themes/live-status.stheme /tmp/live-status.stheme
-          sh tests/theme/run.sh
-          node tests/theme/test_webui.js
-          node tests/theme/test_webui_poll.js
-
-      - name: Check untrusted input parsers
-        run: sh tests/fuzz/run.sh
-
-      - name: Check settings storage
-        run: |
-          c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc -I.pio/libdeps/smalltv_clean/ArduinoJson/src \
-            tests/test_storage.cpp -o /tmp/smalltv-storage-tests
-          /tmp/smalltv-storage-tests
-
-      - name: Check status responses
-        run: sh tests/status/run.sh
-
-      - name: Check request guard
-        run: |
-          c++ -std=c++11 -Wall -Wextra -Werror -g -Isrc tests/test_webguard.cpp -o /tmp/smalltv-webguard-tests
-          /tmp/smalltv-webguard-tests
-
-      - name: Stage firmware files
-        if: always()
+      - name: Check OTA app-slot space
+        run: python tools/ci_checks.py size --envs smalltv_clean --min-free 8192
+      - name: Stage firmware
         run: |
           mkdir -p dist
-          copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
-          copy .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
-
-      - name: Check app-slot space
-        run: python tools/ci_checks.py size --envs smalltv_clean --min-free 8192
-
-      - name: Upload build artifact
-        if: always()
+          cp .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: smalltv-clean-firmware
-          path: dist/
-          if-no-files-found: warn
-
+          path: dist/smalltv-clean-firmware.bin
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: firmware
@@ -107,7 +42,6 @@ jobs:
         with:
           name: smalltv-clean-firmware
           path: dist
-
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*

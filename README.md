@@ -1,77 +1,57 @@
-# SmallTV Ultra Clean Firmware
+# SmallTV Ultra – Web-only Clean Image
 
-Schlanke ESP8266-Firmware für GeekMagic SmallTV und SmallTV Ultra mit ST7789-Display (240 × 240 Pixel). Dieses Image enthält nur die Funktionen, die für den eigenständigen Betrieb, die Einrichtung und die Wartung des Geräts benötigt werden.
+Minimal firmware for the GeekMagic SmallTV / SmallTV Ultra (ESP8266).
 
-## Enthalten
+**There is no on-screen interface.** The display and backlight are not initialised; the backlight is held off. All operation is performed through the local web interface.
 
-- **Display-Kern:** ST7789-Ansteuerung, Rendering und Helligkeits-/Ausrichtungseinstellungen.
-- **Netzwerk:** WLAN-Client, Einrichtungs-Hotspot bei fehlender Verbindung, mehrere gespeicherte WLANs und mDNS-Hostname.
-- **Lokale Weboberfläche:** Gerätestatus, Display- und Uhr-Einstellungen, Theme-Verwaltung, WLAN-Konfiguration und Systemwartung.
-- **Uhr:** NTP-Synchronisierung, Zeitzone, Zeit-/Datumsdarstellung und optionaler Nachtmodus.
-- **Einzelnes Theme:** Installieren und Auswählen eines `.stheme`-Pakets sowie Rendering der Theme-Ebenen. Das Image enthält ein internes Recovery-Theme.
-- **Wartung:** Konfigurations-Backup, Werkseinstellungen, Neustart, manuelles OTA-Update und Crash-Recovery.
+## Included
 
-## Bewusst nicht enthalten
+- Wi-Fi client and stored network credentials
+- Setup access point when no saved network is configured or a connection fails
+- Captive-portal redirects and mDNS hostname
+- Small local web interface
+- Configuration storage in LittleFS
+- Wi-Fi scanning and network configuration
+- Configuration export/import
+- Factory reset and restart
+- Manual firmware upload and GitHub online OTA update
+- Network/status diagnostics and OTA recovery after a failed boot
 
-Diese Funktionen werden beim Clean Build nicht kompiliert:
+## Removed
 
-- Foto-Bibliothek, JPEG-Decodierung und Foto-Diashow
-- Theme-Playlist, Zeitpläne und automatische Theme-Wechsel
-- Aktien-/Krypto-Ticker
-- Usage-Monitor
-- Flugradar
-- Home-Assistant-/MQTT-Integration
-- Benachrichtigungs-Overlay
-- Separates Loader-/Installationsimage
+- Theme engine, .stheme format, themes, package manager and theme APIs
+- Clock, NTP and night mode
+- Display rendering, ST7789/GFX library and display settings
+- Photo library, JPEG decoding and slideshow
+- Ticker, usage monitor, aircraft radar, MQTT/Home Assistant and notifications
+- Digest login and web password settings
+- Loader image and theme build tools
 
-Die Theme-Engine bleibt enthalten, weil sie das installierbare Zifferblatt-/Theme-Format rendert. Die WLAN- und OTA-Funktionen bleiben erhalten, damit das Gerät ohne serielle Konfiguration eingerichtet und gewartet werden kann.
+## Setup
 
-## Zielhardware und Grenzen
+1. Flash the firmware to the ESP8266 SmallTV.
+2. Connect a phone or computer to the SmallTV-Setup Wi-Fi access point.
+3. Open http://192.168.4.1.
+4. Enter the home Wi-Fi details and save. The device restarts and the web interface becomes available at its assigned IP address or mDNS hostname.
 
-- GeekMagic SmallTV / SmallTV Ultra mit ESP8266
-- ST7789 IPS-Panel, 240 × 240 Pixel
-- WLAN mit 2,4 GHz; 5 GHz wird vom ESP8266 nicht unterstützt
-- PlatformIO-Umgebung: `smalltv_clean`
-- Dateisystem: LittleFS; Einstellungen und installierte Themes liegen dort
+The web interface has **no login or password protection**. Use it only on a trusted local network. Configuration exports contain Wi-Fi credentials and should be handled as secrets.
 
-## Clean Image bauen
+The display remains dark by design. This is a network and web-management image, not a display firmware.
 
-Benötigt werden Python 3, PlatformIO Core und beim ersten Build eine Internetverbindung zum Laden von Framework und Bibliotheken.
+## Build
 
-```sh
-python tools/gzip_webui_settings.py --check
-python -m platformio run -e smalltv_clean
-```
+Install Python 3 and PlatformIO Core, then run:
 
-Das Image entsteht unter:
+~~~sh
+pio run -e smalltv_clean
+~~~
 
-```text
+Output:
+
+~~~text
 .pio/build/smalltv_clean/firmware.bin
-```
+~~~
 
-Die Settings-Weboberfläche wird gzip-komprimiert aus `src/webui_settings.html` eingebunden. Nach Änderungen an der HTML-Datei den Header mit folgendem Befehl neu erzeugen:
+Only the web-only firmware is compiled. There is no loader, display renderer, clock service, theme engine or optional mode registry.
 
-```sh
-python tools/gzip_webui_settings.py
-```
-
-## Projektstruktur
-
-| Pfad | Zweck |
-| --- | --- |
-| `src/` | Firmware-Kern, Display, Uhr, Netzwerk, OTA und Einstellungen |
-| `src/features/theme/` | Theme-Paketparser, Renderer und Theme-Web-API |
-| `src/webui_settings.html` | Quelle der lokalen Weboberfläche |
-| `examples/themes/` | editierbare Theme-Beispiele und fertige Pakete |
-| `examples/recovery-theme/` | separates Beispiel-Recovery-Theme |
-| `tools/` | Theme-Packer, Vorschau, UI-Komprimierung und CI-Hilfen |
-| `tests/` | Parser-, Speicher-, Theme- und API-nahe Hosttests |
-| `docs/` | Bedienungs- und Entwicklungsdokumentation |
-
-## Sicherheit
-
-Der Webzugriff ist standardmäßig nicht passwortgeschützt. Bei Bedarf Digest-Authentifizierung in den erweiterten Geräteeinstellungen aktivieren und das Gerät nur in einem vertrauenswürdigen lokalen Netzwerk betreiben. HTTP verschlüsselt den übrigen Datenverkehr nicht. Konfigurations-Backups können WLAN-Zugangsdaten enthalten und gehören nicht in öffentliche Fehlerberichte.
-
-## Lizenz und Herkunft
-
-Die Lizenzdatei bleibt unverändert erhalten. Eine separate Notiz zu Firmware-Basis und eingebundenen Bibliotheken steht in [NOTICE.md](NOTICE.md). Beispiel-Themes können abweichende Autor- und Lizenzangaben besitzen.
+The existing project LICENSE and NOTICE.md files remain in place.
