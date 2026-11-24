@@ -116,7 +116,7 @@ static bool readSettingsJson(JsonDocument& doc) {
   }
   const String body = server.arg("plain");
   if (body.length() > MaxSettingsJsonBytes) {
-    server.send(413, "application/json", "{\"ok\":false,\"error\":\"configuration JSON exceeds 2048 bytes\"}");
+    server.send(413, F("application/json"), F("{\"ok\":false,\"error\":\"configuration JSON exceeds 2048 bytes\"}"));
     return false;
   }
   if (DeserializationError error = deserializeJson(doc, body)) {
@@ -124,7 +124,7 @@ static bool readSettingsJson(JsonDocument& doc) {
     return false;
   }
   if (!doc.is<JsonObject>()) {
-    server.send(400, "application/json", "{\"ok\":false,\"error\":\"JSON root must be an object\"}");
+    server.send(400, F("application/json"), F("{\"ok\":false,\"error\":\"JSON root must be an object\"}"));
     return false;
   }
   if (const __FlashStringHelper* error = settingsValidateJson(doc.as<JsonObjectConst>())) {
@@ -187,7 +187,7 @@ static void handleReboot() {
 static void handleFactory() {
   // Formatting is destructive and only allowed after the user confirms reset.
   if (!settingsStorageReady() && !settingsFormat()) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not initialize LittleFS\"}");
+    server.send(500, F("application/json"), F("{\"ok\":false,\"error\":\"could not initialize LittleFS\"}"));
     return;
   }
   if (!applyAndSaveSettings(
@@ -204,7 +204,7 @@ static void handleFactory() {
 
 static void handleExport() {
   if (!settingsStorageReady()) {
-    server.send(503, "application/json", "{\"ok\":false,\"error\":\"LittleFS unavailable; use factory reset to initialize it\"}");
+    server.send(503, F("application/json"), F("{\"ok\":false,\"error\":\"LittleFS unavailable; use factory reset to initialize it\"}"));
     return;
   }
   JsonDocument doc;
