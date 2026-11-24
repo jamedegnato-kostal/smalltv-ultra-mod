@@ -1,4 +1,4 @@
-// config.h — compile-time constants for SmallTV Settings Firmware
+// config.h — compile-time constants for SmallTV Stable Firmware
 //
 // Hardware: GeekMagic SmallTV / SmallTV Ultra with ESP8266.
 #pragma once
