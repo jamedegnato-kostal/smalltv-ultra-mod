@@ -42,9 +42,9 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 - **PlatformIO-Umgebung:** `smalltv_settings`
 - **Separates Installationshilfsimage:** `smalltv_loader`
 
-Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehen. Die erstmalige Installation auf manchen SmallTV-Ultra-Flashlayouts kann einen gerätespezifischen Installationsweg erfordern. Lies vor dem Flashen die [Installationshinweise](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/getting-started/flashing/).
+Dieses Stable-Image ist ausschließlich für ESP8266-basierte SmallTV-Geräte ausgelegt. Es enthält den zeitgesteuerten Nachtmodus, aber keine automatische Sprach-/Locale-Zeitplanung, keine physische Tastensteuerung und keinen Web-Login oder Passwortschutz. ESP32-C2-, klassische ESP32- und SmallTV-Pro-Ziele sind nicht Bestandteil dieses Builds. Die erstmalige Installation auf manchen SmallTV-Ultra-Flashlayouts kann einen Loader erfordern; beachte die [Installationshinweise](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/getting-started/flashing/).
 
-## Stable Firmware und unterstützte Hardware
+## Firmware beziehen
 
 ### Firmware beziehen
 
@@ -53,7 +53,7 @@ Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehe
 - `smalltv-stable-firmware.bin` – reguläres Stable-Firmwareimage
 - `smalltv-stable-loader.bin` – Erstinstallationshilfe für Geräte, deren Original-Updater das Hauptimage ablehnt.
 
-Beide Images werden mit jedem regulären Release veröffentlicht. Der Loader wird nur für die Erstinstallation benötigt; spätere Firmware-Updates laufen über die Weboberfläche.
+Beide Images werden mit jedem regulären Release veröffentlicht. Für die Erstinstallation startest du den Loader, verbindest dich mit dem WLAN `SmallTV-Loader`, öffnest `http://192.168.4.1/update` und lädst dort `smalltv-stable-firmware.bin` hoch. Der Loader wird danach nicht mehr benötigt; spätere Updates laufen über die Weboberfläche.
 
 Prüfe vor dem Flashen die Hardware- und Flashlayout-Hinweise in der [Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/).
 
