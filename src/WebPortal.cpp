@@ -96,6 +96,10 @@ static void handleStatus() {
   doc["localTime"] = localTime;
   doc["timezone"] = S->timezone;
   doc["language"] = S->language;
+  doc["nightModeEnabled"] = S->nightModeEnabled;
+  doc["nightStartMin"] = S->nightStartMin;
+  doc["nightEndMin"] = S->nightEndMin;
+  doc["nightBrightness"] = S->nightBrightness;
   doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
@@ -126,13 +130,17 @@ static uint32_t netFingerprint(const Settings& settings) {
 
 static uint32_t displayFingerprint(const Settings& settings) {
   uint32_t hash = 2166136261UL;
-  const uint8_t values[] = {
+  const uint16_t values[] = {
     settings.displayBrightness, settings.displayRotation,
-    (uint8_t)settings.displayBgr, (uint8_t)settings.displayInvert,
-    settings.displayRedGain, settings.displayGreenGain, settings.displayBlueGain
+    (uint16_t)settings.displayBgr, (uint16_t)settings.displayInvert,
+    settings.displayRedGain, settings.displayGreenGain, settings.displayBlueGain,
+    (uint16_t)settings.nightModeEnabled, settings.nightStartMin,
+    settings.nightEndMin, settings.nightBrightness
   };
-  for (uint8_t value : values) {
-    hash ^= value;
+  for (uint16_t value : values) {
+    hash ^= (uint8_t)value;
+    hash *= 16777619UL;
+    hash ^= (uint8_t)(value >> 8);
     hash *= 16777619UL;
   }
   return hash;
@@ -183,6 +191,7 @@ static void handlePostConfig() {
   const uint32_t oldDisplay = displayFingerprint(*S);
   char oldTimezone[sizeof(S->timezone)];
   memcpy(oldTimezone, S->timezone, sizeof(oldTimezone));
+  const bool oldNightModeEnabled = S->nightModeEnabled;
   char oldLanguage[sizeof(S->language)];
   memcpy(oldLanguage, S->language, sizeof(oldLanguage));
   const bool saved = applyAndSaveSettings(
@@ -201,7 +210,8 @@ static void handlePostConfig() {
   }
 
   if (displayFingerprint(*S) != oldDisplay) applyDisplaySettings(*S);
-  if (strcmp(oldTimezone, S->timezone) != 0) applyTimeSettings(*S);
+  if (strcmp(oldTimezone, S->timezone) != 0 ||
+      oldNightModeEnabled != S->nightModeEnabled) applyTimeSettings(*S);
   if (strcmp(oldLanguage, S->language) != 0) smalltv::themeRuntimeSetLanguage(S->language);
 
   const bool reboot = netFingerprint(*S) != oldNetwork;
