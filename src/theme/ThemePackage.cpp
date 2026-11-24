@@ -579,3 +579,4 @@ bool Package::glyphRow(AssetHandle handle, uint8_t code, int y, uint8_t* coverag
 }
 }
 #endif
+#endif  // !defined(ARDUINO) || WITH_THEME
