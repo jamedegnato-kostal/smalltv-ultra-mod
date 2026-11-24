@@ -1,8 +1,8 @@
 # Display subsystem structure
 
-This branch is intentionally keeping the physical display inactive. The display
-code is being separated internally so it can be reviewed and tested before any
-firmware is flashed.
+The standard ESP8266 firmware initializes the ST7789 panel and can render one
+selected `.stheme` package. Rendering uses dirty rectangles and RGB565 scanlines;
+there is no persistent full-screen framebuffer.
 
 ## Boundaries
 
@@ -21,11 +21,12 @@ firmware is flashed.
 
 ## Current state
 
-The `smalltv_clean` environment still defines
-`SMALLTV_THEME_HEADLESS=1`. Therefore `ThemeDisplay.cpp` contributes no
-renderer code to the current firmware build, and the display remains inactive.
-No display initialization, backlight control, rendering loop, or device flash
-is enabled by this change.
+The standard `smalltv_clean` environment builds the non-headless package path
+and `ThemeDisplay.cpp`. `ThemeRuntime` keeps one package file open, one parsed
+engine and one asset index. Switching themes releases the prior engine before
+loading another. Runtime activation checks heap and largest-block reserves
+before and after loading; package installation is blocked while a theme is
+active. Image/font bytes are read from LittleFS as needed.
 
-A future hardware integration should implement a concrete `Display` adapter
-for the actual SmallTV Ultra panel and separately decide when to initialize it.
+This firmware supplies no clock or external data values: NTP and remote data
+source clients remain outside this runtime step.

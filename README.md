@@ -2,10 +2,9 @@
 
 Minimal firmware for the ESP8266-based GeekMagic SmallTV / SmallTV Ultra.
 
-The ST7789 display is initialized at boot and shows startup, setup-AP,
-connected and safe-mode recovery information. No theme or content renderer is
-activated by the application. The web interface manages `.stheme` packages
-(upload, validate, list and delete), but does not select or display them.
+The ST7789 display is initialized at boot and shows startup/network status
+until a valid `.stheme` package is selected. The theme engine then renders the
+selected package through row-based output without a full-screen framebuffer.
 
 ## Included
 
@@ -24,12 +23,10 @@ activated by the application. The web interface manages `.stheme` packages
 - SPI mode 3, panel rotation/RGB-order boundary and RGB565 row output
 - Backlight initialization with upstream default brightness (90%)
 - Persistent manual brightness, panel rotation, RGB/BGR order, inversion and per-channel color gains
-- `.stheme` package storage, manifest/container validation, asset validation,
-  listing and deletion
+- `.stheme` package storage, validation, selection and row-based rendering
 
 ## Not included yet
 
-- Theme selection, theme runtime scheduling and theme rendering
 - Clock, NTP, language/locale scheduling or night mode
 - Theme data sources and network fetchers
 - Photos, JPEG decoding or slideshow
@@ -43,11 +40,14 @@ activated by the application. The web interface manages `.stheme` packages
 The **Themes** tab accepts one `.stheme` package per upload. Each package is
 validated before it is published to LittleFS, including its STH1 container,
 manifest, paths, image/font assets and declared layer references. Up to 16
-packages are listed; corrupt packages remain visible with an error and can be
-removed.
+packages can be stored. A selected package is saved and restored at boot.
+Deactivate a running theme before installing or deleting packages so package
+validation does not compete with the renderer for ESP8266 heap.
 
-Package management does not select a theme, start a clock, fetch theme data or
-render package content. The parser and package format are extracted from
+The renderer supports theme layers, images, fonts, animation frames and
+scrolling. This firmware does not start NTP/time services or fetch external
+theme data; theme elements depending on clock or remote values may therefore
+show placeholders. The parser and package format are extracted from
 [giovi321/smalltv-mod v3.13.0](https://github.com/giovi321/smalltv-mod/releases/tag/v3.13.0);
 see `src/theme/UPSTREAM.md`.
 
