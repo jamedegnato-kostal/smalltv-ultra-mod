@@ -91,8 +91,9 @@ jobs:
           copy() { test -s "$1" && cp "$1" "$2"; }
           copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-stable-firmware.bin
           copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-stable-loader.bin
-          copy examples/themes/dynamische-uhr.stheme dist/dynamische-uhr.stheme
-          copy examples/themes/wetter-bellmerei.stheme dist/wetter-bellmerei.stheme
+          copy examples/themes/pixel-room.stheme dist/pixel-room.stheme
+          copy examples/themes/terminal-ops.stheme dist/terminal-ops.stheme
+          copy examples/themes/live-status.stheme dist/live-status.stheme
 
       - name: Check app-slot space
         run: python tools/ci_checks.py size --envs smalltv_settings,smalltv_loader --min-free 8192
