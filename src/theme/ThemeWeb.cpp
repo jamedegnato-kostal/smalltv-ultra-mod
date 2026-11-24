@@ -29,7 +29,8 @@ class ThemeFile : public smalltv::Source {
   uint32_t size() const override { return file_ ? file_.size() : 0; }
   bool read(uint32_t offset, void* destination, size_t count) override {
     if (!file_ || !file_.seek(offset, SeekSet)) return false;
-    return file_.read(static_cast<uint8_t*>(destination), count) == count;
+    const int bytesRead = file_.read(static_cast<uint8_t*>(destination), count);
+    return bytesRead >= 0 && static_cast<size_t>(bytesRead) == count;
   }
   void pause() override { yield(); }
  private:
