@@ -93,8 +93,10 @@ below the OTA slot limit.
 Switching from the previous `4m1m` layout changes the LittleFS partition
 boundary. Files in the old filesystem are not migrated automatically. Before
 updating, export the settings configuration and keep separate copies of the
-`.stheme` packages. Perform the first firmware flash for this layout over
-serial rather than OTA. If the device reports that LittleFS is unavailable
+`.stheme` packages. The firmware transition can also be installed with the existing OTA
+updater; serial flashing is only a fallback if OTA is unavailable. The old
+LittleFS contents are not migrated automatically and may no longer mount with
+the new partition boundary. If the device reports that LittleFS is unavailable
 after boot, open the web interface and use the confirmed **Factory Reset**
 action to initialize the new filesystem. This formats LittleFS and erases its
 stored settings and themes; reconnect to the setup AP if necessary, then import
