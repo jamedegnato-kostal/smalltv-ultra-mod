@@ -353,14 +353,6 @@ body.light .save-status.dirty{color:#80520a}
    <div style="margin-top:10px"><button class="btn" onclick="importCfg()">Sicherung importieren und neu starten</button></div>
    <small class="hint">Die Sicherung enthält die Gerätekonfiguration einschließlich WLAN-Passwörtern. Bewahre sie entsprechend geschützt auf. Beim Import wird das Gerät neu gestartet.</small>
   </div>
-  <div class="card"><h2>Passwortschutz</h2>
-   <div class="chk"><input id="authEnabled" type="checkbox"><label>Diese Einstellungsseite mit Passwort schützen</label></div>
-   <label>Benutzername</label><input id="authUser" type="text" autocomplete="off" placeholder="admin">
-   <label>Passwort</label><input id="authPass" type="password" autocomplete="new-password" placeholder="(unverändert lassen)">
-   <label>Passwort wiederholen</label><input id="authPassConfirm" type="password" autocomplete="new-password" placeholder="Nur beim neuen Passwort nötig">
-   <div style="margin-top:10px"><button class="btn sec" type="button" onclick="removePassword()">Passwort entfernen</button></div>
-   <small class="hint">Ein Passwort schützt Einstellungsseite, API und Firmware-Upload. Zum Ändern das neue Passwort zweimal eingeben. „Passwort entfernen“ wird erst beim Speichern übernommen.</small>
-  </div>
   <div class="card" id="storageRecovery" style="display:none">
    <h2>Dateisystem nicht verfügbar</h2>
    <p>Der Speicher konnte nicht eingebunden werden. Themes, Fotos und Einstellungen bleiben zunächst unangetastet.</p>
@@ -617,9 +609,6 @@ function loadConfig(){return j('/api/config').then(function(c){C=c;
  sv('radarUiScale',r.uiScale!=null?r.uiScale:1);
  sv('radarMinAlt',r.minAltFt!=null?r.minAltFt:0);
  renderAps(r.airports||[]);
- var au=c.auth||{};window._removeAuthPassword=false;
- sc('authEnabled',!!au.enabled); sv('authUser',au.user||'admin');
- var apw=$('authPass'); if(apw){apw.value='';apw.placeholder=au.passSet?'(unchanged)':'set a password';}
  var ap=$('apPass'); if(ap){ap.value='';ap.placeholder=c.apPassSet?'(unchanged)':'(open)';}
  sc('apOpen',!c.apPassSet); apOpenChanged();
 })}
@@ -681,12 +670,6 @@ function collect(){
    refreshFps:parseInt(gv('refreshFps'))||15,panelRefreshHz:parseInt(gv('panelRefreshHz'))||60,animationsEnabled:gc('animationsEnabled'),animationSpeedPct:parseInt(gv('animationSpeedPct'))||100,themeFadeTransition:gc('themeFadeTransition'),themeTransitionMs:parseInt(gv('themeTransitionMs'))||300},
   wifi:collectWifi()};
  if($('showflow'))o.showflow={enabled:gc('showflowEnabled'),random:gc('showflowRandom'),steps:showflowSteps.slice(0,16).map(function(x){var step={type:x.type,seconds:Math.max(5,Math.min(3600,parseInt(x.seconds,10)||10))};if(x.type==='photo'){step.random=!!x.randomPhoto;if(!x.randomPhoto)step.photoId=x.photoId}else step.id=x.id;return step})};
- // Web UI password: same blank-keeps-stored rule as everywhere else. The
- // firmware refuses to enable it without a stored password to check against.
- if($('authEnabled')){var _a={enabled:gc('authEnabled'), user:gv('authUser')||'admin'};
-  var _ap2=gv('authPass'),_apConfirm=gv('authPassConfirm');
-  if(_ap2){if(_ap2!==_apConfirm)throw new Error('Die beiden Passwörter stimmen nicht überein');_a.pass=_ap2;}
-  if(window._removeAuthPassword){_a.clear=true;_a.enabled=false}o.auth=_a;}
  // Only send apPass when there is something to say: the typed value, or an
  // explicit empty string when the user asked for an open hotspot. Sending the
  // blank field unconditionally used to wipe the stored password on every save.
@@ -745,8 +728,6 @@ function saveAll(){var btn=$('saveSettingsBtn'),status=$('saveStatus');if(btn)bt
  .then(function(r){if(status)status.textContent=r.reboot?'Gespeichert · Neustart läuft':'Alle Änderungen gespeichert';toast(r.reboot?'Gespeichert — Neustart läuft …':'Einstellungen gespeichert');if(r.reboot)setTimeout(function(){location.reload()},6000);loadStatus()})
  .catch(function(e){if(status){status.textContent='Speichern fehlgeschlagen';status.classList.add('dirty')}toast('Speichern fehlgeschlagen: '+e.message)})
  .finally(function(){if(btn)btn.disabled=false})}
-function removePassword(){window._removeAuthPassword=true;sc('authEnabled',false);sv('authPass','');sv('authPassConfirm','');markSettingsDirty();toast('Passwort wird beim Speichern entfernt')}
-
 function saveWifi(){
  var o={wifi:collectWifi()};
  j('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){
