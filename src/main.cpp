@@ -124,7 +124,7 @@ void setup() {
   }
   if (g_displayReady && !g_safeMode && g_settings.activeTheme[0]) {
     std::string error;
-    if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, g_settings.timezone, error)) {
+    if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, g_settings.timezone, g_settings.language, error)) {
       Serial.print("[theme] could not restore selected theme: ");
       Serial.println(error.c_str());
       g_settings.activeTheme[0] = '\0';

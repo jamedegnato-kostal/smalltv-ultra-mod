@@ -1,4 +1,4 @@
-// Persisted settings required for Wi-Fi, web management and OTA only.
+// Persisted settings for Wi-Fi, web management, display and themes.
 #pragma once
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -24,6 +24,7 @@ struct Settings {
   uint8_t displayBlueGain;
   char activeTheme[49];
   char timezone[65];  // POSIX TZ rule; includes DST transitions
+  char language[3];    // theme language: en or de
   void setDefaults();
 };
 

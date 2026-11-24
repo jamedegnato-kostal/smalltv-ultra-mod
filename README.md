@@ -26,6 +26,7 @@ selected package through row-based output without a full-screen framebuffer.
 - `.stheme` package storage, validation, selection and row-based rendering
 - NTP time for themes with clock tokens or `time.*` bindings
 - Selectable POSIX timezones with automatic daylight-saving transitions
+- Persistent German/English theme language selection for localized spec 2 text
 
 ## Not included yet
 
@@ -50,7 +51,9 @@ The renderer supports theme layers, images, fonts, animation frames and
 scrolling. NTP starts only when a selected theme contains clock text tokens
 (e.g. `{HH}`) or `time.*` bindings; it stops when that theme is deactivated.
 The timezone is configurable in the Display settings, including Europe/Berlin
-with automatic CET/CEST changes. Remote theme data sources remain disabled, so
+with automatic CET/CEST changes. The Display settings select German or English
+for localized theme text and month/weekday names; missing translations fall back
+to English. Remote theme data sources remain disabled, so
 tokens that depend on external data may still show placeholders. The parser
 and package format are extracted from
 [giovi321/smalltv-mod v3.13.0](https://github.com/giovi321/smalltv-mod/releases/tag/v3.13.0);

@@ -26,6 +26,7 @@ void Settings::setDefaults() {
   activeTheme[0] = '\0';
   strncpy(timezone, DEFAULT_TIMEZONE, sizeof(timezone) - 1);
   timezone[sizeof(timezone) - 1] = '\0';
+  memcpy(language, "en", sizeof(language));
 }
 
 bool settingsBegin() {
@@ -84,6 +85,7 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["displayBlueGain"] = s.displayBlueGain;
   root["activeTheme"] = s.activeTheme;
   root["timezone"] = s.timezone;
+  root["language"] = s.language;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
   for (uint8_t i = 0; i < s.wifiCount; ++i) {
@@ -192,6 +194,12 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
   if (!root["timezone"].isNull()) {
     if (!root["timezone"].is<const char*>()) return F("invalid timezone");
     if (!validTimezone(root["timezone"].as<const char*>())) return F("unsupported timezone rule");
+  }
+  if (!root["language"].isNull()) {
+    if (!root["language"].is<const char*>()) return F("invalid theme language");
+    const char* language = root["language"].as<const char*>();
+    if (strcmp(language, "en") != 0 && strcmp(language, "de") != 0)
+      return F("theme language must be en or de");
   }
   if (!root["wifi"].isNull()) {
     if (!root["wifi"].is<JsonArrayConst>()) return F("wifi must be an array");
@@ -308,5 +316,12 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
     const char* tz = root["timezone"].as<const char*>();
     strncpy(s.timezone, tz, sizeof(s.timezone) - 1);
     s.timezone[sizeof(s.timezone) - 1] = '\0';
+  }
+  if (root["language"].is<const char*>()) {
+    const char* code = root["language"].as<const char*>();
+    if (strcmp(code, "en") == 0 || strcmp(code, "de") == 0) {
+      strncpy(s.language, code, sizeof(s.language) - 1);
+      s.language[sizeof(s.language) - 1] = '\0';
+    }
   }
 }

@@ -87,6 +87,7 @@ static void handleStatus() {
   smalltv::clockFormat(localTime, sizeof(localTime));
   doc["localTime"] = localTime;
   doc["timezone"] = S->timezone;
+  doc["language"] = S->language;
   doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
@@ -174,6 +175,8 @@ static void handlePostConfig() {
   const uint32_t oldDisplay = displayFingerprint(*S);
   char oldTimezone[sizeof(S->timezone)];
   memcpy(oldTimezone, S->timezone, sizeof(oldTimezone));
+  char oldLanguage[sizeof(S->language)];
+  memcpy(oldLanguage, S->language, sizeof(oldLanguage));
   const bool saved = applyAndSaveSettings(
     *S,
     [&](Settings& settings) {
@@ -191,6 +194,7 @@ static void handlePostConfig() {
 
   if (displayFingerprint(*S) != oldDisplay) applyDisplaySettings(*S);
   if (strcmp(oldTimezone, S->timezone) != 0) applyTimeSettings(*S);
+  if (strcmp(oldLanguage, S->language) != 0) smalltv::themeRuntimeSetLanguage(S->language);
 
   const bool reboot = netFingerprint(*S) != oldNetwork;
   JsonDocument result;

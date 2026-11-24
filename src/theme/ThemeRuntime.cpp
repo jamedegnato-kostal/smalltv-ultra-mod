@@ -36,6 +36,7 @@ smalltv::Engine g_engine;
 smalltv::display::DisplayPanel* g_display = nullptr;
 bool g_active = false;
 bool g_needsClock = false;
+uint8_t g_language = 0;
 uint32_t g_lastUpdate = 0;
 char g_activeId[49] = {};
 std::string g_error;
@@ -73,7 +74,13 @@ void themeRuntimeStop() {
   g_error.clear();
 }
 
-bool themeRuntimeSelect(const char* id, const char* timezone, std::string& error) {
+void themeRuntimeSetLanguage(const char* language) {
+  g_language = (language && strcmp(language, "de") == 0) ? 4 : 0;
+  if (g_active) g_engine.setLanguage(g_language);
+}
+
+bool themeRuntimeSelect(const char* id, const char* timezone, const char* language, std::string& error) {
+  g_language = (language && strcmp(language, "de") == 0) ? 4 : 0;
   if (!id || !id[0]) {
     themeRuntimeStop();
     error.clear();
@@ -85,6 +92,7 @@ bool themeRuntimeSelect(const char* id, const char* timezone, std::string& error
     return false;
   }
   if (g_active && strcmp(g_activeId, id) == 0) {
+    g_engine.setLanguage(g_language);
     error.clear();
     return true;
   }
@@ -127,6 +135,7 @@ bool themeRuntimeSelect(const char* id, const char* timezone, std::string& error
     }
   }
   g_engine.setTheme(std::move(theme), millis());
+  g_engine.setLanguage(g_language);
   g_needsClock = needsClock;
   if (g_needsClock) clockBegin(timezone);
   const uint32_t freeAfter = ESP.getFreeHeap();
