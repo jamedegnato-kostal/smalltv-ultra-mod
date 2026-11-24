@@ -33,6 +33,7 @@ class Package : public Assets {
  public:
   explicit Package(Source& source) : source_(source) {}
   bool load(Theme& theme, std::string& error);
+  void reset();  // release the entry index and renderer glyph cache
 #if !defined(SMALLTV_THEME_HEADLESS)
   AssetHandle resolve(const std::string& path) override;
   using Assets::row;

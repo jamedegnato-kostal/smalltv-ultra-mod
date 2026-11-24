@@ -22,6 +22,7 @@ struct Settings {
   uint8_t displayRedGain;
   uint8_t displayGreenGain;
   uint8_t displayBlueGain;
+  char activeTheme[49];
   void setDefaults();
 };
 

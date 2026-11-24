@@ -82,6 +82,13 @@ const Package::Entry* Package::find(const std::string& path) const {
 // Each phase is its own out-of-line function, so only `candidate` sits under
 // the manifest parse: on the ESP8266 that parse needs most of the 4 KiB loop
 // stack, and the other phases' locals are dead by then.
+void Package::reset() {
+  entries_ = BlockList<Entry>();
+#if !defined(SMALLTV_THEME_HEADLESS)
+  std::vector<Glyph>().swap(glyphs_);
+#endif
+}
+
 bool Package::load(Theme& theme, std::string& error) {
   if (!readIndex(error)) return false;
   const Entry* manifest = find("theme.json");

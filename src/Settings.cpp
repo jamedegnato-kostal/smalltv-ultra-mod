@@ -23,6 +23,7 @@ void Settings::setDefaults() {
   displayRedGain = 100;
   displayGreenGain = 100;
   displayBlueGain = 100;
+  activeTheme[0] = '\0';
 }
 
 bool settingsBegin() {
@@ -79,6 +80,7 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["displayRedGain"] = s.displayRedGain;
   root["displayGreenGain"] = s.displayGreenGain;
   root["displayBlueGain"] = s.displayBlueGain;
+  root["activeTheme"] = s.activeTheme;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
   for (uint8_t i = 0; i < s.wifiCount; ++i) {
@@ -94,6 +96,18 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   }
 }
 
+
+static bool validThemeId(const char* value) {
+  if (!value) return false;
+  const size_t length = strlen(value);
+  if (length > 48) return false;
+  for (size_t i = 0; i < length; ++i) {
+    const char c = value[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c == '-' || c == '_')) return false;
+  }
+  return true;
+}
 
 static bool validHostname(const char* value) {
   if (!value) return false;
@@ -152,6 +166,10 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
     if (!root["displayBlueGain"].is<int>()) return F("invalid blue gain");
     const int value = root["displayBlueGain"].as<int>();
     if (value < 50 || value > 150) return F("blue gain must be 50-150 percent");
+  }
+  if (!root["activeTheme"].isNull()) {
+    if (!root["activeTheme"].is<const char*>()) return F("invalid active theme");
+    if (!validThemeId(root["activeTheme"].as<const char*>())) return F("invalid active theme ID");
   }
   if (!root["wifi"].isNull()) {
     if (!root["wifi"].is<JsonArrayConst>()) return F("wifi must be an array");
@@ -259,4 +277,9 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
     s.displayGreenGain = (uint8_t)root["displayGreenGain"].as<int>();
   if (root["displayBlueGain"].is<int>())
     s.displayBlueGain = (uint8_t)root["displayBlueGain"].as<int>();
+  if (root["activeTheme"].is<const char*>()) {
+    const char* id = root["activeTheme"].as<const char*>();
+    strncpy(s.activeTheme, id, sizeof(s.activeTheme) - 1);
+    s.activeTheme[sizeof(s.activeTheme) - 1] = '\0';
+  }
 }
