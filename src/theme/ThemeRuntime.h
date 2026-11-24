@@ -5,7 +5,7 @@
 
 namespace smalltv {
 void themeRuntimeBegin(display::DisplayPanel& display);
-bool themeRuntimeSelect(const char* id, std::string& error);
+bool themeRuntimeSelect(const char* id, const char* timezone, std::string& error);
 void themeRuntimeStop();
 bool themeRuntimeLoop();
 void themeRuntimeInvalidate();

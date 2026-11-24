@@ -16,3 +16,8 @@
 #define DEFAULT_AP_PASS ""
 #define DEFAULT_HOSTNAME "smalltv"
 #define DEFAULT_HTTP_TIMEOUT 8000
+
+// NTP is started only when the selected .stheme uses time-bound layers.
+#define NTP_SERVER1 "pool.ntp.org"
+#define NTP_SERVER2 "time.nist.gov"
+#define DEFAULT_TIMEZONE "CET-1CEST,M3.5.0,M10.5.0/3"

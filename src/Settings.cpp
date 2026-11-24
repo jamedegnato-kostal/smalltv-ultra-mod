@@ -24,6 +24,8 @@ void Settings::setDefaults() {
   displayGreenGain = 100;
   displayBlueGain = 100;
   activeTheme[0] = '\0';
+  strncpy(timezone, "CET-1CEST,M3.5.0,M10.5.0/3", sizeof(timezone) - 1);
+  timezone[sizeof(timezone) - 1] = '\0';
 }
 
 bool settingsBegin() {
@@ -81,6 +83,7 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["displayGreenGain"] = s.displayGreenGain;
   root["displayBlueGain"] = s.displayBlueGain;
   root["activeTheme"] = s.activeTheme;
+  root["timezone"] = s.timezone;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
   for (uint8_t i = 0; i < s.wifiCount; ++i) {
@@ -107,6 +110,21 @@ static bool validThemeId(const char* value) {
           (c >= '0' && c <= '9') || c == '-' || c == '_')) return false;
   }
   return true;
+}
+
+static bool validTimezone(const char* value) {
+  if (!value) return false;
+  static const char* const zones[] = {
+    "UTC0",
+    "CET-1CEST,M3.5.0,M10.5.0/3",
+    "GMT0BST,M3.5.0/1,M10.5.0",
+    "EST5EDT,M3.2.0/2,M11.1.0/2",
+    "PST8PDT,M3.2.0/2,M11.1.0/2",
+    "JST-9",
+    "AEST-10AEDT,M10.1.0,M4.1.0/3"
+  };
+  for (const char* zone : zones) if (strcmp(value, zone) == 0) return true;
+  return false;
 }
 
 static bool validHostname(const char* value) {
@@ -170,6 +188,10 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
   if (!root["activeTheme"].isNull()) {
     if (!root["activeTheme"].is<const char*>()) return F("invalid active theme");
     if (!validThemeId(root["activeTheme"].as<const char*>())) return F("invalid active theme ID");
+  }
+  if (!root["timezone"].isNull()) {
+    if (!root["timezone"].is<const char*>()) return F("invalid timezone");
+    if (!validTimezone(root["timezone"].as<const char*>())) return F("unsupported timezone rule");
   }
   if (!root["wifi"].isNull()) {
     if (!root["wifi"].is<JsonArrayConst>()) return F("wifi must be an array");
@@ -281,5 +303,10 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
     const char* id = root["activeTheme"].as<const char*>();
     strncpy(s.activeTheme, id, sizeof(s.activeTheme) - 1);
     s.activeTheme[sizeof(s.activeTheme) - 1] = '\0';
+  }
+  if (root["timezone"].is<const char*>()) {
+    const char* tz = root["timezone"].as<const char*>();
+    strncpy(s.timezone, tz, sizeof(s.timezone) - 1);
+    s.timezone[sizeof(s.timezone) - 1] = '\0';
   }
 }

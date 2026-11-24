@@ -23,6 +23,7 @@ struct Settings {
   uint8_t displayGreenGain;
   uint8_t displayBlueGain;
   char activeTheme[49];
+  char timezone[65];  // POSIX TZ rule; includes DST transitions
   void setDefaults();
 };
 
