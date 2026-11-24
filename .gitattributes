@@ -2,7 +2,3 @@
 
 *.bin binary
 *.elf binary
-*.jpg binary
-*.jpeg binary
-*.png binary
-*.stheme binary

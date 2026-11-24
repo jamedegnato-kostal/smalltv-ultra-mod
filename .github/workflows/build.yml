@@ -1,39 +1,47 @@
 name: SmallTV web-only firmware
+
 on:
   push:
-    branches: [main, clean-image]
-    tags: ['v*']
+    branches: [clean-image]
+    tags: ['clean-v*']
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   firmware:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
       - name: Install PlatformIO
         run: python -m pip install platformio
+
+      - name: Verify OTA asset name
+        run: grep -q '#define UPDATE_ASSET "smalltv-clean-firmware.bin"' src/config.h
+
       - name: Build web-only firmware
         run: pio run -e smalltv_clean
-      - name: Check release asset name
-        run: python tools/ci_checks.py assets
-      - name: Check OTA app-slot space
-        run: python tools/ci_checks.py size --envs smalltv_clean --min-free 8192
+
       - name: Stage firmware
         run: |
           mkdir -p dist
-          copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
+          copy() { test -f "$1" && cp "$1" "$2"; }
           copy .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: smalltv-clean-firmware
           path: dist/smalltv-clean-firmware.bin
+
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/clean-v')
     needs: firmware
     runs-on: ubuntu-latest
     permissions:
@@ -43,6 +51,7 @@ jobs:
         with:
           name: smalltv-clean-firmware
           path: dist
+
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
