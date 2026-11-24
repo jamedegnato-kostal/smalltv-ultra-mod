@@ -5,6 +5,7 @@
 #include "SettingsTransaction.h"
 #include "Net.h"
 #include "OtaUpdate.h"
+#include "theme/ThemeWeb.h"
 #include "config.h"
 #include "webui_clean.h"
 #include <ArduinoJson.h>
@@ -362,6 +363,7 @@ static void handleNotFound() {
 
 void webPortalBegin(Settings& settings) {
   S = &settings;
+  themeWebBegin(server);
   g_updateMsg = otaTakeBootResult();
 
   server.on("/", HTTP_GET, handleRoot);

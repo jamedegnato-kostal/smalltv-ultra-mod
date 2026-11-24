@@ -3,8 +3,8 @@
 #include "Target.h"
 
 #define FW_NAME "smalltv-clean"
-#define FW_VERSION "0.2.0"
-#define FW_VARIANT "esp8266-web-only"
+#define FW_VERSION "0.3.0"
+#define FW_VARIANT "esp8266-web-only-stheme"
 #define REPO_URL "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
 #define REPO_OWNER "jamedegnato-kostal"
 #define REPO_NAME "smalltv-ultra-mod"

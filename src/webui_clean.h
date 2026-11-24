@@ -24,6 +24,7 @@ nav{display:flex;gap:5px;padding:9px 16px;overflow-x:auto;border-bottom:1px soli
 nav button{background:none;border:0;color:var(--mut);padding:9px 13px;border-radius:9px;font-size:14px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
 nav button.active{background:var(--card);color:var(--fg)}
 nav button:hover{color:var(--fg)}
+.theme-item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--bd)}.theme-item:last-child{border-bottom:0}.theme-item .meta{flex:1;min-width:0}.theme-item .meta strong{display:block;overflow-wrap:anywhere}.theme-item .meta small{display:block;color:var(--mut);margin-top:3px}.theme-item .meta .error{color:var(--red);overflow-wrap:anywhere}.theme-item .btn{padding:7px 10px;font-size:13px}
 main{padding:24px 16px 32px;max-width:900px;margin:0 auto}
 .tab{display:none}.tab.active{display:block}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
@@ -135,6 +136,7 @@ button.btn:disabled{filter:saturate(.35)}
  <button data-t="status" class="active" aria-current="page" type="button">Übersicht</button>
  <button data-t="wifi" type="button">Netzwerk</button>
  <button data-t="update" type="button">System</button>
+ <button data-t="themes" type="button">Themes</button>
 </nav>
 <main>
  <section id="status" class="tab active">
@@ -150,6 +152,7 @@ button.btn:disabled{filter:saturate(.35)}
   <div class="home-actions">
    <button class="btn sec" type="button" data-go="wifi">WLAN einrichten</button>
    <button class="btn sec" type="button" data-go="update">System &amp; Firmware</button>
+   <button class="btn sec" type="button" data-go="themes">Theme-Pakete</button>
    <button class="btn sec" type="button" onclick="loadStatus()">Status aktualisieren</button>
   </div>
   <details class="details"><summary>Technische Details</summary><div class="card"><div id="statusBox" class="muted">Wird geladen …</div></div></details>
@@ -175,6 +178,24 @@ button.btn:disabled{filter:saturate(.35)}
    <h2>Einrichtungs-Hotspot</h2>
    <label for="apSsid">Hotspot-Name</label><input id="apSsid" type="text" maxlength="32">
    <small class="hint">Der Hotspot ist unverschlüsselt und die Weboberfläche ohne Anmeldung erreichbar. Er wird zur Einrichtung bereitgestellt, wenn keine WLAN-Verbindung verfügbar ist. Standardadresse: <b>192.168.4.1</b>.</small>
+  </div>
+ </section>
+
+
+ <section id="themes" class="tab">
+  <div class="page-intro"><p class="eyebrow">PAKETVERWALTUNG</p><h2>.stheme Themes</h2><p>Pakete hochladen, vollständig prüfen und lokal verwalten. Eine Anzeige auf dem Display ist in dieser Firmware nicht aktiviert.</p></div>
+  <div class="card">
+   <h2>Theme installieren</h2>
+   <input id="themeFile" type="file" accept=".stheme,application/octet-stream">
+   <div style="margin-top:12px"><button class="btn" type="button" onclick="uploadTheme()" id="themeUploadBtn">Theme hochladen und prüfen</button></div>
+   <div class="bar"><div id="themeUploadBar"></div></div>
+   <div id="themeUploadMsg" class="muted" style="margin-top:8px" role="status"></div>
+   <small class="hint">Genau ein .stheme-Paket pro Upload. Container, Manifest, Pfade und referenzierte Assets werden vor dem Speichern geprüft. Maximal 16 installierte Pakete.</small>
+  </div>
+  <div class="card">
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Installierte Pakete</h2><button class="btn sec" type="button" onclick="loadThemes()">Aktualisieren</button></div>
+   <div id="themeStorage" class="muted" style="margin:8px 0 12px">Freier Dateispeicher: wird geladen …</div>
+   <div id="themeList" aria-live="polite" class="muted">Paketliste wird geladen …</div>
   </div>
  </section>
 
@@ -284,6 +305,7 @@ function showTab(name) {
     if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
   window.scrollTo(0, 0);
+  if (name === "themes") loadThemes();
 }
 document.querySelectorAll("nav [data-t]").forEach(function(button){
   button.addEventListener("click", function(){ showTab(button.dataset.t); });
@@ -601,6 +623,115 @@ function importCfg() {
   };
   reader.readAsText(file);
 }
+
+function loadThemes() {
+  var list = $("themeList");
+  if (!list) return;
+  list.textContent = "Paketliste wird geladen …";
+  api("/api/themes").then(function(data) {
+    var themes = Array.isArray(data.themes) ? data.themes : [];
+    $("themeStorage").textContent = "Freier Dateispeicher: " + (Number(data.freeBytes)||0).toLocaleString("de-DE") + " Byte";
+    list.textContent = "";
+    if (!themes.length) {
+      list.textContent = "Noch keine .stheme-Pakete installiert.";
+      return;
+    }
+    themes.forEach(function(theme) {
+      var row = document.createElement("div");
+      row.className = "theme-item";
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var name = document.createElement("strong");
+      name.textContent = theme.name || theme.id || "Unbenanntes Theme";
+      var details = document.createElement("small");
+      details.textContent = (theme.id || "") +
+        (theme.version ? " · Version " + theme.version : "") +
+        " · " + (Number(theme.bytes)||0).toLocaleString("de-DE") + " Byte";
+      meta.appendChild(name);
+      meta.appendChild(details);
+      if (theme.author) {
+        var author = document.createElement("small");
+        author.textContent = "Autor: " + theme.author;
+        meta.appendChild(author);
+      }
+      var validity = document.createElement("small");
+      validity.textContent = theme.valid ? "Paket gültig" : "Paket ungültig";
+      if (!theme.valid) validity.className = "error";
+      meta.appendChild(validity);
+      if (!theme.valid && theme.error) {
+        var error = document.createElement("small");
+        error.className = "error";
+        error.textContent = theme.error;
+        meta.appendChild(error);
+      }
+      var actions = document.createElement("div");
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn danger";
+      remove.textContent = "Löschen";
+      remove.addEventListener("click", function(){ deleteTheme(theme.id); });
+      actions.appendChild(remove);
+      row.appendChild(meta);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }).catch(function(error) {
+    list.textContent = "Theme-Liste konnte nicht geladen werden: " + error.message;
+  });
+}
+function uploadTheme() {
+  var file = $("themeFile").files[0];
+  if (!file) { toast("Bitte zuerst eine .stheme-Datei auswählen."); return; }
+  if (!/\.stheme$/i.test(file.name)) { toast("Erwartet wird eine .stheme-Datei."); return; }
+  if (!confirm("Dieses Theme-Paket hochladen und vollständig validieren?")) return;
+  var data = new FormData();
+  data.append("theme", file, file.name);
+  var request = new XMLHttpRequest();
+  $("themeUploadBtn").disabled = true;
+  $("themeUploadBar").style.width = "0%";
+  $("themeUploadMsg").textContent = "Upload wird gestartet …";
+  request.upload.addEventListener("progress", function(event) {
+    if (event.lengthComputable) {
+      var percent = Math.round(event.loaded * 100 / event.total);
+      $("themeUploadBar").style.width = percent + "%";
+      $("themeUploadMsg").textContent = "Paket wird übertragen: " + percent + "%";
+    }
+  });
+  request.addEventListener("load", function() {
+    $("themeUploadBtn").disabled = false;
+    var result = {};
+    try { result = JSON.parse(request.responseText || "{}"); } catch (_) {}
+    if (request.status >= 200 && request.status < 300) {
+      $("themeUploadBar").style.width = "100%";
+      $("themeUploadMsg").textContent = "Paket installiert und validiert: " + (result.id || "");
+      $("themeFile").value = "";
+      toast("Theme-Paket installiert.");
+      loadThemes();
+    } else {
+      $("themeUploadMsg").textContent = "Installation fehlgeschlagen: " + (result.error || request.responseText || ("HTTP " + request.status));
+    }
+  });
+  request.addEventListener("error", function() {
+    $("themeUploadBtn").disabled = false;
+    $("themeUploadMsg").textContent = "Verbindung unterbrochen. Prüfe die Paketliste, bevor du erneut hochlädst.";
+  });
+  request.open("POST", "/api/themes/install");
+  request.send(data);
+}
+function deleteTheme(id) {
+  if (!confirm("Theme-Paket '" + id + "' wirklich aus LittleFS löschen?")) return;
+  api("/api/themes/delete", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id:id})
+  }).then(function() {
+    toast("Theme-Paket gelöscht.");
+    loadThemes();
+  }).catch(function(error) {
+    toast("Löschen fehlgeschlagen: " + error.message);
+  });
+}
+
 function reboot() {
   if (!confirm("SmallTV neu starten?")) return;
   api("/api/reboot", {method:"POST"}).then(function(){ toast("Neustart ausgelöst."); })
