@@ -140,7 +140,6 @@ static bool readSettingsJson(JsonDocument& doc) {
 static void handlePostConfig() {
   JsonDocument doc;
   if (!readSettingsJson(doc)) return;
-}
 
   const uint32_t oldNetwork = netFingerprint(*S);
   const bool saved = applyAndSaveSettings(
