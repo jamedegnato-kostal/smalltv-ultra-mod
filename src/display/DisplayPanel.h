@@ -1,7 +1,7 @@
 #pragma once
 #include "DisplayBacklight.h"
 #include "DisplayBoard.h"
-#include "ThemeDisplay.h"
+#include "../theme/ThemeDisplay.h"
 #include <stdint.h>
 
 namespace smalltv {
