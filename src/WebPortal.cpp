@@ -177,7 +177,7 @@ void receivePhotoUpload() {
 }
 void finishPhotoUpload() {
   PlatformMemoryPhaseScope photoMemory(PLATFORM_MEM_PHOTO, true);
-  if (!requestAllowed()) { abortPhotoUpload("Authentifizierung fehlgeschlagen"); return; }
+  if (!requestAllowed()) { abortPhotoUpload("Anfrage abgelehnt"); return; }
   photoUpload.close();
   if (!photoUploadAllowed || !photoUploadEnded || photoUploadError.length() || photoUploadSlot < 0) {
     const String error = photoUploadError.length() ? photoUploadError : "Kein vollständiges Bild empfangen";
@@ -274,10 +274,8 @@ static void scheduleReboot(uint32_t inMs) {
 }
 
 // ---- CSRF and DNS-rebinding guard ------------------------------------------
-// Every handler goes through requestAllowed(), which calls this first (the usage
-// push calls it directly). The two upload callbacks (OTA, theme install) run
-// before their final handler, so they only ask guardAllowed() and write nothing
-// when it says no; the final handler then answers 403 through requestAllowed().
+// Every handler goes through requestAllowed(), which enforces Host and Origin
+// checks. Streaming uploads also call guardAllowed() before writing to flash.
 // Rules in WebGuard.h.
 //   - Host: checked on every request, but not in AP mode. There the phone's
 //     captive-portal probe arrives with whatever name it is checking
@@ -818,9 +816,7 @@ static void abortFirmwareUpload(const char* reason) {
 }
 
 // The upload callback runs while the body streams in, ahead of
-// handleUpdateDone, so the password has to be checked here too: guarding only
-// the final handler would let an unauthenticated POST write a whole image to
-// flash and merely lose the 200 at the end.
+// handleUpdateDone. Apply Host/Origin checks before writing any firmware bytes.
 static void handleUpdateUpload() {
   HTTPUpload& up = server.upload();
   if (!guardAllowed()) {
