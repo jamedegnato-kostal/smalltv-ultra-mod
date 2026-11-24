@@ -112,7 +112,7 @@ void setup() {
   Serial.println("[boot] web server");
   smalltv::themeRuntimeBegin(g_display);
   webPortalBegin(g_settings);
-  if (g_displayReady && g_settings.activeTheme[0]) {
+  if (g_displayReady && !g_safeMode && g_settings.activeTheme[0]) {
     std::string error;
     if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, error)) {
       Serial.print("[theme] could not restore selected theme: ");
@@ -129,7 +129,12 @@ void setup() {
 void loop() {
   netLoop();
   webPortalLoop();
-  if (smalltv::themeRuntimeLoop()) showNetworkStatus();
+  if (smalltv::themeRuntimeLoop()) {
+    g_settings.activeTheme[0] = '\0';
+    if (settingsStorageReady() && !saveSettings(g_settings))
+      Serial.println("[theme] could not clear selection after render failure");
+    showNetworkStatus();
+  }
 
   // Background Wi-Fi retries can change the failure reason while the setup AP
   // remains active. Refresh its diagnostic screen only when that reason changes.
