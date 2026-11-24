@@ -88,7 +88,7 @@ jobs:
         if: always()
         run: |
           mkdir -p dist
-          copy() { [ -f "$1" ] && cp "$1" "$2" || echo "missing: $1"; }
+          copy() { test -s "$1" && cp "$1" "$2"; }
           copy .pio/build/smalltv_settings/firmware.bin dist/smalltv-stable-firmware.bin
           copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-stable-loader.bin
           copy examples/themes/dynamische-uhr.stheme dist/dynamische-uhr.stheme
