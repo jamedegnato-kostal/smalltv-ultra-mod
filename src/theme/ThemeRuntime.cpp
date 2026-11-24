@@ -1,5 +1,6 @@
 #include "ThemeRuntime.h"
 #include "ThemePackage.h"
+#include "../Clock.h"
 #include "../Platform.h"
 #include <LittleFS.h>
 #include <stdio.h>
@@ -34,6 +35,7 @@ smalltv::Package g_package(g_source);
 smalltv::Engine g_engine;
 smalltv::display::DisplayPanel* g_display = nullptr;
 bool g_active = false;
+bool g_needsClock = false;
 uint32_t g_lastUpdate = 0;
 char g_activeId[49] = {};
 std::string g_error;
@@ -53,6 +55,7 @@ bool validThemeId(const char* id) {
 void releaseRuntime() {
   g_active = false;
   g_activeId[0] = '\0';
+  g_needsClock = false;
   g_engine.setTheme(smalltv::Theme{}, millis());
   g_package.reset();
   g_source.close();
@@ -69,7 +72,7 @@ void themeRuntimeStop() {
   g_error.clear();
 }
 
-bool themeRuntimeSelect(const char* id, std::string& error) {
+bool themeRuntimeSelect(const char* id, const char* timezone, std::string& error) {
   if (!id || !id[0]) {
     themeRuntimeStop();
     error.clear();
@@ -115,7 +118,16 @@ bool themeRuntimeSelect(const char* id, std::string& error) {
     return false;
   }
 
+  bool needsClock = false;
+  for (const Layer& layer : theme.layers) {
+    if (layer.timeBound) {
+      needsClock = true;
+      break;
+    }
+  }
   g_engine.setTheme(std::move(theme), millis());
+  g_needsClock = needsClock;
+  if (g_needsClock) clockBegin(timezone);
   const uint32_t freeAfter = ESP.getFreeHeap();
   const uint32_t maxAfter = platformMaxFreeBlock();
   if (freeAfter < 6UL * 1024UL || maxAfter < 1024UL) {
@@ -140,10 +152,18 @@ bool themeRuntimeLoop() {
   if (static_cast<uint32_t>(now - g_lastUpdate) < 25) return false;
   g_lastUpdate = now;
 
+  // NTP is armed only for themes that actually bind to time.* values.
+  const tm* currentTime = nullptr;
+  tm localTime{};
+  if (g_needsClock) {
+    clockService();
+    if (clockNow(localTime)) currentTime = &localTime;
+  }
+
   // Let HTTP/Wi-Fi work first if free heap is temporarily low.
   if (ESP.getFreeHeap() < 4096UL) return false;
 
-  const std::vector<Rect> dirty = g_engine.update(now, nullptr);
+  const std::vector<Rect> dirty = g_engine.update(now, currentTime);
   if (dirty.empty()) return false;
   if (render(g_engine, dirty, g_package, *g_display)) return false;
 

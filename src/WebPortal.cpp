@@ -7,6 +7,7 @@
 #include "OtaUpdate.h"
 #include "theme/ThemeWeb.h"
 #include "theme/ThemeRuntime.h"
+#include "Clock.h"
 #include "config.h"
 #include "webui_clean.h"
 #include <ArduinoJson.h>
@@ -16,6 +17,7 @@
 extern const char* appResetReason();
 extern void appShowNetworkStatus();
 extern void applyDisplaySettings(const Settings& settings);
+extern void applyTimeSettings(const Settings& settings);
 
 static WebServerClass server(80);
 static Settings* S = nullptr;
@@ -80,6 +82,11 @@ static void handleStatus() {
   doc["theme"] = smalltv::themeRuntimeActiveId();
   doc["themeError"] = smalltv::themeRuntimeError();
   doc["themeHeap"] = smalltv::themeRuntimeFreeHeap();
+  doc["timeSynced"] = smalltv::clockSynced();
+  char localTime[24];
+  smalltv::clockFormat(localTime, sizeof(localTime));
+  doc["localTime"] = localTime;
+  doc["timezone"] = S->timezone;
   doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
@@ -165,6 +172,8 @@ static void handlePostConfig() {
 
   const uint32_t oldNetwork = netFingerprint(*S);
   const uint32_t oldDisplay = displayFingerprint(*S);
+  char oldTimezone[sizeof(S->timezone)];
+  memcpy(oldTimezone, S->timezone, sizeof(oldTimezone));
   const bool saved = applyAndSaveSettings(
     *S,
     [&](Settings& settings) {
@@ -181,6 +190,7 @@ static void handlePostConfig() {
   }
 
   if (displayFingerprint(*S) != oldDisplay) applyDisplaySettings(*S);
+  if (strcmp(oldTimezone, S->timezone) != 0) applyTimeSettings(*S);
 
   const bool reboot = netFingerprint(*S) != oldNetwork;
   JsonDocument result;

@@ -29,10 +29,7 @@ void startNtpWhenOnline() {
     g_callbackRegistered = true;
   }
   // Ask SNTP for UTC; localtime_r applies the POSIX rule including DST.
-  configTime("UTC0", NTP_SERVER1, NTP_SERVER2);
-  // Apply the configured local rule after configTime's UTC setup.
-  setenv("TZ", g_timezone, 1);
-  tzset();
+  configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
   g_started = true;
   Serial.println(F("[clock] SNTP started"));
 }
@@ -49,9 +46,7 @@ void clockReconfigure(const char* timezone) {
   applyTimezone(timezone);
   if (g_started) {
     // Re-arm SNTP only for the changed timezone; keep the device clock itself.
-    configTime("UTC0", NTP_SERVER1, NTP_SERVER2);
-    setenv("TZ", g_timezone, 1);
-    tzset();
+    configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
   } else {
     startNtpWhenOnline();
   }

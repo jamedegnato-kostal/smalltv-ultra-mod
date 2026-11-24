@@ -10,6 +10,7 @@
 #include "display/DisplayPanel.h"
 #include "display/DisplayStatus.h"
 #include "theme/ThemeRuntime.h"
+#include "Clock.h"
 #include <string>
 
 static Settings g_settings;
@@ -47,6 +48,10 @@ static void showNetworkStatus() {
 
 void appShowNetworkStatus() {
   showNetworkStatus();
+}
+
+void applyTimeSettings(const Settings& settings) {
+  smalltv::clockReconfigure(settings.timezone);
 }
 
 void applyDisplaySettings(const Settings& settings) {
@@ -119,7 +124,7 @@ void setup() {
   }
   if (g_displayReady && !g_safeMode && g_settings.activeTheme[0]) {
     std::string error;
-    if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, error)) {
+    if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, g_settings.timezone, error)) {
       Serial.print("[theme] could not restore selected theme: ");
       Serial.println(error.c_str());
       g_settings.activeTheme[0] = '\0';

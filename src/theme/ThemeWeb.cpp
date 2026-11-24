@@ -425,7 +425,7 @@ void selectTheme() {
     bool restored = false;
     if (restorePrevious) {
       std::string ignored;
-      restored = smalltv::themeRuntimeSelect(previous, ignored);
+      restored = smalltv::themeRuntimeSelect(previous, g_settings->timezone, ignored);
     }
     if (!restored) appShowNetworkStatus();
     reply(500, restored ? "Could not save selection; previous theme restored" : "Could not save theme selection");
@@ -434,12 +434,12 @@ void selectTheme() {
 
   if (id.length()) {
     std::string error;
-    if (!smalltv::themeRuntimeSelect(id.c_str(), error)) {
+    if (!smalltv::themeRuntimeSelect(id.c_str(), g_settings->timezone, error)) {
       if (restorePrevious) {
         memcpy(g_settings->activeTheme, previous, sizeof(previous));
         const bool savedPrevious = saveSettings(*g_settings);
         std::string restoreError;
-        const bool restored = savedPrevious && smalltv::themeRuntimeSelect(previous, restoreError);
+        const bool restored = savedPrevious && smalltv::themeRuntimeSelect(previous, g_settings->timezone, restoreError);
         if (!restored) {
           g_settings->activeTheme[0] = '\0';
           saveSettings(*g_settings);
