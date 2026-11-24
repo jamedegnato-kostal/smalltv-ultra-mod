@@ -1,4 +1,4 @@
-# SmallTV Settings Firmware
+# SmallTV Stable Firmware
 
 Firmwareprojekt für **GeekMagic SmallTV und SmallTV Ultra mit ESP8266**. Die Firmware stellt eine lokale Weboberfläche für Geräteeinstellungen bereit und unterstützt Themes, Playlists, Uhr-Designs und eine lokale Fotobibliothek.
 
@@ -7,7 +7,7 @@ Firmwareprojekt für **GeekMagic SmallTV und SmallTV Ultra mit ESP8266**. Die Fi
 [![Latest release](https://img.shields.io/github/v/release/jamedegnato-kostal/smalltv-ultra-mod?display_name=tag)](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases)
 [![License](https://img.shields.io/github/license/jamedegnato-kostal/smalltv-ultra-mod)](LICENSE)
 
-> **Herkunft:** Dieses Projekt basiert auf dem ursprünglichen [giovi321/smalltv-mod](https://github.com/giovi321/smalltv-mod) von **[@giovi321](https://github.com/giovi321)**. Es ist eine eigenständige, settings-orientierte Weiterentwicklung dieses Firmware-Codes. Die ursprüngliche Lizenz und die Herkunftshinweise bleiben erhalten – siehe [NOTICE.md](NOTICE.md) und [LICENSE](LICENSE).
+> **Herkunft:** Dieses Projekt basiert auf dem ursprünglichen [giovi321/smalltv-mod](https://github.com/giovi321/smalltv-mod) von **[@giovi321](https://github.com/giovi321)**. Es ist eine eigenständige, auf SmallTV Ultra / ESP8266 ausgerichtete Stable-Firmware. Die ursprüngliche Lizenz und die Herkunftshinweise bleiben erhalten – siehe [NOTICE.md](NOTICE.md) und [LICENSE](LICENSE).
 
 Dies ist ein **Firmware-Repository**, kein Hardware-Shop und kein offizielles Produkt von GeekMagic. Der Quellcode richtet sich an Entwickler und Besitzer kompatibler Geräte.
 
@@ -32,7 +32,7 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 | **Playlist** | Bis zu 8 Einträge, feste oder zufällige Reihenfolge, Zeitfenster und individuelle Laufzeiten |
 | **Fotos** | JPEG-Fotobibliothek, Vorschau, Upload-Fortschritt, Abbruch, Löschen und Shuffle-Wiedergabe |
 | **Renderer** | Text, Bilder, Formen, Animationen, transparente Ebenen und optionale PNG-Schriftatlanten |
-| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, optionale Digest-Authentifizierung, Konfigurations-Backup, manueller Firmware-Upload und Recovery |
+| **Geräteverwaltung** | WLAN-Einrichtung, mehrere gespeicherte Netzwerke, Konfigurations-Backup, manueller Firmware-Upload und Recovery |
 
 ## Unterstützte Hardware
 
@@ -44,15 +44,16 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 
 Dieses Firmware-Profil ist **nicht** für ESP32- oder ESP32-C2-Geräte vorgesehen. Die erstmalige Installation auf manchen SmallTV-Ultra-Flashlayouts kann einen gerätespezifischen Installationsweg erfordern. Lies vor dem Flashen die [Installationshinweise](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/getting-started/flashing/).
 
-## Schnellstart
+## Stable Firmware und unterstützte Hardware
 
 ### Firmware beziehen
 
-Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade das passende Image herunter:
+Öffne [Releases](https://github.com/jamedegnato-kostal/smalltv-ultra-mod/releases) und lade für den Normalbetrieb das Stable-Firmwareimage herunter:
 
-- `smalltv-settings-firmware.bin` – reguläre Settings-Firmware
+- `smalltv-stable-firmware.bin` – reguläres Stable-Firmwareimage
+- `smalltv-stable-loader.bin` – Erstinstallationshilfe für Geräte, deren Original-Updater das Hauptimage ablehnt.
 
-Das Loader-Image wird im normalen Release nicht mitveröffentlicht. Falls der dokumentierte Erstinstallationsweg es erfordert, kann es lokal mit `python -m platformio run -e smalltv_loader` gebaut werden.
+Beide Images werden mit jedem regulären Release veröffentlicht. Der Loader wird nur für die Erstinstallation benötigt; spätere Firmware-Updates laufen über die Weboberfläche.
 
 Prüfe vor dem Flashen die Hardware- und Flashlayout-Hinweise in der [Dokumentation](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/).
 
@@ -104,7 +105,7 @@ lib/                    lokal angepasste ESP8266-mDNS-Bibliothek
 
 - Themes und Fotos teilen sich den begrenzten LittleFS-Speicher.
 - Ein erfolgreicher Host-/CI-Build ersetzt keinen vollständigen Test auf echter SmallTV-Ultra-Hardware.
-- Der Webzugriff ist standardmäßig nicht passwortgeschützt. Optionaler Digest-Schutz schützt die Anmeldung, **verschlüsselt aber nicht den HTTP-Datenverkehr**.
+- Der Webzugriff ist ohne Login und Passwortschutz. Verwende das Gerät nur in einem vertrauenswürdigen lokalen Netzwerk; Host-/Origin-Prüfungen blockieren unerwartete Browser-Anfragen, verschlüsseln aber nicht den HTTP-Datenverkehr.
 - Konfigurations-Backups können WLAN-Zugangsdaten enthalten. Teile solche Dateien nicht öffentlich.
 - Das Projekt enthält eine Recovery-Ansicht; sie ersetzt keine sorgfältige Prüfung des Flashlayouts vor einer Erstinstallation.
 
