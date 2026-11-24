@@ -114,7 +114,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: smalltv-settings-firmware
+          name: smalltv-stable-firmware
           path: dist
 
       - uses: softprops/action-gh-release@v2
