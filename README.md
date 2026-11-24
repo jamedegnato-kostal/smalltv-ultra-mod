@@ -44,6 +44,12 @@ Die Navigation umfasst Übersicht, Anzeige, Uhr & Zeit, Themes, Fotos, Netzwerk,
 
 Dieses Stable-Image ist ausschließlich für ESP8266-basierte SmallTV-Geräte ausgelegt. Es enthält den zeitgesteuerten Nachtmodus, aber keine automatische Sprach-/Locale-Zeitplanung, keine physische Tastensteuerung und keinen Web-Login oder Passwortschutz. ESP32-C2-, klassische ESP32- und SmallTV-Pro-Ziele sind nicht Bestandteil dieses Builds. Die erstmalige Installation auf manchen SmallTV-Ultra-Flashlayouts kann einen Loader erfordern; beachte die [Installationshinweise](https://jamedegnato-kostal.github.io/smalltv-ultra-mod/getting-started/flashing/).
 
+### Flashlayout und Migration
+
+Das Firmwareimage ist für einen ESP-12F/ESP-12E mit **4 MB Flash** gebaut. `eagle.flash.4m2m.ld` reserviert 2 MB für LittleFS und lässt einen OTA-fähigen Firmwarebereich von ungefähr 1 MB. Die tatsächlich nutzbare Dateisystemkapazität ist wegen Metadaten etwas kleiner.
+
+Beim Wechsel von der bisherigen `4m1m`-Partitionierung auf `4m2m` verschiebt sich die LittleFS-Grenze. Das alte Dateisystem wird nicht automatisch übernommen. Sichere vor dem Update die Konfiguration, Themes und Fotos separat. Nach dem Update kann LittleFS zunächst als nicht verfügbar gemeldet werden. Initialisiere es dann über die Recovery-/Speicherreparatur in der Weboberfläche. **Das Formatieren löscht gespeicherte Einstellungen, Themes und Fotos.** Danach WLAN erneut einrichten, Konfiguration importieren und Themes/Fotos wieder hochladen. Dieses Layout darf nicht auf Modulen mit weniger als 4 MB Flash verwendet werden.
+
 ## Firmware beziehen
 
 ### Firmware beziehen
