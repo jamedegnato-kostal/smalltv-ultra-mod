@@ -23,6 +23,10 @@ void Settings::setDefaults() {
   displayRedGain = 100;
   displayGreenGain = 100;
   displayBlueGain = 100;
+  nightModeEnabled = false;
+  nightStartMin = 22 * 60;
+  nightEndMin = 7 * 60;
+  nightBrightness = 5;
   activeTheme[0] = '\0';
   strncpy(timezone, DEFAULT_TIMEZONE, sizeof(timezone) - 1);
   timezone[sizeof(timezone) - 1] = '\0';
@@ -83,6 +87,10 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["displayRedGain"] = s.displayRedGain;
   root["displayGreenGain"] = s.displayGreenGain;
   root["displayBlueGain"] = s.displayBlueGain;
+  root["nightModeEnabled"] = s.nightModeEnabled;
+  root["nightStartMin"] = s.nightStartMin;
+  root["nightEndMin"] = s.nightEndMin;
+  root["nightBrightness"] = s.nightBrightness;
   root["activeTheme"] = s.activeTheme;
   root["timezone"] = s.timezone;
   root["language"] = s.language;
@@ -186,6 +194,23 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
     if (!root["displayBlueGain"].is<int>()) return F("invalid blue gain");
     const int value = root["displayBlueGain"].as<int>();
     if (value < 50 || value > 150) return F("blue gain must be 50-150 percent");
+  }
+  if (!root["nightModeEnabled"].isNull() && !root["nightModeEnabled"].is<bool>())
+    return F("invalid night mode switch");
+  if (!root["nightStartMin"].isNull()) {
+    if (!root["nightStartMin"].is<int>()) return F("invalid night mode start time");
+    const int value = root["nightStartMin"].as<int>();
+    if (value < 0 || value > 1439) return F("night mode start must be 0-1439 minutes");
+  }
+  if (!root["nightEndMin"].isNull()) {
+    if (!root["nightEndMin"].is<int>()) return F("invalid night mode end time");
+    const int value = root["nightEndMin"].as<int>();
+    if (value < 0 || value > 1439) return F("night mode end must be 0-1439 minutes");
+  }
+  if (!root["nightBrightness"].isNull()) {
+    if (!root["nightBrightness"].is<int>()) return F("invalid night brightness");
+    const int value = root["nightBrightness"].as<int>();
+    if (value < 0 || value > 100) return F("night brightness must be 0-100 percent");
   }
   if (!root["activeTheme"].isNull()) {
     if (!root["activeTheme"].is<const char*>()) return F("invalid active theme");
@@ -307,6 +332,14 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
     s.displayGreenGain = (uint8_t)root["displayGreenGain"].as<int>();
   if (root["displayBlueGain"].is<int>())
     s.displayBlueGain = (uint8_t)root["displayBlueGain"].as<int>();
+  if (root["nightModeEnabled"].is<bool>())
+    s.nightModeEnabled = root["nightModeEnabled"].as<bool>();
+  if (root["nightStartMin"].is<int>())
+    s.nightStartMin = (uint16_t)root["nightStartMin"].as<int>();
+  if (root["nightEndMin"].is<int>())
+    s.nightEndMin = (uint16_t)root["nightEndMin"].as<int>();
+  if (root["nightBrightness"].is<int>())
+    s.nightBrightness = (uint8_t)root["nightBrightness"].as<int>();
   if (root["activeTheme"].is<const char*>()) {
     const char* id = root["activeTheme"].as<const char*>();
     strncpy(s.activeTheme, id, sizeof(s.activeTheme) - 1);
