@@ -163,7 +163,8 @@ bool makePhotoName(String incoming, String& finalName) {
 static bool jpegOutput(int16_t x, int16_t y, uint16_t width, uint16_t height, uint16_t* pixels) {
   if (!g_display || !pixels) return false;
   for (uint16_t row = 0; row < height; ++row) {
-    g_display->row(x + g_imageX, y + g_imageY + row, pixels + size_t(row) * width, width);
+    // drawFsJpg() already adds the image offset to x/y before invoking us.
+    g_display->row(x, y + row, pixels + size_t(row) * width, width);
   }
   yield();
   return true;
