@@ -223,17 +223,6 @@ button.btn:disabled{filter:saturate(.35)}
    <small class="hint">Die automatische Sommerzeit wird über die Zeitzonenregel berechnet. NTP wird benötigt, wenn ein Theme Zeitwerte verwendet oder der Nachtmodus aktiv ist. Dafür muss das Gerät Internetzugang haben.</small>
   </div>
   <div class="card">
-   <h2>Nachtmodus</h2>
-   <div class="chk"><input id="nightModeEnabled" type="checkbox"><label for="nightModeEnabled">Zeitgesteuertes Dimmen aktivieren</label></div>
-   <div class="row">
-    <div><label for="nightStartMin">Beginn</label><input id="nightStartMin" type="time" value="22:00"></div>
-    <div><label for="nightEndMin">Ende</label><input id="nightEndMin" type="time" value="07:00"></div>
-   </div>
-   <label for="nightBrightness">Nacht-Helligkeit <span id="nightBrightnessValue">5 %</span></label>
-   <input id="nightBrightness" type="range" min="0" max="100" step="1" value="5">
-   <small class="hint">Die Absenkung gilt in der eingestellten lokalen Zeitzone, auch über Mitternacht. Bei 0 % wird die Hintergrundbeleuchtung ausgeschaltet. NTP und Internetzugang sind erforderlich; bis zur ersten Zeitsynchronisation bleibt die normale Helligkeit aktiv. Gleiche Start- und Endzeit deaktivieren das Zeitfenster.</small>
-  </div>
-  <div class="card">
    <h2>Theme-Sprache</h2>
    <label for="themeLanguage">Sprache der Theme-Inhalte</label>
    <select id="themeLanguage">
@@ -528,20 +517,8 @@ function scan() {
   }).catch(function(error){ $("scanList").textContent = "Netzwerksuche fehlgeschlagen: " + error.message; });
 }
 
-function minuteToTime(value, fallback) {
-  var minutes = Number(value);
-  if (!Number.isFinite(minutes) || minutes < 0 || minutes > 1439) minutes = fallback;
-  return ("0" + Math.floor(minutes / 60)).slice(-2) + ":" +
-    ("0" + (minutes % 60)).slice(-2);
-}
-function timeToMinute(value) {
-  var match = /^([01][0-9]|2[0-3]):([0-5][0-9])$/.exec(value || "");
-  if (!match) throw new Error("Bitte gültige Start- und Endzeiten für den Nachtmodus wählen.");
-  return Number(match[1]) * 60 + Number(match[2]);
-}
 function updateDisplayLabels() {
   $("displayBrightnessValue").textContent = $("displayBrightness").value + " %";
-  $("nightBrightnessValue").textContent = $("nightBrightness").value + " %";
   $("displayRedGainValue").textContent = $("displayRedGain").value + " %";
   $("displayGreenGainValue").textContent = $("displayGreenGain").value + " %";
   $("displayBlueGainValue").textContent = $("displayBlueGain").value + " %";
@@ -560,10 +537,6 @@ function loadConfig() {
     $("displayGreenGain").value = config.displayGreenGain == null ? 100 : config.displayGreenGain;
     $("displayBlueGain").value = config.displayBlueGain == null ? 100 : config.displayBlueGain;
     $("timezone").value = config.timezone || "CET-1CEST,M3.5.0,M10.5.0/3";
-    $("nightModeEnabled").checked = !!config.nightModeEnabled;
-    $("nightStartMin").value = minuteToTime(config.nightStartMin == null ? 1320 : config.nightStartMin, 1320);
-    $("nightEndMin").value = minuteToTime(config.nightEndMin == null ? 420 : config.nightEndMin, 420);
-    $("nightBrightness").value = config.nightBrightness == null ? 5 : config.nightBrightness;
     $("themeLanguage").value = config.language || "en";
     updateDisplayLabels();
     setClean("Alle Einstellungen sind gespeichert.");
@@ -572,14 +545,6 @@ function loadConfig() {
 function saveAll() {
   if (!dirty) return;
   var submittedRevision = editRevision;
-  var nightStartMin, nightEndMin;
-  try {
-    nightStartMin = timeToMinute($("nightStartMin").value);
-    nightEndMin = timeToMinute($("nightEndMin").value);
-  } catch (error) {
-    toast(error.message);
-    return;
-  }
   var payload = {
     wifi: collectWifi(),
     hostname: $("hostname").value.trim(),
@@ -592,10 +557,6 @@ function saveAll() {
     displayGreenGain: Number($("displayGreenGain").value),
     displayBlueGain: Number($("displayBlueGain").value),
     timezone: $("timezone").value,
-    nightModeEnabled: $("nightModeEnabled").checked,
-    nightStartMin: nightStartMin,
-    nightEndMin: nightEndMin,
-    nightBrightness: Number($("nightBrightness").value),
     language: $("themeLanguage").value
   };
   $("saveSettingsBtn").disabled = true;
@@ -643,11 +604,6 @@ $("apSsid").addEventListener("input", setDirty);
   $(id).addEventListener("change", setDirty);
 });
 $("displayInvert").addEventListener("change", setDirty);
-$("nightModeEnabled").addEventListener("change", setDirty);
-["nightStartMin","nightEndMin"].forEach(function(id) {
-  $(id).addEventListener("change", setDirty);
-});
-$("nightBrightness").addEventListener("input", function() { updateDisplayLabels(); setDirty(); });
 $("timezone").addEventListener("change", setDirty);
 $("themeLanguage").addEventListener("change", setDirty);
 
@@ -691,9 +647,6 @@ function showStatus(s) {
     kv("Laufzeit", formatUptime(s.uptime)) +
     kv("Letzter Reset", s.reset || "—") +
     kv("NTP-Uhrzeit", s.timeSynced ? (s.localTime + " · " + (s.timezone || "")) : "Noch nicht synchronisiert / nicht benötigt") +
-    kv("Nachtmodus", s.nightModeEnabled
-      ? (s.timeSynced ? "Aktiviert" : "Aktiviert · wartet auf NTP")
-      : "Aus") +
     kv("Theme-Sprache", s.language === "de" ? "Deutsch" : "English") +
     kv("Theme", s.themeLoaded ? ("Aktiv: " + s.theme) : "Kein aktives Theme") +
     kv("Theme-Datenquellen", (Number(s.dataReady)||0) + "/" + (Number(s.dataSources)||0) + " aktuell" + (Number(s.dataStale) ? " · " + s.dataStale + " veraltet" : "")) +
