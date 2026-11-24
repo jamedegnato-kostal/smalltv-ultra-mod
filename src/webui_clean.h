@@ -207,6 +207,7 @@ button.btn:disabled{filter:saturate(.35)}
   </div>
   <div class="card">
    <h2>Wartung</h2>
+   <div id="storageRecoveryHint" class="req" style="display:none">LittleFS ist nicht verfügbar. Ein ausdrücklich bestätigter Werksreset initialisiert das Dateisystem und setzt alle Einstellungen zurück.</div>
    <button class="btn sec" type="button" onclick="reboot()">Neu starten</button>
    <button class="btn danger" style="margin-left:8px" type="button" onclick="factory()">Werkseinstellungen</button>
    <small class="hint">Der Werksreset löscht gespeicherte WLAN-Zugangsdaten und Einstellungen und startet das Gerät anschließend neu.</small>
@@ -227,6 +228,7 @@ var $ = function(id){ return document.getElementById(id); };
 var config = {};
 var latestUpdate = false;
 var dirty = false;
+var editRevision = 0;
 var toastTimer = 0;
 var statusTimer = 0;
 var statusLoading = false;
@@ -255,6 +257,7 @@ function toast(message) {
   toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 3200);
 }
 function setDirty() {
+  editRevision++;
   dirty = true;
   $("saveStatus").textContent = "Ungespeicherte Änderungen";
   $("saveStatus").classList.add("dirty");
@@ -265,6 +268,11 @@ function setClean(text) {
   $("saveStatus").textContent = text || "Alle Einstellungen sind gespeichert.";
   $("saveStatus").classList.remove("dirty");
   $("saveSettingsBtn").disabled = true;
+}
+function lockSettingsControls(locked) {
+  document.querySelectorAll("#wifi input,#wifi button").forEach(function(control) {
+    control.disabled = locked;
+  });
 }
 function showTab(name) {
   var target = $(name);
@@ -405,19 +413,32 @@ function loadConfig() {
 }
 function saveAll() {
   if (!dirty) return;
+  var submittedRevision = editRevision;
   var payload = {
     wifi: collectWifi(),
     hostname: $("hostname").value.trim(),
     apSsid: $("apSsid").value.trim()
   };
   $("saveSettingsBtn").disabled = true;
+  lockSettingsControls(true);
   $("saveStatus").textContent = "Speichern …";
   api("/api/config", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(payload)
   }).then(function(result){
+    lockSettingsControls(false);
     config = Object.assign({}, config, payload);
+    if (editRevision !== submittedRevision) {
+      dirty = true;
+      $("saveStatus").textContent = result.reboot
+        ? "Gespeichert – neuere Änderungen sind noch offen; Neustart läuft."
+        : "Gespeichert – neuere Änderungen sind noch offen.";
+      $("saveStatus").classList.add("dirty");
+      $("saveSettingsBtn").disabled = false;
+      toast("Neuere Änderungen wurden nicht mitgespeichert.");
+      return;
+    }
     if (result.reboot) {
       setClean("Gespeichert – Gerät startet wegen Netzwerkänderung neu.");
       toast("Gespeichert. Das Gerät startet neu.");
@@ -427,6 +448,7 @@ function saveAll() {
       toast("Einstellungen gespeichert.");
     }
   }).catch(function(error){
+    lockSettingsControls(false);
     $("saveStatus").textContent = "Speichern fehlgeschlagen";
     $("saveStatus").classList.add("dirty");
     $("saveSettingsBtn").disabled = false;
@@ -461,7 +483,9 @@ function showStatus(s) {
   $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
   $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
+  $("storageRecoveryHint").style.display = s.storageReady === false ? "block" : "none";
   var rows = kv("Firmware", (s.fw || "SmallTV") + " " + (s.version || "")) +
+    kv("LittleFS", s.storageReady ? "Bereit" : "Nicht verfügbar") +
     kv("Variante", s.variant || "ESP8266 Web-only") +
     kv("Modus", String(s.mode || "—").toUpperCase()) +
     kv("WLAN", s.ssid || "—") +

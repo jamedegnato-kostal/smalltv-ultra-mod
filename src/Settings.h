@@ -19,6 +19,9 @@ struct Settings {
 };
 
 bool settingsBegin();
+bool settingsStorageReady();
+bool settingsFormat();
+const char* settingsValidateJson(JsonObjectConst root);
 bool loadSettings(Settings& s);
 bool saveSettings(const Settings& s);
 void factoryReset(Settings& s);

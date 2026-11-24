@@ -2,8 +2,10 @@
 #include "AtomicJson.h"
 #include "Platform.h"
 #include <LittleFS.h>
+#include <string.h>
 
 static const char* CONFIG_PATH = "/config.json";
+static bool g_storageReady = false;
 
 void Settings::setDefaults() {
   wifiCount = 0;
@@ -17,23 +19,38 @@ void Settings::setDefaults() {
 }
 
 bool settingsBegin() {
-  if (LittleFS.begin()) return true;
-  return LittleFS.format() && LittleFS.begin();
+  g_storageReady = LittleFS.begin();
+  return g_storageReady;
+}
+
+bool settingsStorageReady() {
+  return g_storageReady;
+}
+
+// Formatting is destructive and only available through an explicitly confirmed reset.
+bool settingsFormat() {
+  if (g_storageReady) return false;
+  if (!LittleFS.format()) return false;
+  g_storageReady = LittleFS.begin();
+  return g_storageReady;
 }
 
 bool loadSettings(Settings& s) {
   s.setDefaults();
+  if (!g_storageReady) return false;
   File file = LittleFS.open(CONFIG_PATH, "r");
   if (!file) return false;
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, file);
   file.close();
-  if (error) return false;
+  if (error || !doc.is<JsonObject>()) return false;
+  if (settingsValidateJson(doc.as<JsonObjectConst>())) return false;
   settingsApplyJson(s, doc.as<JsonObjectConst>());
   return true;
 }
 
 bool saveSettings(const Settings& s) {
+  if (!g_storageReady) return false;
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(s, root, true);
@@ -63,6 +80,65 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   }
 }
 
+
+static bool validHostname(const char* value) {
+  if (!value) return false;
+  const size_t length = strlen(value);
+  if (!length || length > 63 || value[0] == '-' || value[length - 1] == '-') return false;
+  for (size_t i = 0; i < length; ++i) {
+    const char c = value[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c == '-')) return false;
+  }
+  return true;
+}
+
+// Static error strings and bounded iteration only: this validation allocates no heap memory.
+const char* settingsValidateJson(JsonObjectConst root) {
+  if (root.containsKey("hostname")) {
+    if (!root["hostname"].is<const char*>() ||
+        !validHostname(root["hostname"].as<const char*>())) return "invalid hostname";
+  }
+  if (root.containsKey("apSsid")) {
+    if (!root["apSsid"].is<const char*>()) return "invalid setup hotspot name";
+    const char* ap = root["apSsid"].as<const char*>();
+    const size_t length = strlen(ap);
+    if (!length || length > 32) return "setup hotspot name must be 1-32 bytes";
+  }
+  if (root.containsKey("httpTimeout")) {
+    if (!root["httpTimeout"].is<int>()) return "invalid HTTP timeout";
+    const int timeout = root["httpTimeout"].as<int>();
+    if (timeout < 1000 || timeout > 20000) return "HTTP timeout must be 1000-20000 ms";
+  }
+  if (root.containsKey("wifi")) {
+    if (!root["wifi"].is<JsonArrayConst>()) return "wifi must be an array";
+    JsonArrayConst networks = root["wifi"].as<JsonArrayConst>();
+    if (networks.size() > MAX_WIFI_NETS) return "maximum four Wi-Fi networks";
+    for (JsonVariantConst value : networks) {
+      if (!value.is<JsonObjectConst>()) return "invalid Wi-Fi entry";
+      JsonObjectConst item = value.as<JsonObjectConst>();
+      if (!item["ssid"].is<const char*>()) return "Wi-Fi SSID is missing";
+      const char* ssid = item["ssid"].as<const char*>();
+      const size_t ssidLength = strlen(ssid);
+      if (!ssidLength || ssidLength > 32) return "Wi-Fi SSID must be 1-32 bytes";
+      if (item.containsKey("pass")) {
+        if (!item["pass"].is<const char*>()) return "invalid Wi-Fi password";
+        if (strlen(item["pass"].as<const char*>()) > 64) return "Wi-Fi password exceeds 64 bytes";
+      }
+    }
+  }
+  // Legacy single-network backups remain accepted.
+  if (root.containsKey("staSsid")) {
+    if (!root["staSsid"].is<const char*>()) return "invalid legacy Wi-Fi SSID";
+    if (strlen(root["staSsid"].as<const char*>()) > 32) return "legacy Wi-Fi SSID exceeds 32 bytes";
+  }
+  if (root.containsKey("staPass")) {
+    if (!root["staPass"].is<const char*>()) return "invalid legacy Wi-Fi password";
+    if (strlen(root["staPass"].as<const char*>()) > 64) return "legacy Wi-Fi password exceeds 64 bytes";
+  }
+  return nullptr;
+}
+
 void settingsApplyJson(Settings& s, JsonObjectConst root) {
   if (root["hostname"].is<const char*>()) {
     s.hostname = root["hostname"].as<String>();
@@ -70,42 +146,51 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
   }
 
   if (root["wifi"].is<JsonArrayConst>()) {
-    WifiCred old[MAX_WIFI_NETS];
+    const JsonArrayConst networks = root["wifi"].as<JsonArrayConst>();
     const uint8_t oldCount = s.wifiCount;
-    for (uint8_t i = 0; i < oldCount; ++i) old[i] = s.wifi[i];
-
-    s.wifiCount = 0;
-    for (JsonObjectConst item : root["wifi"].as<JsonArrayConst>()) {
-      if (s.wifiCount >= MAX_WIFI_NETS) break;
+    // Preserve blank password fields without heap-allocating copies of String.
+    char preservedPass[MAX_WIFI_NETS][65] = {};
+    bool preservePass[MAX_WIFI_NETS] = {false};
+    uint8_t index = 0;
+    for (JsonObjectConst item : networks) {
       const char* ssid = item["ssid"] | "";
-      if (!ssid[0]) continue;
-
-      WifiCred& target = s.wifi[s.wifiCount];
-      target.ssid = ssid;
-      if (target.ssid.length() > 32) target.ssid.remove(32);
-      target.pass = item["pass"] | "";
-      if (target.pass.length() > 64) target.pass.remove(64);
-
-      if (!target.pass.length()) {
+      const char* pass = item["pass"] | "";
+      if (!pass[0]) {
         for (uint8_t oldIndex = 0; oldIndex < oldCount; ++oldIndex) {
-          if (old[oldIndex].ssid == target.ssid) {
-            target.pass = old[oldIndex].pass;
+          if (s.wifi[oldIndex].ssid == ssid) {
+            const size_t length = s.wifi[oldIndex].pass.length() > 64
+              ? 64 : s.wifi[oldIndex].pass.length();
+            memcpy(preservedPass[index], s.wifi[oldIndex].pass.c_str(), length);
+            preservedPass[index][length] = '\0';
+            preservePass[index] = true;
             break;
           }
         }
       }
-      ++s.wifiCount;
+      ++index;
+    }
+    index = 0;
+    for (JsonObjectConst item : networks) {
+      WifiCred& target = s.wifi[index];
+      target.ssid = item["ssid"] | "";
+      const char* pass = item["pass"] | "";
+      if (pass[0]) target.pass = pass;
+      else target.pass = preservePass[index] ? preservedPass[index] : "";
+      ++index;
+    }
+    s.wifiCount = index;
+    for (uint8_t i = index; i < MAX_WIFI_NETS; ++i) {
+      s.wifi[i].ssid = "";
+      s.wifi[i].pass = "";
     }
   } else if (root["staSsid"].is<const char*>()) {
-    String ssid = root["staSsid"].as<String>();
-    if (ssid.length()) {
+    const char* ssid = root["staSsid"] | "";
+    if (ssid[0]) {
       s.wifi[0].ssid = ssid;
-      if (s.wifi[0].ssid.length() > 32) s.wifi[0].ssid.remove(32);
       if (root["staPass"].is<const char*>()) {
-        String pass = root["staPass"].as<String>();
-        if (pass.length()) s.wifi[0].pass = pass;
+        const char* pass = root["staPass"] | "";
+        if (pass[0]) s.wifi[0].pass = pass;
       }
-      if (s.wifi[0].pass.length() > 64) s.wifi[0].pass.remove(64);
       if (s.wifiCount < 1) s.wifiCount = 1;
     }
   }

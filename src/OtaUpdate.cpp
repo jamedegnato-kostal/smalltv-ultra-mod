@@ -162,9 +162,10 @@ String otaUpdateFromGitHub(const Settings& s) {
 static const char* OTA_REQ_PATH = "/ota.req";
 static const char* OTA_MSG_PATH = "/ota.msg";
 
-bool otaBootRequested() { return LittleFS.exists(OTA_REQ_PATH); }
+bool otaBootRequested() { return settingsStorageReady() && LittleFS.exists(OTA_REQ_PATH); }
 
 bool otaRequestBootUpdate(const char* tag) {
+  if (!settingsStorageReady()) return false;
   File f = LittleFS.open(OTA_REQ_PATH, "w");
   if (!f) return false;                     // storage full/broken -> caller must not reboot
   f.print(tag ? tag : "");
@@ -173,12 +174,13 @@ bool otaRequestBootUpdate(const char* tag) {
 }
 
 static void otaBootResult(const String& msg) {
+  if (!settingsStorageReady()) return;
   File f = LittleFS.open(OTA_MSG_PATH, "w");
   if (f) { f.print(msg); f.close(); }
 }
 
 String otaTakeBootResult() {
-  if (!LittleFS.exists(OTA_MSG_PATH)) return String();
+  if (!settingsStorageReady() || !LittleFS.exists(OTA_MSG_PATH)) return String();
   File f = LittleFS.open(OTA_MSG_PATH, "r");
   String m = f ? f.readString() : String();
   if (f) f.close();

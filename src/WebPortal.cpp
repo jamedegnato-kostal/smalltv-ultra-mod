@@ -25,6 +25,10 @@ static bool g_uploadStarted = false;
 static bool g_uploadMagicOk = false;
 static String g_uploadError;
 static constexpr uint32_t MinFirmwareImageSize = 16UL * 1024UL;
+// This cap applies only to settings/import JSON. Future .stheme APIs should use
+// their own streaming handler and format-specific size limit.
+static constexpr size_t MaxSettingsJsonBytes = 2048;
+static bool g_uploadComplete = false;
 
 static void scheduleReboot(uint32_t inMs) {
   g_reboot = true;
@@ -67,23 +71,33 @@ static void handleStatus() {
   doc["maxBlock"] = platformMaxFreeBlock();
   doc["uptime"] = millis() / 1000;
   doc["reset"] = appResetReason();
+  doc["storageReady"] = settingsStorageReady();
   doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
 
-static String netFingerprint(const Settings& settings) {
-  String fingerprint((int)settings.wifiCount);
+static uint32_t netFingerprint(const Settings& settings) {
+  // FNV-1a over network-relevant settings; avoids temporary heap-allocated Strings.
+  uint32_t hash = 2166136261UL;
+  const auto feed = [&hash](uint8_t value) {
+    hash ^= value;
+    hash *= 16777619UL;
+  };
+  feed(settings.wifiCount);
   for (uint8_t i = 0; i < settings.wifiCount; ++i) {
-    fingerprint += '\n';
-    fingerprint += settings.wifi[i].ssid;
-    fingerprint += '\x01';
-    fingerprint += settings.wifi[i].pass;
+    for (size_t n = 0; n < settings.wifi[i].ssid.length(); ++n)
+      feed((uint8_t)settings.wifi[i].ssid[n]);
+    feed(0);
+    for (size_t n = 0; n < settings.wifi[i].pass.length(); ++n)
+      feed((uint8_t)settings.wifi[i].pass[n]);
+    feed(0xFF);
   }
-  fingerprint += '\n';
-  fingerprint += settings.hostname;
-  fingerprint += '\n';
-  fingerprint += settings.apSsid;
-  return fingerprint;
+  for (size_t n = 0; n < settings.hostname.length(); ++n)
+    feed((uint8_t)settings.hostname[n]);
+  feed(0);
+  for (size_t n = 0; n < settings.apSsid.length(); ++n)
+    feed((uint8_t)settings.apSsid[n]);
+  return hash;
 }
 
 static void sendParseError(DeserializationError error) {
@@ -95,26 +109,48 @@ static void sendParseError(DeserializationError error) {
   }
 }
 
-static void handlePostConfig() {
+static bool readSettingsJson(JsonDocument& doc) {
   if (!server.hasArg("plain")) {
     server.send(400, "text/plain", "no body");
-    return;
+    return false;
   }
-
-  JsonDocument doc;
-  if (DeserializationError error = deserializeJson(doc, server.arg("plain"))) {
+  const String body = server.arg("plain");
+  if (body.length() > MaxSettingsJsonBytes) {
+    server.send(413, "application/json", "{\"ok\":false,\"error\":\"configuration JSON exceeds 2048 bytes\"}");
+    return false;
+  }
+  if (DeserializationError error = deserializeJson(doc, body)) {
     sendParseError(error);
-    return;
+    return false;
   }
+  if (!doc.is<JsonObject>()) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"JSON root must be an object\"}");
+    return false;
+  }
+  if (const char* error = settingsValidateJson(doc.as<JsonObjectConst>())) {
+    String response = F("{\"ok\":false,\"error\":\"");
+    response += error;
+    response += "\"}";
+    server.send(400, "application/json", response);
+    return false;
+  }
+  return true;
+}
 
-  const String oldNetwork = netFingerprint(*S);
+static void handlePostConfig() {
+  JsonDocument doc;
+  if (!readSettingsJson(doc)) return;
+}
+
+  const uint32_t oldNetwork = netFingerprint(*S);
   const bool saved = applyAndSaveSettings(
     *S,
     [&](Settings& settings) {
       settingsApplyJson(settings, doc.as<JsonObjectConst>());
       doc.clear();
     },
-    [](const Settings& settings) { return saveSettings(settings); }
+    [](const Settings& settings) { return saveSettings(settings); },
+        [](Settings& settings) { loadSettings(settings); }
   );
 
   if (!saved) {
@@ -150,10 +186,16 @@ static void handleReboot() {
 }
 
 static void handleFactory() {
+  // Formatting is destructive and only allowed after the user confirms reset.
+  if (!settingsStorageReady() && !settingsFormat()) {
+    server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not initialize LittleFS\"}");
+    return;
+  }
   if (!applyAndSaveSettings(
         *S,
         [](Settings& settings) { factoryReset(settings); },
-        [](const Settings& settings) { return saveSettings(settings); })) {
+        [](const Settings& settings) { return saveSettings(settings); },
+        [](Settings& settings) { loadSettings(settings); })) {
     server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save factory defaults\"}");
     return;
   }
@@ -162,6 +204,10 @@ static void handleFactory() {
 }
 
 static void handleExport() {
+  if (!settingsStorageReady()) {
+    server.send(503, "application/json", "{\"ok\":false,\"error\":\"LittleFS unavailable; use factory reset to initialize it\"}");
+    return;
+  }
   JsonDocument doc;
   JsonObject root = doc.to<JsonObject>();
   settingsToJson(*S, root, true);
@@ -172,16 +218,8 @@ static void handleExport() {
 }
 
 static void handleImport() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "text/plain", "no body");
-    return;
-  }
-
   JsonDocument doc;
-  if (DeserializationError error = deserializeJson(doc, server.arg("plain"))) {
-    sendParseError(error);
-    return;
-  }
+  if (!readSettingsJson(doc)) return;
 
   if (!applyAndSaveSettings(
         *S,
@@ -189,7 +227,8 @@ static void handleImport() {
           settingsApplyJson(settings, doc.as<JsonObjectConst>());
           doc.clear();
         },
-        [](const Settings& settings) { return saveSettings(settings); })) {
+        [](const Settings& settings) { return saveSettings(settings); },
+        [](Settings& settings) { loadSettings(settings); })) {
     server.send(500, "application/json", "{\"ok\":false,\"error\":\"could not save imported config\"}");
     return;
   }
@@ -216,6 +255,7 @@ static void handleSelfUpdate() {
 }
 
 static void abortFirmwareUpload(const char* reason) {
+  g_uploadComplete = false;
   g_uploadError = reason;
   if (!g_uploadStarted) return;
   uint8_t poison[2] = {0, 0};
@@ -234,6 +274,7 @@ static void handleUpdateUpload() {
     g_uploadBytes = 0;
     g_uploadStarted = false;
     g_uploadMagicOk = false;
+    g_uploadComplete = false;
     g_uploadError = "";
 
     WiFiUDP::stopAll();
@@ -283,8 +324,10 @@ static void handleUpdateUpload() {
     if (!Update.end(true)) {
       g_uploadError = platformUpdateError();
       g_uploadStarted = false;
+      g_uploadComplete = false;
     } else {
       g_uploadStarted = false;
+      g_uploadComplete = true;
     }
   } else if (upload.status == UPLOAD_FILE_ABORTED) {
     abortFirmwareUpload("firmware upload was interrupted");
@@ -293,11 +336,20 @@ static void handleUpdateUpload() {
 }
 
 static void handleUpdateDone() {
-  const bool ok = g_uploadError.length() == 0 && !Update.hasError();
+  const bool ok = g_uploadComplete && g_uploadError.length() == 0 && !Update.hasError();
   server.sendHeader("Connection", "close");
-  const String error = g_uploadError.length() ? g_uploadError : platformUpdateError();
-  server.send(ok ? 200 : 400, "text/plain", ok ? "OK" : error.c_str());
-  if (ok) scheduleReboot(1200);
+  if (ok) {
+    server.send(200, "text/plain", "OK");
+    scheduleReboot(1200);
+  } else {
+    const String error = g_uploadError.length() ? g_uploadError
+      : (g_uploadComplete ? platformUpdateError() : String(F("no complete firmware image received")));
+    server.send(400, "text/plain", error);
+  }
+  g_uploadComplete = false;
+  g_uploadStarted = false;
+  g_uploadBytes = 0;
+  g_uploadError = "";
 }
 
 static void handleNotFound() {
