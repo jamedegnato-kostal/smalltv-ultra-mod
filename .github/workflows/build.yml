@@ -28,8 +28,8 @@ jobs:
       - name: Verify Open-Meteo theme package
         run: python tools/pack_stheme.py examples/open-meteo/theme.json --check examples/open-meteo/open-meteo.stheme
 
-      - name: Build web and .stheme runtime firmware
-        run: pio run -e smalltv_clean
+      - name: Build firmware and first-install loader
+        run: pio run -e smalltv_clean -e smalltv_loader
 
       - name: Compile renderer validation target (not flashed)
         run: pio run -e smalltv_display_check
@@ -39,15 +39,16 @@ jobs:
           mkdir -p dist
           copy() { test -f "$1" && cp "$1" "$2"; }
           copy .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
+          copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-clean-loader.bin
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: smalltv-clean-firmware
-          path: dist/smalltv-clean-firmware.bin
+          path: dist/*.bin
 
   release:
-    if: startsWith(github.ref, 'refs/tags/clean-v')
+    if: startsWith(github.ref, 'refs/tags/clean-v') || startsWith(github.ref, 'refs/tags/v')
     needs: firmware
     runs-on: ubuntu-latest
     permissions:
