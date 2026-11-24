@@ -1,0 +1,405 @@
+{
+  "spec": 2,
+  "theme": {
+    "id": "open-meteo",
+    "name": "Open-Meteo Weather",
+    "author": "SmallTV Ultra",
+    "version": "1.0"
+  },
+  "display": {
+    "width": 240,
+    "height": 240,
+    "background": "#101820"
+  },
+  "data": [
+    {
+      "id": "weather",
+      "url": "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=1",
+      "interval": 1800,
+      "insecureTls": true,
+      "fields": [
+        {
+          "id": "temperature",
+          "path": "current.temperature_2m",
+          "decimals": 0
+        },
+        {
+          "id": "humidity",
+          "path": "current.relative_humidity_2m",
+          "decimals": 0
+        },
+        {
+          "id": "code",
+          "path": "current.weather_code",
+          "decimals": 0
+        },
+        {
+          "id": "wind",
+          "path": "current.wind_speed_10m",
+          "decimals": 0
+        },
+        {
+          "id": "is_day",
+          "path": "current.is_day",
+          "decimals": 0
+        },
+        {
+          "id": "maximum",
+          "path": "daily.temperature_2m_max.0",
+          "decimals": 0
+        },
+        {
+          "id": "minimum",
+          "path": "daily.temperature_2m_min.0",
+          "decimals": 0
+        },
+        {
+          "id": "rain_chance",
+          "path": "daily.precipitation_probability_max.0",
+          "decimals": 0
+        }
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "id": "title",
+      "type": "text",
+      "x": 120,
+      "y": 18,
+      "anchor": "center",
+      "value": {
+        "en": "WEATHER",
+        "de": "WETTER"
+      },
+      "size": 14,
+      "color": "#B8C7D9"
+    },
+    {
+      "id": "temperature",
+      "type": "text",
+      "x": 120,
+      "y": 100,
+      "anchor": "center",
+      "value": "{weather.temperature} C",
+      "size": 42,
+      "color": "#FFFFFF"
+    },
+    {
+      "id": "clear",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Clear sky",
+        "de": "Klarer Himmel"
+      },
+      "size": 18,
+      "color": "#F6D365",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mainly-clear",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Mainly clear",
+        "de": "Heiter"
+      },
+      "size": 18,
+      "color": "#F6D365",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "partly-cloudy",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Partly cloudy",
+        "de": "Teilweise wolkig"
+      },
+      "size": 18,
+      "color": "#DDE7F0",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              2,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overcast",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Overcast",
+        "de": "Bedeckt"
+      },
+      "size": 18,
+      "color": "#B8C7D9",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              3,
+              3
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fog",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Fog",
+        "de": "Nebel"
+      },
+      "size": 18,
+      "color": "#B8C7D9",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              45,
+              45
+            ],
+            [
+              48,
+              48
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "drizzle",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Drizzle",
+        "de": "Nieselregen"
+      },
+      "size": 18,
+      "color": "#78B7D0",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              51,
+              57
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rain",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Rain",
+        "de": "Regen"
+      },
+      "size": 18,
+      "color": "#78B7D0",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              61,
+              67
+            ],
+            [
+              80,
+              82
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "snow",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Snow",
+        "de": "Schnee"
+      },
+      "size": 18,
+      "color": "#D7E8F5",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              71,
+              77
+            ],
+            [
+              85,
+              86
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storm",
+      "type": "text",
+      "x": 120,
+      "y": 48,
+      "anchor": "center",
+      "value": {
+        "en": "Thunderstorm",
+        "de": "Gewitter"
+      },
+      "size": 18,
+      "color": "#C0A4F5",
+      "show": [
+        {
+          "source": "weather.code",
+          "in": [
+            [
+              95,
+              99
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "humidity",
+      "type": "text",
+      "x": 120,
+      "y": 145,
+      "anchor": "center",
+      "value": "Humidity {weather.humidity} %",
+      "size": 14,
+      "color": "#B8C7D9"
+    },
+    {
+      "id": "wind",
+      "type": "text",
+      "x": 120,
+      "y": 166,
+      "anchor": "center",
+      "value": "Wind {weather.wind} km/h",
+      "size": 14,
+      "color": "#B8C7D9"
+    },
+    {
+      "id": "daily",
+      "type": "text",
+      "x": 120,
+      "y": 194,
+      "anchor": "center",
+      "value": "{weather.minimum} / {weather.maximum} C",
+      "size": 14,
+      "color": "#FFFFFF"
+    },
+    {
+      "id": "rain",
+      "type": "text",
+      "x": 120,
+      "y": 217,
+      "anchor": "center",
+      "value": "Rain chance {weather.rain_chance} %",
+      "size": 12,
+      "color": "#78B7D0"
+    },
+    {
+      "id": "day",
+      "type": "text",
+      "x": 120,
+      "y": 68,
+      "anchor": "center",
+      "value": {
+        "en": "DAY",
+        "de": "TAG"
+      },
+      "size": 10,
+      "color": "#F6D365",
+      "show": [
+        {
+          "source": "weather.is_day",
+          "in": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "night",
+      "type": "text",
+      "x": 120,
+      "y": 68,
+      "anchor": "center",
+      "value": {
+        "en": "NIGHT",
+        "de": "NACHT"
+      },
+      "size": 10,
+      "color": "#AFC8F0",
+      "show": [
+        {
+          "source": "weather.is_day",
+          "in": [
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

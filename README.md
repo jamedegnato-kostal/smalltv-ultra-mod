@@ -28,11 +28,11 @@ selected package through row-based output without a full-screen framebuffer.
 - Selectable POSIX timezones with automatic daylight-saving transitions
 - Persistent German/English theme language selection for localized spec 2 text
 - Bounded JSON data-source fetching with streaming extraction and an in-memory field cache
+- Open-Meteo weather demo theme with current conditions and a one-day forecast
 
 ## Not included yet
 
 - Language/locale scheduling or night mode
-- Weather provider and provider-specific weather mapping
 - Photos, JPEG decoding or slideshow
 - Physical button support
 - Web login or access-password system
@@ -59,7 +59,10 @@ with a 3 KiB response cap, a 768-byte JSON heap budget, short timeouts and retry
 backoff. Only declared fields (up to 16 total) are cached in RAM; no raw response
 body is buffered or written to flash. HTTPS requires the theme's explicit
 `insecureTls` opt-in because ESP8266 certificate validation is not configured.
-Weather-specific data mapping is the next separate step. The parser
+Open-Meteo is the first provider example; it uses the generic fetcher and maps
+WMO weather codes to localized labels with theme `show` rules, not extra firmware
+lookup tables. The demo package uses example Berlin coordinates; change them in
+`examples/open-meteo/theme.json` for the installation. The parser
 and package format are extracted from
 [giovi321/smalltv-mod v3.13.0](https://github.com/giovi321/smalltv-mod/releases/tag/v3.13.0);
 see `src/theme/UPSTREAM.md`.

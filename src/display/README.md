@@ -19,12 +19,11 @@ streamed pixel run rather than as individual pixel writes.
 
 ## Safety and build boundaries
 
-`smalltv_clean` does not compile these files and does not link the display
-library. The optional `smalltv_display_check` environment compiles the panel,
-backlight, text output and theme renderer together. It never calls
+The standard `smalltv_clean` firmware compiles and initializes the panel,
+backlight, text output and theme renderer. The separate
+`smalltv_display_check` environment is compile-only validation; it never calls
 `DisplayPanel::begin()`, has no upload step and is not a flash target.
 
-The default state for an explicitly initialized panel is a dark backlight.
-The adapter is not constructed or initialized by the current firmware entry
-point; a future display integration must deliberately call `begin()` and
-set the desired brightness.
+The backlight starts dark during initialization and is raised only after the
+ST7789 controller reports a successful start. If panel initialization fails,
+the web and network firmware continues in headless recovery mode.

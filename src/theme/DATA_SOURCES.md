@@ -46,6 +46,34 @@ certificate verification. Use only trusted API endpoints. Redirects are
 disabled. The generic fetcher does not add authentication headers or manage API
 secrets; a later provider-specific step must handle those safely if required.
 
-This step provides the transport and field-extraction layer only. Weather
-provider selection, response mapping and user-facing weather fields are added
-separately.
+## Open-Meteo example
+
+A ready-to-upload `.stheme` is included at
+`examples/open-meteo/open-meteo.stheme`, together with the editable manifest.
+It requests only current temperature, humidity, WMO weather code, wind speed,
+day/night, and three daily values (minimum/maximum temperature and maximum
+precipitation probability). The URL uses `forecast_days=1`, `timezone=auto`
+and a 30-minute refresh interval to keep the response small.
+
+Replace the sample latitude/longitude in `theme.json` before packaging for the
+actual installation. The demo uses Berlin coordinates only as an example.
+Open-Meteo supports current weather variables; daily variables require a
+timezone. See the [official API documentation](https://open-meteo.com/en/docs).
+
+Open-Meteo returns `weather_code` as a numeric WMO code rather than a text
+description. The example uses theme `show` rules to map code ranges to localized
+labels without adding a lookup table to firmware flash:
+
+| WMO code | Display label |
+|---|---|
+| 0 | Clear / Klar |
+| 1–3 | Cloud / Wolkig |
+| 45, 48 | Fog / Nebel |
+| 51–57 | Drizzle / Nieselregen |
+| 61–67, 80–82 | Rain / Regen |
+| 71–77, 85–86 | Snow / Schnee |
+| 95–99 | Thunderstorm / Gewitter |
+
+For exact code descriptions, see the
+[Open-Meteo WMO weather-code table](https://open-meteo.com/en/docs#weathervariables).
+
