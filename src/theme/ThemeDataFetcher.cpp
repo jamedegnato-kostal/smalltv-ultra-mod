@@ -239,7 +239,7 @@ bool fetchSource(const smalltv::ThemeDataSource& source, SourceState& state,
 
 namespace smalltv {
 void themeDataFetcherBegin(size_t sourceCount) {
-  memset(g_state, 0, sizeof(g_state));
+  for (uint8_t i = 0; i < MaxDataSources; ++i) g_state[i] = SourceState{};
   g_sourceCount = static_cast<uint8_t>(std::min(sourceCount, static_cast<size_t>(MaxDataSources)));
   g_nextSource = 0;
   g_lastRequestAt = millis() - MinRequestSpacingMs;
@@ -254,7 +254,7 @@ void themeDataFetcherStop() {
   g_sourceCount = 0;
   g_nextSource = 0;
   g_lastError[0] = '\0';
-  memset(g_state, 0, sizeof(g_state));
+  for (uint8_t i = 0; i < MaxDataSources; ++i) g_state[i] = SourceState{};
 }
 
 void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
@@ -288,7 +288,7 @@ void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
       if (retry > MaxRetryMs) retry = MaxRetryMs;
       state.nextDue = completedAt + retry;
       char message[96];
-      snprintf(message, sizeof(message), "%s: %s", theme.data[index].id.c_str(), error[0] ? error : "request failed");
+      snprintf(message, sizeof(message), "%.31s: %.60s", theme.data[index].id.c_str(), error[0] ? error : "request failed");
       setError(message);
     }
     return;
