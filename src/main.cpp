@@ -11,7 +11,6 @@
 #include "display/DisplayStatus.h"
 #include "theme/ThemeRuntime.h"
 #include "Clock.h"
-#include "NightSchedule.h"
 #include "PhotoSlideshow.h"
 #include <string>
 
@@ -21,29 +20,6 @@ static bool g_safeMode = false;
 static smalltv::display::DisplayPanel g_display;
 static bool g_displayReady = false;
 static uint16_t g_displayFailSeq = 0;
-static uint8_t g_appliedBrightness = 0xFF;
-static uint32_t g_nextBrightnessCheckMs = 0;
-
-static uint8_t effectiveBrightnessPercent() {
-  if (g_settings.nightModeEnabled) {
-    tm local{};
-    if (smalltv::clockNow(local)) {
-      const uint16_t nowMinute = (uint16_t)(local.tm_hour * 60 + local.tm_min);
-      if (smalltv::nightScheduleActive(nowMinute, g_settings.nightStartMin,
-                                       g_settings.nightEndMin))
-        return g_settings.nightBrightness;
-    }
-  }
-  return g_settings.displayBrightness;
-}
-
-static void applyEffectiveBrightness() {
-  if (!g_displayReady) return;
-  const uint8_t target = effectiveBrightnessPercent();
-  if (target == g_appliedBrightness) return;
-  g_display.setBrightness(target, smalltv::display::BacklightActiveLow);
-  g_appliedBrightness = target;
-}
 
 const char* appResetReason() {
   return g_resetReason.c_str();
@@ -76,8 +52,7 @@ void appShowNetworkStatus() {
 }
 
 void applyTimeSettings(const Settings& settings) {
-  smalltv::clockSetNightMode(settings.nightModeEnabled, settings.timezone);
-  applyEffectiveBrightness();
+  smalltv::clockReconfigure(settings.timezone);
 }
 
 void applyDisplaySettings(const Settings& settings) {
@@ -90,8 +65,8 @@ void applyDisplaySettings(const Settings& settings) {
   profile.blueGain = settings.displayBlueGain;
   g_display.setColorProfile(profile);
   if (!g_displayReady) return;
-  g_appliedBrightness = 0xFF;
-  applyEffectiveBrightness();
+  g_display.setBrightness(settings.displayBrightness,
+                          smalltv::display::BacklightActiveLow);
   if (smalltv::themeRuntimeActive()) smalltv::themeRuntimeInvalidate();
   else if (smalltv::photos::active()) smalltv::photos::redraw();
   else showNetworkStatus();
@@ -109,9 +84,6 @@ void setup() {
   Serial.println("[boot] LittleFS");
   if (!settingsBegin()) Serial.println("[boot] LittleFS unavailable");
   loadSettings(g_settings);
-  // Night mode owns an NTP request even when no clock theme is active.
-  smalltv::clockSetNightMode(g_settings.nightModeEnabled, g_settings.timezone);
-
   // Initialize after settings are loaded. The backlight starts dark and is
   // raised only after the ST7789 controller has initialized successfully.
   Serial.println("[boot] display");
@@ -126,8 +98,8 @@ void setup() {
   g_displayReady = g_display.begin();
   smalltv::photos::begin(g_display);
   if (g_displayReady) {
-    g_appliedBrightness = 0xFF;
-    applyEffectiveBrightness();
+    g_display.setBrightness(g_settings.displayBrightness,
+                            smalltv::display::BacklightActiveLow);
     smalltv::display::showBoot(g_display, g_safeMode ? "safe mode" : "starting");
   } else {
     Serial.println("[boot] display initialization failed; continuing headless");
@@ -168,7 +140,6 @@ void setup() {
 
 void loop() {
   netLoop();
-  smalltv::clockService();
   webPortalLoop();
   if (smalltv::themeRuntimeLoop()) {
     g_settings.activeTheme[0] = '\0';
@@ -178,13 +149,6 @@ void loop() {
   }
 
   smalltv::photos::loop();
-
-  // NTP may finish after boot. Check once per second rather than on each loop.
-  const uint32_t nowMs = millis();
-  if ((int32_t)(nowMs - g_nextBrightnessCheckMs) >= 0) {
-    g_nextBrightnessCheckMs = nowMs + 1000;
-    applyEffectiveBrightness();
-  }
 
   // Background Wi-Fi retries can change the failure reason while the setup AP
   // remains active. Refresh its diagnostic screen only when that reason changes.
