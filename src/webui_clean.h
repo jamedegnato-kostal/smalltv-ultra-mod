@@ -230,7 +230,11 @@ var config = {};
 var latestUpdate = false;
 var dirty = false;
 var toastTimer = 0;
-var statusTimer = 0;\nvar statusLoading = false;\nvar updateInProgress = false;
+var statusTimer = 0;
+var statusLoading = false;
+var updateInProgress = false;
+var statusLoading = false;
+var updateInProgress = false;
 
 function api(path, options) {
   return fetch(path, options || {}).then(function(response) {
@@ -451,7 +455,11 @@ function showStatus(s) {
   var address = $("statusAddress");
   address.href = s.ip ? ("http://" + s.ip) : "#";
   address.textContent = s.ip || "—";
-  $("statusUptime").textContent = formatUptime(s.uptime);\n  $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";\n  $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
+  $("statusUptime").textContent = formatUptime(s.uptime);
+  $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
+  $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
+  $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
+  $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
   var rows = kv("Firmware", (s.fw || "SmallTV") + " " + (s.version || "")) +
     kv("Variante", s.variant || "ESP8266 Web-only") +
@@ -470,19 +478,23 @@ function showStatus(s) {
   if (s.updateMsg && !$("ghMsg").textContent) $("ghMsg").textContent = s.updateMsg;
 }
 function loadStatus() {
+  if (statusLoading || document.visibilityState === "hidden") return;
+  statusLoading = true;
   api("/api/status").then(showStatus).catch(function(error){
     $("statusPill").textContent = "Nicht erreichbar";
     $("statusPill").className = "status-pill warn";
     $("dot").className = "dot";
     $("statusBox").textContent = "Status nicht verfügbar: " + error.message;
-  });
+  }).then(function(){ statusLoading = false; });
 }
 function checkUpdate() {
   $("ghMsg").textContent = "Suche nach Updates …";
   $("chkBtn").disabled = true;
   api("/api/checkupdate").then(function(update){
     $("chkBtn").disabled = false;
+    latestUpdate = !!(update.ok && update.newer);
     if (!update.ok) {
+      latestUpdate = false; $("ghUpBtn").disabled = true;
       $("ghMsg").textContent = "Suche fehlgeschlagen: " + (update.error || "Unbekannter Fehler");
       return;
     }
@@ -494,20 +506,23 @@ function checkUpdate() {
       $("ghUpBtn").disabled = true;
     }
   }).catch(function(error){
+    latestUpdate = false; $("ghUpBtn").disabled = true;
     $("chkBtn").disabled = false;
     $("ghMsg").textContent = "Update-Prüfung fehlgeschlagen: " + error.message;
   });
 }
 function selfUpdate() {
-  if (!latestUpdate && $("ghUpBtn").disabled) return;
+  if (!latestUpdate || updateInProgress) return;
   if (!confirm("Neueste Firmware herunterladen und installieren? Das Gerät startet bei Erfolg neu.")) return;
+  updateInProgress = true;
   $("ghUpBtn").disabled = true;
   $("chkBtn").disabled = true;
-  $("ghMsg").textContent = "Online-Update wird gestartet …";
+  $("ghMsg").textContent = "Update wird vorgemerkt. Das Gerät startet gleich neu. Bitte nicht ausschalten.";
   api("/api/selfupdate", {method:"POST"}).then(function(){
     $("ghMsg").textContent = "Update vorgemerkt. Das Gerät startet nach dem Download neu.";
   }).catch(function(error){
-    $("ghMsg").textContent = "Update konnte nicht gestartet werden: " + error.message;
+    updateInProgress = false;
+    $("ghMsg").textContent = "Update konnte nicht vorgemerkt werden: " + error.message;
     $("chkBtn").disabled = false;
   });
 }
@@ -578,7 +593,7 @@ function initialise() {
   loadStatus();
   statusTimer = setInterval(function(){
     if (document.visibilityState !== "hidden") loadStatus();
-  }, 10000);
+  }, 20000);
 }
 document.addEventListener("visibilitychange", function(){
   if (document.visibilityState !== "hidden") loadStatus();
