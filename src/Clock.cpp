@@ -29,7 +29,7 @@ void startNtpWhenOnline() {
     settimeofday_cb(onTimeSet);
     g_callbackRegistered = true;
   }
-  // Ask SNTP for UTC; localtime_r applies the POSIX rule including DST.
+  // The ESP8266 time core applies this POSIX rule in localtime_r, including DST.
   configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
   g_started = true;
   Serial.println(F("[clock] SNTP started"));

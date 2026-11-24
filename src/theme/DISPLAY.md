@@ -30,3 +30,13 @@ active. Image/font bytes are read from LittleFS as needed.
 
 This firmware supplies no clock or external data values: NTP and remote data
 source clients remain outside this runtime step.
+
+
+## Theme clock
+
+The selected theme is scanned for built-in clock tokens and `time.*` bindings.
+Only when one is present does the ESP8266 start SNTP. The engine receives a
+local `tm` value after the first successful SNTP synchronization; until then
+clock-dependent text remains in its engine fallback state. The POSIX timezone
+rule is applied by the ESP8266 time core, including the configured DST
+transition dates. Deactivating the theme stops SNTP polling.

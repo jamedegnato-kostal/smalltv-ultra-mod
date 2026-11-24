@@ -24,7 +24,7 @@ void Settings::setDefaults() {
   displayGreenGain = 100;
   displayBlueGain = 100;
   activeTheme[0] = '\0';
-  strncpy(timezone, "CET-1CEST,M3.5.0,M10.5.0/3", sizeof(timezone) - 1);
+  strncpy(timezone, DEFAULT_TIMEZONE, sizeof(timezone) - 1);
   timezone[sizeof(timezone) - 1] = '\0';
 }
 

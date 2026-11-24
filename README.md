@@ -24,10 +24,12 @@ selected package through row-based output without a full-screen framebuffer.
 - Backlight initialization with upstream default brightness (90%)
 - Persistent manual brightness, panel rotation, RGB/BGR order, inversion and per-channel color gains
 - `.stheme` package storage, validation, selection and row-based rendering
+- NTP time for themes with clock tokens or `time.*` bindings
+- Selectable POSIX timezones with automatic daylight-saving transitions
 
 ## Not included yet
 
-- Clock, NTP, language/locale scheduling or night mode
+- Language/locale scheduling or night mode
 - Theme data sources and network fetchers
 - Photos, JPEG decoding or slideshow
 - Physical button support
@@ -45,9 +47,12 @@ Deactivate a running theme before installing or deleting packages so package
 validation does not compete with the renderer for ESP8266 heap.
 
 The renderer supports theme layers, images, fonts, animation frames and
-scrolling. This firmware does not start NTP/time services or fetch external
-theme data; theme elements depending on clock or remote values may therefore
-show placeholders. The parser and package format are extracted from
+scrolling. NTP starts only when a selected theme contains clock text tokens
+(e.g. `{HH}`) or `time.*` bindings; it stops when that theme is deactivated.
+The timezone is configurable in the Display settings, including Europe/Berlin
+with automatic CET/CEST changes. Remote theme data sources remain disabled, so
+tokens that depend on external data may still show placeholders. The parser
+and package format are extracted from
 [giovi321/smalltv-mod v3.13.0](https://github.com/giovi321/smalltv-mod/releases/tag/v3.13.0);
 see `src/theme/UPSTREAM.md`.
 
