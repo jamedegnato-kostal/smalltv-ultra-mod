@@ -167,7 +167,7 @@ class HttpDataReply final : public smalltv::DataReply {
       (expectedLength_ < 0 || bytes_ == static_cast<size_t>(expectedLength_));
   }
   const char* failure() const {
-    if (overflow_) return "JSON response exceeds 3072 bytes";
+    if (overflow_) return "JSON response exceeds 2048 bytes";
     if (timedOut_) return "JSON response timeout";
     if (lowMemory_) return "data parsing stopped: low heap";
     return "invalid or incomplete JSON response";

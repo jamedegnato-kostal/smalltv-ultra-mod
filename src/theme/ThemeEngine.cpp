@@ -1170,7 +1170,7 @@ __attribute__((noinline)) static bool parseHeader(JsonObjectConst root, const Ma
       ThemeDataSource data;
       Fields sf(source, "data[" + std::to_string(t.data.size()) + "]", error);
       int interval = 0;
-      if (!sf.keys("|id|url|interval|insecureTls|fields|") || !sf.text("id", data.id, 32) || !sf.text("url", data.url, 320) || !sf.number("interval", 10, 86400, interval) || !sf.boolean("insecureTls", data.insecureTls, false)) return false;
+      if (!sf.keys("|id|url|interval|insecureTls|fields|") || !sf.text("id", data.id, 32) || !sf.text("url", data.url, 200) || !sf.number("interval", 10, 86400, interval) || !sf.boolean("insecureTls", data.insecureTls, false)) return false;
       if (!validId(data.id) || data.id.find('.') != std::string::npos) return sf.fail("id", "use ASCII letters, digits, '-' or '_'");
       if (t.spec >= 2 && (data.id == "time" || data.id == "device")) return sf.fail("id", fromFlash(reservedId));
       // The embedded TLS client cannot validate a server certificate, so an

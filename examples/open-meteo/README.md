@@ -2,17 +2,20 @@
 
 Upload `open-meteo.stheme` from this directory in the SmallTV Themes tab.
 
-The manifest is also provided as `theme.json` for editing. Before uploading,
-replace `latitude=52.52&longitude=13.41` with coordinates for the installation
-and rebuild the STH1 package with `python tools/pack_stheme.py theme.json --output open-meteo.stheme`.
+The editable `theme.json` requests five values only: current temperature,
+WMO weather code, wind speed and today's minimum/maximum temperature. It
+refreshes every 30 minutes, requests a one-day horizon and uses a 194-byte URL.
+The manifest uses the existing 200-byte source-URL limit.
 
-The package requests eight fields only, refreshes every 30 minutes, and limits
-the daily forecast horizon to one day. It contains text layers only; no image,
-font, JPEG or framebuffer asset is embedded.
+Change the sample Berlin latitude/longitude in `theme.json` for the installation
+and rebuild the STH1 package with
+`python tools/pack_stheme.py theme.json --output open-meteo.stheme`.
+
+The package contains text layers only; no image, font, JPEG or framebuffer asset
+is embedded. The weather labels are manifest text controlled by WMO-code show
+rules, not a firmware lookup table.
 
 HTTPS is explicitly marked `insecureTls: true` because the current ESP8266
 firmware does not validate the server certificate. Use only the official
 Open-Meteo endpoint. This is an acknowledged TLS-validation limitation, not
 certificate verification.
-
-See `src/theme/DATA_SOURCES.md` for memory limits and WMO condition mapping.

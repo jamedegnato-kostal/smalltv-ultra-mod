@@ -55,14 +55,16 @@ The timezone is configurable in the Display settings, including Europe/Berlin
 with automatic CET/CEST changes. The Display settings select German or English
 for localized theme text and month/weekday names; missing translations fall back
 to English. Generic JSON sources declared by a theme are fetched one at a time
-with a 2 KiB response cap, a 2 KiB JSON heap budget, short timeouts and retry
+with a 2 KiB response cap, a 2 KiB JSON heap budget and short timeouts with retry
 backoff. Only declared fields (up to 32 total, the pre-existing format maximum) plus spec-2 source ages are cached in RAM; no raw response
 body is buffered or written to flash. HTTPS requires the theme's explicit
 `insecureTls` opt-in because ESP8266 certificate validation is not configured.
 Open-Meteo is the first provider example; it uses the generic fetcher and maps
 WMO weather codes to localized labels with theme `show` rules, not extra firmware
-lookup tables. The demo package uses example Berlin coordinates; change them in
-`examples/open-meteo/theme.json` for the installation. The parser
+lookup tables. It requests only five weather values; the `.stheme` demo package
+is stored separately in LittleFS, not linked into the firmware image. Change the
+example Berlin coordinates in `examples/open-meteo/theme.json` for the
+installation. The parser
 and package format are extracted from
 [giovi321/smalltv-mod v3.13.0](https://github.com/giovi321/smalltv-mod/releases/tag/v3.13.0);
 see `src/theme/UPSTREAM.md`.

@@ -50,10 +50,10 @@ secrets; a later provider-specific step must handle those safely if required.
 
 A ready-to-upload `.stheme` is included at
 `examples/open-meteo/open-meteo.stheme`, together with the editable manifest.
-It requests only current temperature, humidity, WMO weather code, wind speed,
-day/night, and three daily values (minimum/maximum temperature and maximum
-precipitation probability). The URL uses `forecast_days=1`, `timezone=auto`
-and a 30-minute refresh interval to keep the response small.
+It requests five values only: current temperature, WMO weather code, wind
+speed, and today's minimum/maximum temperature. The URL uses
+`forecast_days=1`, `timezone=auto` and a 30-minute refresh interval to keep the
+response small. The request fits the parser's original 200-byte URL limit.
 
 Replace the sample latitude/longitude in `theme.json` before packaging for the
 actual installation. The demo uses Berlin coordinates only as an example.
