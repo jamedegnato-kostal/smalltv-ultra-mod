@@ -617,6 +617,8 @@ function showStatus(s) {
     kv("NTP-Uhrzeit", s.timeSynced ? (s.localTime + " · " + (s.timezone || "")) : "Noch nicht synchronisiert / nicht benötigt") +
     kv("Theme-Sprache", s.language === "de" ? "Deutsch" : "English") +
     kv("Theme", s.themeLoaded ? ("Aktiv: " + s.theme) : "Kein aktives Theme") +
+    kv("Theme-Datenquellen", (Number(s.dataReady)||0) + "/" + (Number(s.dataSources)||0) + " aktuell" + (Number(s.dataStale) ? " · " + s.dataStale + " veraltet" : "")) +
+    (s.dataError ? kv("Letzter Datenfehler", s.dataError) : "") +
     (s.themeError ? kv("Theme-Fehler", s.themeError) : "") +
     kv("Heap für Theme-Runtime", (Number(s.themeHeap)||0) + " Byte") +
     (s.updateMsg ? kv("Update-Status", s.updateMsg) : "");

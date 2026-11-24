@@ -1161,6 +1161,7 @@ __attribute__((noinline)) static bool parseHeader(JsonObjectConst root, const Ma
   bool hasData = false;
   for (JsonPairConst pair : root) if (pair.key() == "data") hasData = true;
   if (hasData) {
+    size_t totalDataFields = 0;
     auto sources = root["data"].as<JsonArrayConst>();
     if (sources.isNull()) return r.fail("data", "expected an array of sources");
     if (sources.size() > MaxDataSources) return r.fail("data", "expected at most 4 sources");
@@ -1194,6 +1195,7 @@ __attribute__((noinline)) static bool parseHeader(JsonObjectConst root, const Ma
         if (!ff.number("decimals", 0, 3, item.decimals, false)) return false;
         if (!validId(item.id) || item.id.find('.') != std::string::npos) return ff.fail("id", "use ASCII letters, digits, '-' or '_'");
         for (const auto& old : data.fields) if (old.id == item.id) return ff.fail("id", "duplicate field ID");
+        if (totalDataFields >= MaxDataValues) return ff.fail("id", "at most 16 fetched fields across all data sources");
         size_t pathPart = 0;
         for (size_t p = 0; p <= item.path.size(); ++p) {
           if (p == item.path.size() || item.path[p] == '.') {
@@ -1205,6 +1207,7 @@ __attribute__((noinline)) static bool parseHeader(JsonObjectConst root, const Ma
           if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return ff.fail("path", "use a dotted JSON object path");
         }
         data.fields.push_back(std::move(item));
+        ++totalDataFields;
       }
       for (const auto& old : t.data) if (old.id == data.id) return sf.fail("id", "duplicate data source ID");
       t.data.push_back(std::move(data));
@@ -2296,6 +2299,23 @@ void Engine::setValues(std::vector<ThemeValue> values) {
   if (values_ == values) return;
   values_ = std::move(values);
   valuesChanged_ = true;
+}
+// Applies one source's fields in place, keeping other sources' cached values.
+void Engine::mergeValues(std::vector<ThemeValue> values) {
+  bool changed = false;
+  for (auto& incoming : values) {
+    auto found = std::find_if(values_.begin(), values_.end(), [&](const ThemeValue& current) {
+      return current.key == incoming.key;
+    });
+    if (found == values_.end()) {
+      values_.push_back(std::move(incoming));
+      changed = true;
+    } else if (found->value != incoming.value) {
+      found->value = std::move(incoming.value);
+      changed = true;
+    }
+  }
+  if (changed) valuesChanged_ = true;
 }
 // Same as setValues(), for the firmware's `device.*` values.
 void Engine::setDeviceValues(std::vector<ThemeValue> values) {

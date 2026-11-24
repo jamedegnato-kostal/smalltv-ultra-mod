@@ -82,6 +82,11 @@ static void handleStatus() {
   doc["theme"] = smalltv::themeRuntimeActiveId();
   doc["themeError"] = smalltv::themeRuntimeError();
   doc["themeHeap"] = smalltv::themeRuntimeFreeHeap();
+  doc["dataSources"] = smalltv::themeRuntimeDataSourceCount();
+  doc["dataReady"] = smalltv::themeRuntimeDataReadyCount();
+  doc["dataStale"] = smalltv::themeRuntimeDataStaleCount();
+  doc["dataFailures"] = smalltv::themeRuntimeDataFailureCount();
+  doc["dataError"] = smalltv::themeRuntimeDataError();
   doc["timeSynced"] = smalltv::clockSynced();
   char localTime[24];
   smalltv::clockFormat(localTime, sizeof(localTime));

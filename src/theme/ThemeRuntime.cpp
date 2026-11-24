@@ -1,5 +1,6 @@
 #include "ThemeRuntime.h"
 #include "ThemePackage.h"
+#include "ThemeDataFetcher.h"
 #include "../Clock.h"
 #include "../Platform.h"
 #include <LittleFS.h>
@@ -55,6 +56,7 @@ bool validThemeId(const char* id) {
 
 void releaseRuntime() {
   g_active = false;
+  smalltv::themeDataFetcherStop();
   smalltv::clockStop();
   g_activeId[0] = '\0';
   g_needsClock = false;
@@ -136,6 +138,7 @@ bool themeRuntimeSelect(const char* id, const char* timezone, const char* langua
   }
   g_engine.setTheme(std::move(theme), millis());
   g_engine.setLanguage(g_language);
+  themeDataFetcherBegin(g_engine.theme().data.size());
   g_needsClock = needsClock;
   if (g_needsClock) clockBegin(timezone);
   const uint32_t freeAfter = ESP.getFreeHeap();
@@ -174,12 +177,14 @@ bool themeRuntimeLoop() {
   if (ESP.getFreeHeap() < 4096UL) return false;
 
   const std::vector<Rect> dirty = g_engine.update(now, currentTime);
-  if (dirty.empty()) return false;
-  if (render(g_engine, dirty, g_package, *g_display)) return false;
-
-  g_error = "Theme rendering stopped: an image/font asset could not be read";
-  releaseRuntime();
-  return true;
+  if (!dirty.empty() && !render(g_engine, dirty, g_package, *g_display)) {
+    g_error = "Theme rendering stopped: an image/font asset could not be read";
+    releaseRuntime();
+    return true;
+  }
+  // Fetch after rendering; newly arrived fields are painted on the next pass.
+  themeDataFetcherLoop(g_engine.theme(), g_engine, now);
+  return false;
 }
 
 void themeRuntimeInvalidate() {
@@ -190,4 +195,9 @@ bool themeRuntimeActive() { return g_active; }
 const char* themeRuntimeActiveId() { return g_active ? g_activeId : ""; }
 const char* themeRuntimeError() { return g_error.c_str(); }
 uint32_t themeRuntimeFreeHeap() { return ESP.getFreeHeap(); }
+uint8_t themeRuntimeDataSourceCount() { return themeDataFetcherSourceCount(); }
+uint8_t themeRuntimeDataReadyCount() { return themeDataFetcherReadyCount(); }
+uint8_t themeRuntimeDataStaleCount() { return themeDataFetcherStaleCount(); }
+uint8_t themeRuntimeDataFailureCount() { return themeDataFetcherFailureCount(); }
+const char* themeRuntimeDataError() { return themeDataFetcherError(); }
 }  // namespace smalltv

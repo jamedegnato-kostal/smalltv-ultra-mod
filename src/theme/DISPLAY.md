@@ -28,8 +28,12 @@ loading another. Runtime activation checks heap and largest-block reserves
 before and after loading; package installation is blocked while a theme is
 active. Image/font bytes are read from LittleFS as needed.
 
-This firmware supplies no clock or external data values: NTP and remote data
-source clients remain outside this runtime step.
+The firmware starts the generic JSON data-source fetcher only for a selected
+theme that declares sources. It services one source at a time after display
+rendering, honors each source interval, and retries failures with backoff. The
+reply is parsed directly from the network stream through an ArduinoJson filter;
+only the declared field values are retained. There is no raw-body cache and no
+flash write path for fetched data. NTP remains separately gated by clock use.
 
 
 ## Theme clock
