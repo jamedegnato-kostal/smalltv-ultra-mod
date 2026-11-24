@@ -11,14 +11,21 @@
 namespace {
 constexpr uint16_t HttpTimeoutMs = 1400;
 constexpr uint32_t ReplyTimeoutMs = 2200;
-constexpr size_t MaxResponseBytes = 3072;
-constexpr size_t JsonHeapBudget = 768;
+constexpr size_t MaxResponseBytes = 2048;
+// Keep the original spec-2 parser allowance: valid existing themes can need
+// up to 2 KiB for the filtered document and its selected strings.
+constexpr size_t JsonHeapBudget = 2048;
+constexpr uint32_t AgeUnknown = 0xffffffffUL;
+constexpr uint32_t AgeMaximum = 0xfffffffeUL;
+constexpr int32_t AgeUnpublished = -2;
 constexpr uint32_t MinRequestSpacingMs = 5000;
 constexpr uint32_t BaseRetryMs = 15000;
 constexpr uint32_t MaxRetryMs = 240000;
 
 struct SourceState {
   uint32_t nextDue = 0;
+  uint32_t ageMs = AgeUnknown;
+  int32_t publishedAge = AgeUnpublished;
   uint8_t failures = 0;
   bool hasValue = false;
   bool stale = false;
@@ -30,6 +37,8 @@ SourceState g_state[smalltv::MaxDataSources];
 uint8_t g_sourceCount = 0;
 uint8_t g_nextSource = 0;
 uint32_t g_lastRequestAt = 0;
+uint32_t g_lastAgeTick = 0;
+bool g_ageTickStarted = false;
 bool g_enabled = false;
 char g_lastError[96] = {};
 
@@ -78,14 +87,50 @@ bool parseAuthority(const std::string& url, char* host, size_t capacity,
   return true;
 }
 
+// Age is measured with millis(), not wall time. The accumulator survives the
+// millis() wrap and saturates after roughly 49.7 days, matching spec 2.
+void tickAges(uint32_t now) {
+  if (!g_ageTickStarted) {
+    g_ageTickStarted = true;
+    g_lastAgeTick = now;
+    return;
+  }
+  const uint32_t elapsed = now - g_lastAgeTick;
+  g_lastAgeTick = now;
+  for (uint8_t i = 0; i < g_sourceCount; ++i) {
+    SourceState& state = g_state[i];
+    if (state.ageMs != AgeUnknown)
+      state.ageMs = elapsed >= AgeMaximum - state.ageMs ? AgeMaximum : state.ageMs + elapsed;
+  }
+}
+
+void publishAges(const smalltv::Theme& theme, smalltv::Engine& engine) {
+  if (theme.spec < 2) return;
+  std::vector<smalltv::ThemeValue> updates;
+  updates.reserve(g_sourceCount);
+  for (uint8_t i = 0; i < g_sourceCount && i < theme.data.size(); ++i) {
+    SourceState& state = g_state[i];
+    const int32_t age = state.ageMs == AgeUnknown ? -1 : static_cast<int32_t>(state.ageMs / 60000UL);
+    if (age == state.publishedAge) continue;
+    state.publishedAge = age;
+    if (age < 0) continue;  // no value until the first successful fetch
+    bool explicitAge = false;
+    for (const auto& field : theme.data[i].fields) explicitAge = explicitAge || field.id == "age";
+    if (explicitAge) continue;
+    updates.push_back({theme.data[i].id + ".age", std::to_string(age)});
+  }
+  if (!updates.empty()) engine.mergeValues(std::move(updates));
+}
+
 // ArduinoJson reads directly from this adapter. No response String/body buffer
 // is allocated; total bytes and wall-clock time are both bounded.
 class HttpDataReply final : public smalltv::DataReply {
  public:
-  HttpDataReply(Stream& stream, Client& client)
-      : stream_(stream), client_(client), started_(millis()) {}
+  HttpDataReply(Stream& stream, Client& client, int expectedLength)
+      : stream_(stream), client_(client), expectedLength_(expectedLength), started_(millis()) {}
 
   int read() override {
+    if (expectedLength_ >= 0 && bytes_ >= static_cast<size_t>(expectedLength_)) return -1;
     if (bytes_ >= MaxResponseBytes) {
       overflow_ = true;
       return -1;
@@ -117,7 +162,10 @@ class HttpDataReply final : public smalltv::DataReply {
     return readCount;
   }
 
-  bool healthy() const { return !timedOut_ && !overflow_ && !lowMemory_; }
+  bool healthy() const {
+    return !timedOut_ && !overflow_ && !lowMemory_ &&
+      (expectedLength_ < 0 || bytes_ == static_cast<size_t>(expectedLength_));
+  }
   const char* failure() const {
     if (overflow_) return "JSON response exceeds 3072 bytes";
     if (timedOut_) return "JSON response timeout";
@@ -128,6 +176,7 @@ class HttpDataReply final : public smalltv::DataReply {
  private:
   Stream& stream_;
   Client& client_;
+  int expectedLength_;
   uint32_t started_;
   size_t bytes_ = 0;
   bool timedOut_ = false;
@@ -163,8 +212,8 @@ bool requestSource(ClientType& socket, const smalltv::ThemeDataSource& source,
   }
 
   const int bodySize = http.getSize();
-  if (bodySize <= 0 || static_cast<size_t>(bodySize) > MaxResponseBytes) {
-    strncpy(error, "missing or oversized Content-Length", errorSize - 1);
+  if (bodySize == 0 || (bodySize > 0 && static_cast<size_t>(bodySize) > MaxResponseBytes)) {
+    strncpy(error, "empty or oversized JSON response", errorSize - 1);
     error[errorSize - 1] = '\0';
     http.end();
     return false;
@@ -178,7 +227,7 @@ bool requestSource(ClientType& socket, const smalltv::ThemeDataSource& source,
 
   values.clear();
   values.reserve(source.fields.size());
-  HttpDataReply reply(http.getStream(), socket);
+  HttpDataReply reply(http.getStream(), socket, bodySize);
   const bool parsed = smalltv::extractThemeValues(reply, source, values, JsonHeapBudget);
   const bool healthy = reply.healthy();
   http.end();
@@ -243,6 +292,8 @@ void themeDataFetcherBegin(size_t sourceCount) {
   g_sourceCount = static_cast<uint8_t>(std::min(sourceCount, static_cast<size_t>(MaxDataSources)));
   g_nextSource = 0;
   g_lastRequestAt = millis() - MinRequestSpacingMs;
+  g_lastAgeTick = millis();
+  g_ageTickStarted = false;
   g_enabled = g_sourceCount != 0;
   g_lastError[0] = '\0';
   const uint32_t now = millis();
@@ -254,11 +305,15 @@ void themeDataFetcherStop() {
   g_sourceCount = 0;
   g_nextSource = 0;
   g_lastError[0] = '\0';
+  g_ageTickStarted = false;
   for (uint8_t i = 0; i < MaxDataSources; ++i) g_state[i] = SourceState{};
 }
 
 void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
-  if (!g_enabled || !netConnected() || theme.data.empty()) return;
+  if (!g_enabled || theme.data.empty()) return;
+  tickAges(now);
+  publishAges(theme, engine);
+  if (!netConnected()) return;
   if (!due(now, g_lastRequestAt + MinRequestSpacingMs)) return;
   if (ESP.getFreeHeap() < 10000UL || platformMaxFreeBlock() < 1800UL) return;
 
@@ -272,9 +327,11 @@ void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
     char error[96] = {};
     const bool ok = fetchSource(theme.data[index], state, refreshed, error, sizeof(error));
     const uint32_t completedAt = millis();
+    tickAges(completedAt);  // include time spent waiting for this request
     g_lastRequestAt = completedAt;
 
     if (ok) {
+      state.ageMs = 0;
       engine.mergeValues(std::move(refreshed));
       state.hasValue = true;
       state.stale = false;
@@ -291,6 +348,7 @@ void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
       snprintf(message, sizeof(message), "%.31s: %.60s", theme.data[index].id.c_str(), error[0] ? error : "request failed");
       setError(message);
     }
+    publishAges(theme, engine);
     return;
   }
 }

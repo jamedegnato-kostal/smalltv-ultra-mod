@@ -55,8 +55,8 @@ The timezone is configurable in the Display settings, including Europe/Berlin
 with automatic CET/CEST changes. The Display settings select German or English
 for localized theme text and month/weekday names; missing translations fall back
 to English. Generic JSON sources declared by a theme are fetched one at a time
-with a 3 KiB response cap, a 768-byte JSON heap budget, short timeouts and retry
-backoff. Only declared fields (up to 32 total, the pre-existing format maximum) are cached in RAM; no raw response
+with a 2 KiB response cap, a 2 KiB JSON heap budget, short timeouts and retry
+backoff. Only declared fields (up to 32 total, the pre-existing format maximum) plus spec-2 source ages are cached in RAM; no raw response
 body is buffered or written to flash. HTTPS requires the theme's explicit
 `insecureTls` opt-in because ESP8266 certificate validation is not configured.
 Open-Meteo is the first provider example; it uses the generic fetcher and maps
