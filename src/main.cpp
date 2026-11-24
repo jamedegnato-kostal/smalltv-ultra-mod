@@ -112,6 +112,11 @@ void setup() {
   Serial.println("[boot] web server");
   smalltv::themeRuntimeBegin(g_display);
   webPortalBegin(g_settings);
+  if (g_safeMode && g_settings.activeTheme[0]) {
+    g_settings.activeTheme[0] = '\0';
+    if (settingsStorageReady() && !saveSettings(g_settings))
+      Serial.println("[theme] could not clear saved theme in safe mode");
+  }
   if (g_displayReady && !g_safeMode && g_settings.activeTheme[0]) {
     std::string error;
     if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, error)) {

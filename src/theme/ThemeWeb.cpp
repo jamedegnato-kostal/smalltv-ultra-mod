@@ -175,6 +175,11 @@ void receiveUpload() {
 
 void finishUpload() {
   g_upload.close();
+  if (smalltv::themeRuntimeActive()) {
+    reply(409, "Deactivate the running theme before package validation");
+    resetUpload();
+    return;
+  }
   if (!g_uploadAllowed || !g_uploadEnded || g_uploadError.length()) {
     const String message = g_uploadError.length() ? g_uploadError : String("No complete package uploaded");
     reply(400, message);
