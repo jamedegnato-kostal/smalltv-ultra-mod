@@ -220,18 +220,19 @@ button.btn:disabled{filter:saturate(.35)}
  </section>
 
  <section id="themes" class="tab">
-  <div class="page-intro"><p class="eyebrow">PAKETVERWALTUNG</p><h2>.stheme Themes</h2><p>Pakete hochladen, vollständig prüfen und lokal verwalten. Eine Anzeige auf dem Display ist in dieser Firmware nicht aktiviert.</p></div>
+  <div class="page-intro"><p class="eyebrow">PAKETVERWALTUNG</p><h2>.stheme Themes</h2><p>Gültige Pakete aktivieren und direkt auf dem Display anzeigen. Der Renderer gibt RGB565-Zeilen aus und benötigt keinen permanenten Vollbildpuffer.</p></div>
   <div class="card">
    <h2>Theme installieren</h2>
    <input id="themeFile" type="file" accept=".stheme,application/octet-stream">
    <div style="margin-top:12px"><button class="btn" type="button" onclick="uploadTheme()" id="themeUploadBtn">Theme hochladen und prüfen</button></div>
    <div class="bar"><div id="themeUploadBar"></div></div>
    <div id="themeUploadMsg" class="muted" style="margin-top:8px" role="status"></div>
-   <small class="hint">Genau ein .stheme-Paket pro Upload. Container, Manifest, Pfade und referenzierte Assets werden vor dem Speichern geprüft. Maximal 16 installierte Pakete.</small>
+   <small class="hint">Genau ein .stheme-Paket pro Upload. Container, Manifest, Pfade und Assets werden geprüft. Maximal 16 Pakete. Vor dem Upload das laufende Theme deaktivieren, damit genug RAM für die Prüfung bleibt.</small>
   </div>
   <div class="card">
    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Installierte Pakete</h2><button class="btn sec" type="button" onclick="loadThemes()">Aktualisieren</button></div>
    <div id="themeStorage" class="muted" style="margin:8px 0 12px">Freier Dateispeicher: wird geladen …</div>
+   <div id="themeRuntimeMsg" class="muted" style="margin:8px 0 12px" role="status"></div>
    <div id="themeList" aria-live="polite" class="muted">Paketliste wird geladen …</div>
   </div>
  </section>
@@ -584,6 +585,9 @@ function showStatus(s) {
     kv("Größter freier Block", (s.maxBlock || 0) + " Byte") +
     kv("Laufzeit", formatUptime(s.uptime)) +
     kv("Letzter Reset", s.reset || "—") +
+    kv("Theme", s.themeLoaded ? ("Aktiv: " + s.theme) : "Kein aktives Theme") +
+    (s.themeError ? kv("Theme-Fehler", s.themeError) : "") +
+    kv("Heap für Theme-Runtime", (Number(s.themeHeap)||0) + " Byte") +
     (s.updateMsg ? kv("Update-Status", s.updateMsg) : "");
   $("statusBox").innerHTML = rows;
   if (s.updateMsg && !$("ghMsg").textContent) $("ghMsg").textContent = s.updateMsg;
@@ -696,6 +700,9 @@ function loadThemes() {
   api("/api/themes").then(function(data) {
     var themes = Array.isArray(data.themes) ? data.themes : [];
     $("themeStorage").textContent = "Freier Dateispeicher: " + (Number(data.freeBytes)||0).toLocaleString("de-DE") + " Byte";
+    $("themeRuntimeMsg").textContent = data.selected
+      ? "Aktives Theme: " + data.selected
+      : (data.error ? "Kein Theme aktiv: " + data.error : "Kein Theme aktiv.");
     list.textContent = "";
     if (!themes.length) {
       list.textContent = "Noch keine .stheme-Pakete installiert.";
@@ -720,7 +727,8 @@ function loadThemes() {
         meta.appendChild(author);
       }
       var validity = document.createElement("small");
-      validity.textContent = theme.valid ? "Paket gültig" : "Paket ungültig";
+      var active = data.selected === theme.id;
+      validity.textContent = theme.valid ? (active ? "Wird auf dem Display angezeigt" : "Paket gültig") : "Paket ungültig";
       if (!theme.valid) validity.className = "error";
       meta.appendChild(validity);
       if (!theme.valid && theme.error) {
@@ -730,10 +738,19 @@ function loadThemes() {
         meta.appendChild(error);
       }
       var actions = document.createElement("div");
+      var toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "btn sec";
+      toggle.textContent = active ? "Deaktivieren" : "Aktivieren";
+      toggle.disabled = !theme.valid;
+      toggle.addEventListener("click", function(){ selectTheme(active ? "" : theme.id); });
+      actions.appendChild(toggle);
       var remove = document.createElement("button");
       remove.type = "button";
       remove.className = "btn danger";
       remove.textContent = "Löschen";
+      remove.disabled = active;
+      remove.title = active ? "Theme zuerst deaktivieren" : "Theme löschen";
       remove.addEventListener("click", function(){ deleteTheme(theme.id); });
       actions.appendChild(remove);
       row.appendChild(meta);
@@ -742,6 +759,20 @@ function loadThemes() {
     });
   }).catch(function(error) {
     list.textContent = "Theme-Liste konnte nicht geladen werden: " + error.message;
+  });
+}
+function selectTheme(id) {
+  api("/api/themes/select", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id:id})
+  }).then(function(){
+    toast(id ? "Theme aktiviert und gespeichert." : "Theme deaktiviert.");
+    loadThemes();
+    loadStatus();
+  }).catch(function(error) {
+    toast("Theme-Auswahl fehlgeschlagen: " + error.message);
+    loadThemes();
   });
 }
 function uploadTheme() {
