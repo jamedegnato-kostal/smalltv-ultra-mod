@@ -223,6 +223,17 @@ button.btn:disabled{filter:saturate(.35)}
    <small class="hint">Die automatische Sommerzeit wird über die Zeitzonenregel berechnet. NTP wird benötigt, wenn ein Theme Zeitwerte verwendet oder der Nachtmodus aktiv ist. Dafür muss das Gerät Internetzugang haben.</small>
   </div>
   <div class="card">
+   <h2>Nachtmodus</h2>
+   <div class="chk"><input id="nightEnabled" type="checkbox"><label for="nightEnabled">Zeitgesteuertes Dimmen aktivieren</label></div>
+   <div class="row">
+    <div><label for="nightStart">Beginn</label><input id="nightStart" type="time" value="22:00"></div>
+    <div><label for="nightEnd">Ende</label><input id="nightEnd" type="time" value="07:00"></div>
+   </div>
+   <label for="nightBrightness">Helligkeit nachts <span id="nightBrightnessValue">5 %</span></label>
+   <input id="nightBrightness" type="range" min="0" max="100" step="1" value="5">
+   <small class="hint">Der Nachtmodus verwendet die lokale Uhrzeit und die oben gewählte Zeitzone. Er wird erst nach erfolgreicher NTP-Synchronisation aktiv. 0 % schaltet die Hintergrundbeleuchtung vollständig aus. Der normale Helligkeitswert gilt außerhalb des Zeitfensters.</small>
+  </div>
+  <div class="card">
    <h2>Theme-Sprache</h2>
    <label for="themeLanguage">Sprache der Theme-Inhalte</label>
    <select id="themeLanguage">
@@ -522,6 +533,7 @@ function updateDisplayLabels() {
   $("displayRedGainValue").textContent = $("displayRedGain").value + " %";
   $("displayGreenGainValue").textContent = $("displayGreenGain").value + " %";
   $("displayBlueGainValue").textContent = $("displayBlueGain").value + " %";
+  $("nightBrightnessValue").textContent = $("nightBrightness").value + " %";
 }
 function loadConfig() {
   api("/api/config").then(function(data){
@@ -537,6 +549,10 @@ function loadConfig() {
     $("displayGreenGain").value = config.displayGreenGain == null ? 100 : config.displayGreenGain;
     $("displayBlueGain").value = config.displayBlueGain == null ? 100 : config.displayBlueGain;
     $("timezone").value = config.timezone || "CET-1CEST,M3.5.0,M10.5.0/3";
+    $("nightEnabled").checked = !!config.nightEnabled;
+    $("nightStart").value = config.nightStart || "22:00";
+    $("nightEnd").value = config.nightEnd || "07:00";
+    $("nightBrightness").value = config.nightBrightness == null ? 5 : config.nightBrightness;
     $("themeLanguage").value = config.language || "en";
     updateDisplayLabels();
     setClean("Alle Einstellungen sind gespeichert.");
@@ -557,6 +573,10 @@ function saveAll() {
     displayGreenGain: Number($("displayGreenGain").value),
     displayBlueGain: Number($("displayBlueGain").value),
     timezone: $("timezone").value,
+    nightEnabled: $("nightEnabled").checked,
+    nightStart: $("nightStart").value || "22:00",
+    nightEnd: $("nightEnd").value || "07:00",
+    nightBrightness: Number($("nightBrightness").value),
     language: $("themeLanguage").value
   };
   $("saveSettingsBtn").disabled = true;
@@ -605,6 +625,8 @@ $("apSsid").addEventListener("input", setDirty);
 });
 $("displayInvert").addEventListener("change", setDirty);
 $("timezone").addEventListener("change", setDirty);
+["nightEnabled","nightStart","nightEnd"].forEach(function(id) { $(id).addEventListener("change", setDirty); });
+$("nightBrightness").addEventListener("input", function(){ updateDisplayLabels(); setDirty(); });
 $("themeLanguage").addEventListener("change", setDirty);
 
 function formatUptime(seconds) {
