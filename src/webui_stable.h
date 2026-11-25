@@ -921,7 +921,7 @@ function reboot() {
     .catch(function(error){ toast("Neustart fehlgeschlagen: " + error.message); });
 }
 function factory() {
-  if (!confirm("Alle Einstellungen löschen und das Gerät auf Werkseinstellungen zurücksetzen?")) return;
+  if (!confirm("Alle gespeicherten Einstellungen, WLAN-Zugangsdaten, .stheme-Pakete und Fotos werden dauerhaft aus LittleFS gelöscht. Die Firmware bleibt installiert. Das Gerät startet anschließend neu. Fortfahren?")) return;
   api("/api/factory", {method:"POST"}).then(function(){ toast("Werksreset ausgeführt. Gerät startet neu."); })
     .catch(function(error){ toast("Werksreset fehlgeschlagen: " + error.message); });
 }
