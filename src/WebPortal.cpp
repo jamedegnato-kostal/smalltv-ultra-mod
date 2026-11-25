@@ -50,7 +50,7 @@ static void sendJson(JsonDocument& doc, int code = 200) {
 
 static void handleRoot() {
   server.sendHeader("Cache-Control", "no-cache");
-  server.send_P(200, "text/html", WEBUI_CLEAN_HTML, sizeof(WEBUI_CLEAN_HTML) - 1);
+  server.send_P(200, "text/html", WEBUI_STABLE_HTML, sizeof(WEBUI_STABLE_HTML) - 1);
 }
 
 static void handleGetConfig() {
