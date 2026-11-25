@@ -3,6 +3,7 @@
 #include "Platform.h"
 #include <LittleFS.h>
 #include <string.h>
+#include <stdio.h>
 
 static const char* CONFIG_PATH = "/config.json";
 static bool g_storageReady = false;
