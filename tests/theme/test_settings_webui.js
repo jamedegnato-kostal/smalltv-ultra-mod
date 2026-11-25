@@ -56,6 +56,8 @@ assert.match(html, /function uploadPhotos\(\)/);
 assert.doesNotMatch(html, /gifToAnimation|data-animation-frames/);
 assert.ok(!html.includes('/api/photos/frame'));
 const portal = fs.readFileSync('src/WebPortal.cpp', 'utf8');
+assert.doesNotMatch(html, /data-t="diagnostics"|id="diagnostics"|createDiagnosticLog|copyDiagnosticLog|downloadDiagnosticLog|diagnosticLogText|clearCrash\(/);
+assert.doesNotMatch(portal, /handleCrashClear|\/api\/crash\/clear/);
 assert.doesNotMatch(portal, /handlePhotoFrame|validatePhotoAnimation|PhotoAnimationUploadPath|photoUploadAnimated|smalltv_photo::isAnimation/);
 assert.ok(portal.includes('photoValidateJpeg(PhotoUploadPath)'));
 assert.ok(portal.includes('LittleFS.rename(PhotoUploadPath, target)'));
