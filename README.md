@@ -59,6 +59,15 @@ slideshow before activating a theme or changing the photo collection. Photo
 files remain stored after the slideshow stops; playback is not automatically
 started after reboot.
 
+## Factory reset
+
+The confirmed **Factory Reset** action reformats the complete LittleFS data
+partition, not just `config.json`. It removes saved settings and Wi-Fi
+credentials, all installed `.stheme` packages, all gallery photos, and
+temporary or index files. The firmware image itself remains installed. After
+the reset, the device restarts with default settings and requires Wi-Fi setup
+again.
+
 ## .stheme package management
 
 The **Themes** tab accepts one `.stheme` package per upload. Each package is
