@@ -8,7 +8,8 @@
 
 namespace {
 char g_timezone[65] = {};
-bool g_requested = false;
+bool g_themeRequested = false;
+bool g_nightRequested = false;
 bool g_started = false;
 bool g_callbackRegistered = false;
 volatile bool g_syncedByNtp = false;
@@ -23,8 +24,19 @@ void applyTimezone(const char* timezone) {
   g_timezone[sizeof(g_timezone) - 1] = '\0';
 }
 
+bool clockRequested() {
+  return g_themeRequested || g_nightRequested;
+}
+
+void stopNtpIfUnused() {
+  if (clockRequested()) return;
+  if (g_started) sntp_stop();
+  g_started = false;
+  g_syncedByNtp = false;
+}
+
 void startNtpWhenOnline() {
-  if (!g_requested || g_started || !netConnected()) return;
+  if (!clockRequested() || g_started || !netConnected()) return;
   if (!g_callbackRegistered) {
     settimeofday_cb(onTimeSet);
     g_callbackRegistered = true;
@@ -40,13 +52,13 @@ void startNtpWhenOnline() {
 namespace smalltv {
 void clockBegin(const char* timezone) {
   applyTimezone(timezone);
-  g_requested = true;
+  g_themeRequested = true;
   startNtpWhenOnline();
 }
 
 void clockReconfigure(const char* timezone) {
   applyTimezone(timezone);
-  if (g_started) {
+  if (g_started && clockRequested()) {
     // Re-arm SNTP only for the changed timezone; keep the device clock itself.
     configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
   } else {
@@ -59,10 +71,18 @@ void clockService() {
 }
 
 void clockStop() {
-  g_requested = false;
-  if (g_started) sntp_stop();
-  g_started = false;
-  g_syncedByNtp = false;
+  g_themeRequested = false;
+  stopNtpIfUnused();
+}
+
+void clockSetNightModeEnabled(bool enabled, const char* timezone) {
+  applyTimezone(timezone);
+  g_nightRequested = enabled;
+  if (enabled) {
+    startNtpWhenOnline();
+  } else {
+    stopNtpIfUnused();
+  }
 }
 
 bool clockSynced() {
