@@ -7,6 +7,23 @@
 static const char* CONFIG_PATH = "/config.json";
 static bool g_storageReady = false;
 
+static bool parseTimeOfDay(const char* value, uint16_t& minutes) {
+  if (!value || strlen(value) != 5 || value[2] != ':') return false;
+  if (value[0] < '0' || value[0] > '9' || value[1] < '0' || value[1] > '9' ||
+      value[3] < '0' || value[3] > '9' || value[4] < '0' || value[4] > '9') return false;
+  const uint8_t hour = static_cast<uint8_t>((value[0] - '0') * 10 + value[1] - '0');
+  const uint8_t minute = static_cast<uint8_t>((value[3] - '0') * 10 + value[4] - '0');
+  if (hour > 23 || minute > 59) return false;
+  minutes = static_cast<uint16_t>(hour * 60 + minute);
+  return true;
+}
+
+static void formatTimeOfDay(uint16_t minutes, char output[6]) {
+  if (minutes >= 1440) minutes = 0;
+  snprintf(output, 6, "%02u:%02u", static_cast<unsigned>(minutes / 60),
+           static_cast<unsigned>(minutes % 60));
+}
+
 void Settings::setDefaults() {
   wifiCount = 0;
   for (uint8_t i = 0; i < MAX_WIFI_NETS; ++i) {
@@ -26,6 +43,10 @@ void Settings::setDefaults() {
   activeTheme[0] = '\0';
   strncpy(timezone, DEFAULT_TIMEZONE, sizeof(timezone) - 1);
   timezone[sizeof(timezone) - 1] = '\0';
+  nightEnabled = false;
+  nightStartMinute = 22 * 60;
+  nightEndMinute = 7 * 60;
+  nightBrightness = 5;
   memcpy(language, "en", sizeof(language));
 }
 
@@ -85,6 +106,13 @@ void settingsToJson(const Settings& s, JsonObject root, bool includeSecrets) {
   root["displayBlueGain"] = s.displayBlueGain;
   root["activeTheme"] = s.activeTheme;
   root["timezone"] = s.timezone;
+  root["nightEnabled"] = s.nightEnabled;
+  char nightStart[6], nightEnd[6];
+  formatTimeOfDay(s.nightStartMinute, nightStart);
+  formatTimeOfDay(s.nightEndMinute, nightEnd);
+  root["nightStart"] = nightStart;
+  root["nightEnd"] = nightEnd;
+  root["nightBrightness"] = s.nightBrightness;
   root["language"] = s.language;
 
   JsonArray networks = root["wifi"].to<JsonArray>();
@@ -194,6 +222,25 @@ const __FlashStringHelper* settingsValidateJson(JsonObjectConst root) {
   if (!root["timezone"].isNull()) {
     if (!root["timezone"].is<const char*>()) return F("invalid timezone");
     if (!validTimezone(root["timezone"].as<const char*>())) return F("unsupported timezone rule");
+  }
+  if (!root["nightEnabled"].isNull() && !root["nightEnabled"].is<bool>())
+    return F("invalid night mode setting");
+  if (!root["nightStart"].isNull()) {
+    uint16_t ignored = 0;
+    if (!root["nightStart"].is<const char*>() ||
+        !parseTimeOfDay(root["nightStart"].as<const char*>(), ignored))
+      return F("night start must be HH:MM");
+  }
+  if (!root["nightEnd"].isNull()) {
+    uint16_t ignored = 0;
+    if (!root["nightEnd"].is<const char*>() ||
+        !parseTimeOfDay(root["nightEnd"].as<const char*>(), ignored))
+      return F("night end must be HH:MM");
+  }
+  if (!root["nightBrightness"].isNull()) {
+    if (!root["nightBrightness"].is<int>()) return F("invalid night brightness");
+    const int value = root["nightBrightness"].as<int>();
+    if (value < 0 || value > 100) return F("night brightness must be 0-100 percent");
   }
   if (!root["language"].isNull()) {
     if (!root["language"].is<const char*>()) return F("invalid theme language");
@@ -317,6 +364,17 @@ void settingsApplyJson(Settings& s, JsonObjectConst root) {
     strncpy(s.timezone, tz, sizeof(s.timezone) - 1);
     s.timezone[sizeof(s.timezone) - 1] = '\0';
   }
+  if (root["nightEnabled"].is<bool>())
+    s.nightEnabled = root["nightEnabled"].as<bool>();
+  uint16_t parsedMinute = 0;
+  if (root["nightStart"].is<const char*>() &&
+      parseTimeOfDay(root["nightStart"].as<const char*>(), parsedMinute))
+    s.nightStartMinute = parsedMinute;
+  if (root["nightEnd"].is<const char*>() &&
+      parseTimeOfDay(root["nightEnd"].as<const char*>(), parsedMinute))
+    s.nightEndMinute = parsedMinute;
+  if (root["nightBrightness"].is<int>())
+    s.nightBrightness = static_cast<uint8_t>(root["nightBrightness"].as<int>());
   if (root["language"].is<const char*>()) {
     const char* code = root["language"].as<const char*>();
     if (strcmp(code, "en") == 0 || strcmp(code, "de") == 0) {
