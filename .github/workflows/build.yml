@@ -32,6 +32,9 @@ jobs:
           ! grep -q 'data-t="diagnostics"\|id="diagnostics"\|createDiagnosticLog\|downloadDiagnosticLog' src/webui_stable.h
           ! grep -q 'handleCrashClear\|/api/crash/clear' src/WebPortal.cpp
 
+      - name: Verify factory reset clears LittleFS
+        run: python tests/factory_reset/check_factory_reset.py
+
       - name: Verify Open-Meteo theme package
         run: python tools/pack_stheme.py examples/open-meteo/theme.json --check examples/open-meteo/open-meteo.stheme
 
