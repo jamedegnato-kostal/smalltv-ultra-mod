@@ -69,8 +69,9 @@ Deactivate a running theme before installing or deleting packages so package
 validation does not compete with the renderer for ESP8266 heap.
 
 The renderer supports theme layers, images, fonts, animation frames and
-scrolling. NTP starts only when a selected theme contains clock text tokens
-(e.g. `{HH}`) or `time.*` bindings; it stops when that theme is deactivated.
+scrolling. NTP starts when a selected theme contains clock text tokens (e.g. `{HH}`)
+or `time.*` bindings, or while Night Mode is enabled. The shared clock service
+stays active until both consumers release it.
 The timezone is configurable in the Display settings, including Europe/Berlin
 with automatic CET/CEST changes. The Display settings select German or English
 for localized theme text and month/weekday names; missing translations fall back
