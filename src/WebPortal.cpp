@@ -10,7 +10,7 @@
 #include "theme/ThemeRuntime.h"
 #include "Clock.h"
 #include "config.h"
-#include "webui_clean.h"
+#include "webui_stable.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <WiFiUdp.h>
