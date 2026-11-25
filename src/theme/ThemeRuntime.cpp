@@ -165,7 +165,7 @@ bool themeRuntimeLoop() {
   if (static_cast<uint32_t>(now - g_lastUpdate) < 25) return false;
   g_lastUpdate = now;
 
-  // NTP is armed only for themes that actually bind to time.* values.
+  // The runtime keeps its own clock request; night mode can keep shared SNTP active independently.
   const tm* currentTime = nullptr;
   tm localTime{};
   if (g_needsClock) {
