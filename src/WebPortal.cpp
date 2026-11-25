@@ -237,9 +237,11 @@ static void handleReboot() {
 }
 
 static void handleFactory() {
-  // Formatting is destructive and only allowed after the user confirms reset.
-  if (!settingsStorageReady() && !settingsFormat()) {
-    server.send(500, F("application/json"), F("{\"ok\":false,\"error\":\"could not initialize LittleFS\"}"));
+  // Release runtime users before erasing the complete LittleFS data partition.
+  smalltv::themeRuntimeStop();
+  smalltv::photos::stop();
+  if (!settingsFormat()) {
+    server.send(500, F("application/json"), F("{\"ok\":false,\"error\":\"could not format LittleFS\"}"));
     return;
   }
   if (!applyAndSaveSettings(
