@@ -78,8 +78,9 @@ void clockStop() {
 void clockSetNightModeEnabled(bool enabled, const char* timezone) {
   applyTimezone(timezone);
   g_nightRequested = enabled;
-  if (enabled) {
-    startNtpWhenOnline();
+  if (clockRequested()) {
+    if (g_started) configTime(g_timezone, NTP_SERVER1, NTP_SERVER2);
+    else startNtpWhenOnline();
   } else {
     stopNtpIfUnused();
   }
