@@ -7,7 +7,7 @@ static const char WEBUI_CLEAN_HTML[] PROGMEM = R"HTML(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
-<title>SmallTV Settings</title>
+<title>SmallTV Stable</title>
 <style>
 
 :root{--bg:#101611;--card:#19221a;--mut:#9aa99b;--fg:#edf4ed;--acc:#72c77c;--acc2:#a0d9a5;--red:#ed7373;--bd:#2c3a2e}
@@ -127,7 +127,7 @@ button.btn:disabled{filter:saturate(.35)}
 <body>
 <header>
  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="6"/><polyline points="15,38 23,30 30,34 37,22 44,28 50,20"/><path d="M24 51v6M40 51v6M20 57h8M36 57h8"/></g></svg>
- <span id="dot" class="dot"></span><h1>SmallTV · Arbeitsplatz</h1>
+ <span id="dot" class="dot"></span><h1>SmallTV Stable</h1>
  <span id="chip" class="chip" style="display:none"></span><span id="hi" class="muted"></span><span class="spacer"></span>
  <button id="themeMode" class="help-toggle" type="button">Helles Design</button>
  <button id="helpToggle" class="help-toggle" type="button" aria-expanded="false">Tipps</button>
