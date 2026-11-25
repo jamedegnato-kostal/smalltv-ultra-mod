@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-static const char WEBUI_CLEAN_HTML[] PROGMEM = R"HTML(
+static const char WEBUI_STABLE_HTML[] PROGMEM = R"HTML(
 <!doctype html>
 <html lang="de">
 <head>
