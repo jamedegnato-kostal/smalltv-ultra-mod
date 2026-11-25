@@ -1,9 +1,11 @@
-name: SmallTV web + .stheme display firmware
+name: SmallTV Stable firmware
 
 on:
   push:
-    branches: [clean-image]
-    tags: ['clean-v*']
+    branches: [main, stable-image]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,33 +24,57 @@ jobs:
       - name: Install PlatformIO
         run: python -m pip install platformio
 
-      - name: Verify OTA asset name
-        run: grep -q '#define UPDATE_ASSET "smalltv-clean-firmware.bin"' src/config.h
+      - name: Verify stable OTA asset name
+        run: grep -q '#define UPDATE_ASSET "smalltv-stable-firmware.bin"' src/config.h
+
+      - name: Ensure support error log is absent
+        run: |
+          ! grep -q 'data-t="diagnostics"\|id="diagnostics"\|createDiagnosticLog\|downloadDiagnosticLog' src/webui_clean.h
+          ! grep -q 'handleCrashClear\|/api/crash/clear' src/WebPortal.cpp
 
       - name: Verify Open-Meteo theme package
         run: python tools/pack_stheme.py examples/open-meteo/theme.json --check examples/open-meteo/open-meteo.stheme
 
-      - name: Build firmware and first-install loader
-        run: pio run -e smalltv_clean -e smalltv_loader
+      - name: Test night schedule boundaries
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -Isrc tests/night_schedule/test_night_schedule.cpp -o /tmp/night-schedule-tests
+          /tmp/night-schedule-tests
 
-      - name: Compile renderer validation target (not flashed)
-        run: pio run -e smalltv_display_check
+      - name: Build firmware, renderer check and first-install loader
+        run: pio run -e smalltv_stable -e smalltv_display_check -e smalltv_loader
 
-      - name: Stage firmware
+      - name: Check app image sizes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          slot = 1044464
+          for name in ("smalltv_stable", "smalltv_loader"):
+              image = Path(".pio") / "build" / name / "firmware.bin"
+              if not image.is_file():
+                  raise SystemExit(f"missing firmware image: {image}")
+              size = image.stat().st_size
+              free = slot - size
+              print(f"{name}: {size} bytes; {free} bytes free in 1 MiB OTA slot")
+              if free < 8192:
+                  raise SystemExit(f"{name} leaves less than 8192 bytes free")
+          PY
+
+      - name: Stage stable release files
         run: |
           mkdir -p dist
-          copy() { test -f "$1" && cp "$1" "$2"; }
-          copy .pio/build/smalltv_clean/firmware.bin dist/smalltv-clean-firmware.bin
-          copy .pio/build/smalltv_loader/firmware.bin dist/smalltv-clean-loader.bin
+          cp .pio/build/smalltv_stable/firmware.bin dist/smalltv-stable-firmware.bin
+          cp .pio/build/smalltv_loader/firmware.bin dist/smalltv-stable-loader.bin
+          cp examples/open-meteo/open-meteo.stheme dist/open-meteo.stheme
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: smalltv-clean-firmware
-          path: dist/*.bin
+          name: smalltv-stable-firmware
+          path: dist/*
+          if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/clean-v') || startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: firmware
     runs-on: ubuntu-latest
     permissions:
@@ -56,7 +82,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: smalltv-clean-firmware
+          name: smalltv-stable-firmware
           path: dist
 
       - uses: softprops/action-gh-release@v2
