@@ -1,4 +1,4 @@
-# SmallTV Ultra – Web Management + Display Status
+# SmallTV Stable Firmware
 
 Minimal firmware for the ESP8266-based GeekMagic SmallTV / SmallTV Ultra.
 
@@ -25,6 +25,7 @@ selected package through row-based output without a full-screen framebuffer.
 - Persistent manual brightness, panel rotation, RGB/BGR order, inversion and per-channel color gains
 - `.stheme` package storage, validation, selection and row-based rendering
 - NTP time for themes with clock tokens or `time.*` bindings
+- Time-scheduled night mode using the configured local timezone (default 22:00–07:00, 5% brightness; disabled until enabled in Display settings)
 - Selectable POSIX timezones with automatic daylight-saving transitions
 - Persistent German/English theme language selection for localized spec 2 text
 - Bounded JSON data-source fetching with streaming extraction and an in-memory field cache
@@ -33,7 +34,7 @@ selected package through row-based output without a full-screen framebuffer.
 
 ## Not included yet
 
-- Language/locale scheduling or night mode
+- Automatic language/locale-based scheduling
 - Physical button support
 - Web login or access-password system
 - ESP32-C2 / classic ESP32 / SmallTV Pro board targets
@@ -102,9 +103,9 @@ device only on a trusted local network. Configuration backups contain Wi-Fi
 credentials and should be treated as secrets.
 
 For initial installation on SmallTV Ultra units whose stock updater rejects
-the full image, use the separately published `smalltv-clean-loader.bin` first.
+the full image, use the separately published `smalltv-stable-loader.bin` first.
 After the loader boots, connect to its `SmallTV-Loader` Wi-Fi access point,
-open `http://192.168.4.1/update`, and upload `smalltv-clean-firmware.bin`.
+open `http://192.168.4.1/update`, and upload `smalltv-stable-firmware.bin`.
 The loader is a temporary installation helper, not a normal firmware update;
 subsequent firmware updates use the regular device web interface.
 
@@ -134,7 +135,7 @@ be used on modules with less than 4 MB flash.
 Install Python 3 and PlatformIO Core. From the repository root run:
 
 ```sh
-pio run -e smalltv_clean
+pio run -e smalltv_stable
 ```
 
 Build the optional first-install loader with:
@@ -152,19 +153,19 @@ pio run -e smalltv_display_check
 Firmware output:
 
 ```text
-.pio/build/smalltv_clean/firmware.bin
+.pio/build/smalltv_stable/firmware.bin
 ```
 
 Use `python tools/pack_stheme.py examples/open-meteo/theme.json --output examples/open-meteo/open-meteo.stheme`
 to rebuild the manifest-only demo package after changing its location or text.
 
-Every release publishes both `smalltv-clean-firmware.bin` and
-`smalltv-clean-loader.bin`; the loader is available for first installation
+Every release publishes both `smalltv-stable-firmware.bin` and
+`smalltv-stable-loader.bin`; the loader is available for first installation
 when a stock OTA slot cannot accept the full firmware image.
 
 GitHub Actions also verifies that the checked-in demo package matches its
 manifest. It builds the standard target and publishes the file as
-`smalltv-clean-firmware.bin` for tags named `clean-v*`. The display-check
+`smalltv-stable-firmware.bin` for tags named `v*`. The display-check
 target is compile-only; it does not upload or flash anything.
 
 See `NOTICE.md` and `LICENSE` for project origin and license information.
