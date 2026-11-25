@@ -24,12 +24,15 @@ Settings* g_settings=nullptr;
 WebServerClass* g_server=nullptr;
 
 bool validThemeId(const char* id) {
-  if(!id) return false; const size_t n=strlen(id); if(!n||n>48) return false;
+  if (!id) return false;
+  const size_t n = strlen(id);
+  if (!n || n > 48) return false;
   for(size_t i=0;i<n;++i) { const char c=id[i]; if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='-'||c=='_')) return false; }
   return true;
 }
 bool validPhotoName(const char* name) {
-  if(!name) return false; const size_t n=strlen(name);
+  if (!name) return false;
+  const size_t n = strlen(name);
   if(n<5||n>=40||strcmp(name+n-4,".jpg")!=0) return false;
   for(size_t i=0;i<n-4;++i) { const char c=name[i]; if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='-'||c=='_')) return false; }
   return true;
@@ -40,12 +43,15 @@ bool entryExists(const PlaylistEntry& e) {
   return n>0&&static_cast<size_t>(n)<sizeof(path)&&LittleFS.exists(path);
 }
 bool readLine(File& f,char* out,size_t cap) {
-  if(!cap) return false; size_t used=0; bool any=false;
+  if (!cap) return false;
+  size_t used = 0;
+  bool any = false;
   while(f.available()) { const int v=f.read(); if(v<0) break; any=true; if(v=='\n') break; if(v=='\r') continue; if(used+1>=cap) return false; out[used++]=static_cast<char>(v); }
   out[used]='\0'; return any;
 }
 bool readBodyLine(const String& body,size_t& pos,char* out,size_t cap) {
-  if(!cap||pos>body.length()) return false; size_t used=0;
+  if (!cap || pos > body.length()) return false;
+  size_t used = 0;
   while(pos<body.length()) { const char v=body[pos++]; if(v=='\n') break; if(v=='\r') continue; if(used+1>=cap) return false; out[used++]=v; }
   out[used]='\0'; return true;
 }
@@ -74,9 +80,11 @@ void loadPlaylist() {
   if(!readLine(f,line,sizeof(line))||(strcmp(line,"0")!=0&&strcmp(line,"1")!=0)) { f.close(); g_count=0; return; }
   g_autoStart=line[0]=='1';
   while(readLine(f,line,sizeof(line))) {
-    if(!line[0]) continue; PlaylistEntry e{};
+    if (!line[0]) continue;
+    PlaylistEntry e{};
     if(!parseStoredEntry(line,e)||g_count>=MaxPlaylistEntries||duplicateEntry(e)) { g_count=0; g_shuffle=false; g_autoStart=false; break; }
-    if(entryExists(e)) g_entries[g_count++]=e; yield();
+    if (entryExists(e)) g_entries[g_count++] = e;
+    yield();
   }
   f.close();
 }
@@ -98,7 +106,10 @@ bool showEntry(const PlaylistEntry& e) {
 }
 void stopInternal(bool showStatus) {
   const bool was=g_playing||g_startPending; g_playing=false; g_startPending=false; g_cursor=-1;
-  if(!was) return; smalltv::themeRuntimeStop(); smalltv::photos::stop(); if(showStatus) appShowNetworkStatus();
+  if (!was) return;
+  smalltv::themeRuntimeStop();
+  smalltv::photos::stop();
+  if (showStatus) appShowNetworkStatus();
 }
 bool step(int direction) {
   if(!g_count||!g_playing||!g_settings) return false;
@@ -155,7 +166,8 @@ void handleSave() {
   g_count=0; g_shuffle=newShuffle; g_autoStart=newAuto; bool valid=true;
   while(pos<body.length()) {
     if(!readBodyLine(body,pos,line,sizeof(line))) { valid=false; break; }
-    if(!line[0]) continue; PlaylistEntry e{};
+    if (!line[0]) continue;
+    PlaylistEntry e{};
     if(g_count>=MaxPlaylistEntries||!parseStoredEntry(line,e)||duplicateEntry(e)||!entryExists(e)) { valid=false; break; }
     char canonical[80]; snprintf(canonical,sizeof(canonical),"%c|%s|%u",e.type,e.id,static_cast<unsigned>(e.seconds));
     if(!writeLine(staged,canonical)) { valid=false; break; }
