@@ -60,12 +60,12 @@ bool settingsStorageReady() {
   return g_storageReady;
 }
 
-// Formatting is destructive and only available through an explicitly confirmed reset.
+// LittleFS.format() also handles an already-mounted ESP8266 filesystem:
+// it unmounts, formats, and remounts it. A factory reset must always format.
 bool settingsFormat() {
-  if (g_storageReady) return false;
-  if (!LittleFS.format()) return false;
+  const bool formatted = LittleFS.format();
   g_storageReady = LittleFS.begin();
-  return g_storageReady;
+  return formatted && g_storageReady;
 }
 
 bool loadSettings(Settings& s) {
