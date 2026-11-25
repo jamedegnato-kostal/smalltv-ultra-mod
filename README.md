@@ -31,6 +31,7 @@ selected package through row-based output without a full-screen framebuffer.
 - Bounded JSON data-source fetching with streaming extraction and an in-memory field cache
 - Open-Meteo weather demo theme with current conditions and a one-day forecast
 - LittleFS photo gallery with browser-side 240×240 JPEG conversion and slideshow controls
+- Shared photo/theme playlist with per-item durations, manual ordering or shuffle, previous/next controls and optional auto-start after reboot
 
 ## Not included yet
 
@@ -58,6 +59,24 @@ required format. The slideshow interval is adjustable from 5 seconds to
 slideshow before activating a theme or changing the photo collection. Photo
 files remain stored after the slideshow stops; playback is not automatically
 started after reboot.
+
+## Shared photo/theme playback
+
+The Wiedergabe tab combines up to 16 saved photos and 16 installed .stheme
+packages in one playlist (32 entries maximum). Each entry has its own display
+duration from 5 seconds to 60 minutes. The order can be fixed/manual or shuffled;
+shuffle plays every entry once per round and avoids repeating the last item at
+the round boundary. Items can be reordered with the arrow controls or drag-and-drop.
+The playlist is stored separately as a small line-based file in LittleFS and can
+optionally start automatically after reboot.
+
+Playback switches between the existing JPEG and theme renderers. Photos continue
+to decode from LittleFS into the decoder's small output blocks; themes continue
+to render row by row. The playlist stores only item IDs, durations and a 32-byte
+order array in RAM. It does not allocate a framebuffer or keep image/theme assets
+in memory. Missing or unreadable items are skipped. Stop shared playback before
+uploading or deleting its photos or themes, or before using the standalone
+photo slideshow or single-theme activation controls.
 
 ## Factory reset
 

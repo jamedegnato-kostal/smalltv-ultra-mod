@@ -13,6 +13,7 @@
 #include "Clock.h"
 #include "NightSchedule.h"
 #include "PhotoSlideshow.h"
+#include "Playback.h"
 #include <string>
 
 static Settings g_settings;
@@ -34,7 +35,7 @@ static void bootProgress(const char* message) {
 }
 
 static void showNetworkStatus() {
-  if (!g_displayReady || smalltv::themeRuntimeActive() || smalltv::photos::active()) return;
+  if (!g_displayReady || smalltv::themeRuntimeActive() || smalltv::photos::active() || smalltv::playback::active()) return;
   const String ip = netIP();
   if (g_safeMode) {
     smalltv::display::showSafeMode(g_display, g_resetReason.c_str(), ip.c_str());
@@ -90,7 +91,8 @@ void applyDisplaySettings(const Settings& settings) {
   g_lastAppliedBrightness = 0xFF;
   applyEffectiveBrightness();
   if (!g_displayReady) return;
-  if (smalltv::themeRuntimeActive()) smalltv::themeRuntimeInvalidate();
+  if (smalltv::playback::active()) smalltv::playback::redraw();
+  else if (smalltv::themeRuntimeActive()) smalltv::themeRuntimeInvalidate();
   else if (smalltv::photos::active()) smalltv::photos::redraw();
   else showNetworkStatus();
 }
@@ -144,13 +146,14 @@ void setup() {
 
   Serial.println("[boot] web server");
   smalltv::themeRuntimeBegin(g_display);
+  smalltv::playback::begin(g_settings, g_displayReady);
   webPortalBegin(g_settings);
   if (g_safeMode && g_settings.activeTheme[0]) {
     g_settings.activeTheme[0] = '\0';
     if (settingsStorageReady() && !saveSettings(g_settings))
       Serial.println("[theme] could not clear saved theme in safe mode");
   }
-  if (g_displayReady && !g_safeMode && g_settings.activeTheme[0]) {
+  if (g_displayReady && !g_safeMode && g_settings.activeTheme[0] && !smalltv::playback::autoStartRequested()) {
     std::string error;
     if (!smalltv::themeRuntimeSelect(g_settings.activeTheme, g_settings.timezone, g_settings.language, error)) {
       Serial.print("[theme] could not restore selected theme: ");
@@ -170,17 +173,22 @@ void loop() {
   applyEffectiveBrightness();
   webPortalLoop();
   if (smalltv::themeRuntimeLoop()) {
-    g_settings.activeTheme[0] = '\0';
-    if (settingsStorageReady() && !saveSettings(g_settings))
-      Serial.println("[theme] could not clear selection after render failure");
-    showNetworkStatus();
+    if (smalltv::playback::active()) {
+      smalltv::playback::advanceNow();
+    } else {
+      g_settings.activeTheme[0] = '\0';
+      if (settingsStorageReady() && !saveSettings(g_settings))
+        Serial.println("[theme] could not clear selection after render failure");
+      showNetworkStatus();
+    }
   }
 
   smalltv::photos::loop();
+  smalltv::playback::loop();
 
   // Background Wi-Fi retries can change the failure reason while the setup AP
   // remains active. Refresh its diagnostic screen only when that reason changes.
-  if (g_displayReady && !smalltv::themeRuntimeActive() && !smalltv::photos::active() && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
+  if (g_displayReady && !smalltv::themeRuntimeActive() && !smalltv::photos::active() && !smalltv::playback::active() && netMode() == NET_AP && netFailSeq() != g_displayFailSeq) {
     showNetworkStatus();
   }
 

@@ -109,6 +109,7 @@ body.light .save-status.dirty{color:#80520a}
 :root{--field:#0b100c;--surface2:#1d281f;--nav:rgba(14,20,15,.97);--warn:#e3b341}
 body.light{--field:#f8fbf8;--surface2:#f5f9f4;--nav:rgba(242,247,241,.97)}
 nav{background:var(--nav)}
+.playlist-item{align-items:center;gap:9px}.playlist-item[draggable="true"]{cursor:grab}.playlist-item.dragging{opacity:.45}.playlist-item .meta{min-width:0;overflow-wrap:anywhere}.playlist-item .duration{width:88px;flex:0 0 88px}.playlist-item .duration input{min-height:38px;padding:6px}.playlist-item .actions{display:flex;gap:5px;flex-wrap:wrap}.playlist-item .actions .btn{padding:7px 9px;font-size:12px}
 input[type=text],input[type=password],input[type=file],select{background:var(--field);color:var(--fg)}
 .stat-card{background:var(--surface2)}
 button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
@@ -139,6 +140,7 @@ button.btn:disabled{filter:saturate(.35)}
  <button data-t="update" type="button">System</button>
  <button data-t="themes" type="button">Themes</button>
  <button data-t="photos" type="button">Fotos</button>
+ <button data-t="playback" type="button">Wiedergabe</button>
 </nav>
 <main>
  <section id="status" class="tab active">
@@ -302,6 +304,39 @@ button.btn:disabled{filter:saturate(.35)}
   </div>
  </section>
 
+ <section id="playback" class="tab">
+  <div class="page-intro"><p class="eyebrow">GEMEINSAME PLAYLIST</p><h2>Wiedergabe</h2><p>Fotos und .stheme-Themes lassen sich in einer Liste beliebig mischen. Die Wiedergabe nutzt die vorhandenen Renderer ohne zusätzlichen Bildpuffer.</p></div>
+  <div class="card">
+   <h2>Wiedergabemodus</h2>
+   <label for="playlistMode">Reihenfolge</label>
+   <select id="playlistMode"><option value="sequence">Eigene Reihenfolge</option><option value="shuffle">Zufällig mischen</option></select>
+   <div class="chk"><input id="playlistAutoStart" type="checkbox"><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
+   <small class="hint">Shuffle mischt Fotos und Themes gemeinsam. Jedes Element kommt einmal pro Runde; zwischen zwei Runden wird eine direkte Wiederholung vermieden.</small>
+  </div>
+  <div class="card">
+   <h2>Elemente hinzufügen</h2>
+   <div class="row">
+    <div><label for="playlistPhotoSelect">Gespeichertes Foto</label><select id="playlistPhotoSelect"><option value="">Fotos werden geladen …</option></select><button class="btn sec" type="button" style="margin-top:8px;width:100%" onclick="addPlaylistItem('photo')">Foto hinzufügen</button></div>
+    <div><label for="playlistThemeSelect">Installiertes Theme</label><select id="playlistThemeSelect"><option value="">Themes werden geladen …</option></select><button class="btn sec" type="button" style="margin-top:8px;width:100%" onclick="addPlaylistItem('theme')">Theme hinzufügen</button></div>
+   </div>
+  </div>
+  <div class="card">
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Meine Wiedergabeliste</h2><button class="btn sec" type="button" onclick="loadPlayback()">Aktualisieren</button></div>
+   <div id="playlistStatus" class="muted" role="status">Wiedergabeliste wird geladen …</div>
+   <div id="playlistEntries" aria-live="polite" style="margin-top:10px"></div>
+   <div class="row" style="margin-top:14px;flex-wrap:wrap">
+    <button class="btn" type="button" onclick="savePlaylist()">Playlist speichern</button>
+    <button class="btn sec" type="button" onclick="playbackAction('start')">Start</button>
+    <button class="btn sec" type="button" onclick="playbackAction('stop')">Stop</button>
+   </div>
+   <div class="row" style="margin-top:9px;flex-wrap:wrap">
+    <button class="btn sec" type="button" onclick="playbackAction('previous')">Zurück</button>
+    <button class="btn sec" type="button" onclick="playbackAction('next')">Weiter</button>
+   </div>
+   <small class="hint">Die Dauer kann für jedes Foto und jedes Theme einzeln von 5 Sekunden bis 60 Minuten eingestellt werden. Mit den Pfeiltasten oder per Drag-and-drop sortieren. Maximal 32 Einträge (16 Fotos und 16 Themes).</small>
+  </div>
+ </section>
+
 <section id="update" class="tab">
   <div class="page-intro"><p class="eyebrow">Geräteverwaltung</p><h2>System</h2><p>Firmware aktualisieren, Einstellungen sichern und das Gerät warten.</p></div>
   <div class="card">
@@ -410,6 +445,7 @@ function showTab(name) {
   window.scrollTo(0, 0);
   if (name === "themes") loadThemes();
   if (name === "photos") loadPhotos();
+  if (name === "playback") loadPlayback();
 }
 document.querySelectorAll("nav [data-t]").forEach(function(button){
   button.addEventListener("click", function(){ showTab(button.dataset.t); });
@@ -972,6 +1008,167 @@ function loadPhotos() {
     list.textContent = "Fotoliste konnte nicht geladen werden: " + error.message;
   });
 }
+var playlistDraft = [];
+var playbackDragIndex = -1;
+
+function loadPlayback() {
+  Promise.all([api("/api/playback"), api("/api/photos"), api("/api/themes")]).then(function(results) {
+    var state = results[0];
+    var photos = Array.isArray(results[1].photos) ? results[1].photos : [];
+    var themes = Array.isArray(results[2].themes) ? results[2].themes.filter(function(theme){ return theme.valid; }) : [];
+    var photoSelect = $("playlistPhotoSelect");
+    var themeSelect = $("playlistThemeSelect");
+    photoSelect.textContent = "";
+    themeSelect.textContent = "";
+    photoSelect.appendChild(new Option(photos.length ? "Foto auswählen …" : "Keine Fotos vorhanden", ""));
+    themeSelect.appendChild(new Option(themes.length ? "Theme auswählen …" : "Keine gültigen Themes vorhanden", ""));
+    photos.forEach(function(photo){ photoSelect.appendChild(new Option(photo.name, photo.name)); });
+    themes.forEach(function(theme){ themeSelect.appendChild(new Option(theme.name || theme.id, theme.id)); });
+    $("playlistMode").value = state.mode || "sequence";
+    $("playlistAutoStart").checked = !!state.autoStart;
+    playlistDraft = (state.entries || []).map(function(item) {
+      return {type:item.type, id:item.id, seconds:Number(item.seconds)|| (item.type === "photo" ? 15 : 60)};
+    });
+    renderPlaylist();
+    var current = Number(state.current);
+    var currentEntry = current >= 0 ? playlistDraft[current] : null;
+    $("playlistStatus").textContent = state.playing
+      ? "Wiedergabe aktiv · " + (currentEntry ? currentEntry.id : "Element wird geladen") + " · " + playlistDraft.length + " Elemente"
+      : "Wiedergabe gestoppt · " + playlistDraft.length + " Elemente gespeichert";
+  }).catch(function(error) {
+    $("playlistStatus").textContent = "Playlist konnte nicht geladen werden: " + error.message;
+  });
+}
+
+function renderPlaylist() {
+  var list = $("playlistEntries");
+  list.textContent = "";
+  if (!playlistDraft.length) {
+    list.textContent = "Die Playlist ist noch leer. Füge oben Fotos und Themes hinzu.";
+    return;
+  }
+  playlistDraft.forEach(function(item, index) {
+    var row = document.createElement("div");
+    row.className = "theme-item playlist-item";
+    row.draggable = true;
+    row.addEventListener("dragstart", function(event) {
+      playbackDragIndex = index;
+      row.classList.add("dragging");
+      if (event.dataTransfer) event.dataTransfer.setData("text/plain", String(index));
+    });
+    row.addEventListener("dragend", function(){ row.classList.remove("dragging"); });
+    row.addEventListener("dragover", function(event){ event.preventDefault(); });
+    row.addEventListener("drop", function(event) {
+      event.preventDefault();
+      var from = playbackDragIndex;
+      if (event.dataTransfer) {
+        var parsed = Number(event.dataTransfer.getData("text/plain"));
+        if (Number.isInteger(parsed)) from = parsed;
+      }
+      if (from < 0 || from >= playlistDraft.length || from === index) return;
+      var moved = playlistDraft.splice(from, 1)[0];
+      playlistDraft.splice(index, 0, moved);
+      playbackDragIndex = -1;
+      renderPlaylist();
+    });
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    var title = document.createElement("strong");
+    title.textContent = (item.type === "photo" ? "Foto · " : "Theme · ") + item.id;
+    var subtitle = document.createElement("small");
+    subtitle.textContent = "Element " + (index + 1) + " von " + playlistDraft.length;
+    meta.appendChild(title);
+    meta.appendChild(subtitle);
+    var duration = document.createElement("div");
+    duration.className = "duration";
+    var durationLabel = document.createElement("label");
+    durationLabel.textContent = "Sekunden";
+    durationLabel.style.margin = "0 0 3px";
+    var durationInput = document.createElement("input");
+    durationInput.type = "number";
+    durationInput.min = "5";
+    durationInput.max = "3600";
+    durationInput.step = "1";
+    durationInput.value = String(item.seconds);
+    durationInput.setAttribute("aria-label", "Anzeigedauer für " + item.id);
+    durationInput.addEventListener("change", function() {
+      var value = Number(durationInput.value);
+      if (!Number.isInteger(value) || value < 5 || value > 3600) {
+        toast("Anzeigedauer muss zwischen 5 und 3600 Sekunden liegen.");
+        durationInput.value = String(item.seconds);
+        return;
+      }
+      item.seconds = value;
+    });
+    duration.appendChild(durationLabel);
+    duration.appendChild(durationInput);
+    var actions = document.createElement("div");
+    actions.className = "actions";
+    [["↑",-1,"Nach oben"],["↓",1,"Nach unten"]].forEach(function(action) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn sec";
+      button.textContent = action[0];
+      button.title = action[2];
+      button.disabled = index + action[1] < 0 || index + action[1] >= playlistDraft.length;
+      button.addEventListener("click", function() {
+        var next = index + action[1];
+        var swap = playlistDraft[index];
+        playlistDraft[index] = playlistDraft[next];
+        playlistDraft[next] = swap;
+        renderPlaylist();
+      });
+      actions.appendChild(button);
+    });
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn danger";
+    remove.textContent = "×";
+    remove.title = "Aus Playlist entfernen";
+    remove.addEventListener("click", function(){ playlistDraft.splice(index, 1); renderPlaylist(); });
+    actions.appendChild(remove);
+    row.appendChild(meta);
+    row.appendChild(duration);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
+function addPlaylistItem(type) {
+  var id = type === "photo" ? $("playlistPhotoSelect").value : $("playlistThemeSelect").value;
+  if (!id) { toast(type === "photo" ? "Bitte ein Foto auswählen." : "Bitte ein Theme auswählen."); return; }
+  if (playlistDraft.length >= 32) { toast("Die Playlist kann maximal 32 Elemente enthalten."); return; }
+  if (playlistDraft.some(function(item){ return item.type === type && item.id === id; })) {
+    toast("Dieses Element ist bereits in der Playlist.");
+    return;
+  }
+  playlistDraft.push({type:type, id:id, seconds:type === "photo" ? 15 : 60});
+  renderPlaylist();
+}
+
+function savePlaylist() {
+  var mode = $("playlistMode").value === "shuffle" ? "shuffle" : "sequence";
+  var body = mode + "\n" + ($("playlistAutoStart").checked ? "1" : "0") + "\n";
+  for (var i = 0; i < playlistDraft.length; i++) {
+    var item = playlistDraft[i];
+    var seconds = Number(item.seconds);
+    if (!Number.isInteger(seconds) || seconds < 5 || seconds > 3600) {
+      toast("Jede Anzeigedauer muss zwischen 5 und 3600 Sekunden liegen.");
+      return;
+    }
+    body += (item.type === "photo" ? "P" : "T") + "|" + item.id + "|" + seconds + "\n";
+  }
+  api("/api/playback/save", {method:"POST", headers:{"Content-Type":"text/plain"}, body:body})
+    .then(function(){ toast("Playlist gespeichert."); loadPlayback(); })
+    .catch(function(error){ toast("Playlist konnte nicht gespeichert werden: " + error.message); });
+}
+
+function playbackAction(action) {
+  api("/api/playback/" + action, {method:"POST"})
+    .then(function(data){ toast(data.message || "Wiedergabe aktualisiert."); loadPlayback(); })
+    .catch(function(error){ toast("Wiedergabe fehlgeschlagen: " + error.message); loadPlayback(); });
+}
+
 function makeSmallJpeg(file) {
   return new Promise(function(resolve, reject) {
     var url = URL.createObjectURL(file);

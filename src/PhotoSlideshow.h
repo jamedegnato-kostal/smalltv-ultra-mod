@@ -11,5 +11,6 @@ void stop();
 bool active();
 uint8_t count();
 void redraw();
+bool showByName(const char* name);
 }  // namespace photos
 }  // namespace smalltv

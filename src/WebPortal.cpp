@@ -7,6 +7,7 @@
 #include "OtaUpdate.h"
 #include "theme/ThemeWeb.h"
 #include "PhotoSlideshow.h"
+#include "Playback.h"
 #include "theme/ThemeRuntime.h"
 #include "Clock.h"
 #include "config.h"
@@ -81,6 +82,7 @@ static void handleStatus() {
   doc["storageReady"] = settingsStorageReady();
   doc["themeLoaded"] = smalltv::themeRuntimeActive();
   doc["photoSlideshow"] = smalltv::photos::active();
+  doc["playback"] = smalltv::playback::active();
   doc["photoCount"] = smalltv::photos::count();
   doc["theme"] = smalltv::themeRuntimeActiveId();
   doc["themeError"] = smalltv::themeRuntimeError();
@@ -238,6 +240,7 @@ static void handleReboot() {
 
 static void handleFactory() {
   // Release runtime users before erasing the complete LittleFS data partition.
+  smalltv::playback::stop();
   smalltv::themeRuntimeStop();
   smalltv::photos::stop();
   if (!settingsFormat()) {
@@ -418,6 +421,7 @@ void webPortalBegin(Settings& settings) {
   S = &settings;
   themeWebBegin(server, settings);
   smalltv::photos::webBegin(server);
+  smalltv::playback::webBegin(server);
   g_updateMsg = otaTakeBootResult();
 
   server.on("/", HTTP_GET, handleRoot);

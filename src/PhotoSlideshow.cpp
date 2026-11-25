@@ -1,4 +1,5 @@
 #include "PhotoSlideshow.h"
+#include "Playback.h"
 #include "theme/ThemeRuntime.h"
 #include "Platform.h"
 #include <TJpg_Decoder.h>
@@ -267,7 +268,8 @@ void receivePhotoUpload() {
     g_uploadError = "";
     g_uploadDestination = "";
 
-    if (g_active) g_uploadError = "Stop the slideshow before adding photos";
+    if (smalltv::playback::active()) g_uploadError = "Stop shared playback before adding photos";
+    else if (g_active) g_uploadError = "Stop the slideshow before adding photos";
     else if (smalltv::themeRuntimeActive()) g_uploadError = "Deactivate the active .stheme before adding photos";
     else if (installedPhotoCount() >= MaxPhotos) g_uploadError = "Photo limit reached (16 images)";
     else if (!makePhotoName(incoming.filename, g_uploadDestination)) g_uploadError = "Use a JPEG file (.jpg or .jpeg)";
@@ -372,6 +374,10 @@ bool requestPhotoName(String& name) {
 }
 
 void deletePhoto() {
+  if (smalltv::playback::active()) {
+    sendReply(409, "Stop shared playback before deleting photos");
+    return;
+  }
   if (g_active) {
     sendReply(409, "Stop the slideshow before deleting photos");
     return;
@@ -392,6 +398,10 @@ void deletePhoto() {
 }
 
 void startSlideshow() {
+  if (smalltv::playback::active()) {
+    sendReply(409, "Stop shared playback before starting the photo-only slideshow");
+    return;
+  }
   if (smalltv::themeRuntimeActive()) {
     sendReply(409, "Deactivate the active .stheme before starting the slideshow");
     return;
@@ -515,6 +525,20 @@ void stop() {
 
 bool active() { return g_active; }
 uint8_t count() { return g_photoCount; }
+
+bool showByName(const char* name) {
+  if (!name || !*name || !g_display || !g_display->ready()) return false;
+  g_active = false;
+  refreshPhotoList();
+  for (uint8_t i = 0; i < g_photoCount; ++i) {
+    if (strcmp(g_photos[i].name, name) != 0) continue;
+    if (!renderPhoto(i)) return false;
+    g_current = static_cast<int8_t>(i);
+    g_lastSlide = millis();
+    return true;
+  }
+  return false;
+}
 
 void redraw() {
   if (g_active && g_current >= 0) renderPhoto(static_cast<uint8_t>(g_current));

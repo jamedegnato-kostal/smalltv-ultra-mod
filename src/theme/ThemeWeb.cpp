@@ -2,6 +2,7 @@
 #include "ThemeCatalog.h"
 #include "ThemeRuntime.h"
 #include "../PhotoSlideshow.h"
+#include "../Playback.h"
 #include <LittleFS.h>
 #include <algorithm>
 
@@ -120,6 +121,10 @@ void receiveUpload() {
     g_uploadEnded = false;
     g_uploadAllowed = true;
 
+    if (smalltv::playback::active()) {
+      g_uploadError = "Stop shared playback before installing a package";
+      return;
+    }
     if (smalltv::themeRuntimeActive() || smalltv::photos::active()) {
       g_uploadError = "Deactivate the running theme or stop the photo slideshow before installing a package";
       return;
@@ -381,6 +386,10 @@ void listThemes() {
 }
 
 void deleteTheme() {
+  if (smalltv::playback::active()) {
+    reply(409, "Stop shared playback before deleting themes");
+    return;
+  }
   String id;
   if (!requestThemeId(id)) return;
   if (g_settings && strcmp(g_settings->activeTheme, id.c_str()) == 0) {
@@ -400,6 +409,10 @@ void deleteTheme() {
   reply(200, id);
 }
 void selectTheme() {
+  if (smalltv::playback::active()) {
+    reply(409, "Stop shared playback before selecting a single theme");
+    return;
+  }
   String id;
   if (!requestThemeId(id, true)) return;
   if (id.length() && smalltv::photos::active()) {
