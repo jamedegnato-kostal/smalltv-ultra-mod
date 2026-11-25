@@ -24,6 +24,10 @@ struct Settings {
   uint8_t displayBlueGain;
   char activeTheme[49];
   char timezone[65];  // POSIX TZ rule; includes DST transitions
+  bool nightEnabled;
+  uint16_t nightStartMinute; // local minutes since midnight, 0..1439
+  uint16_t nightEndMinute;
+  uint8_t nightBrightness;  // 0..100 percent; 0 switches the display off
   char language[3];    // theme language: en or de
   void setDefaults();
 };
