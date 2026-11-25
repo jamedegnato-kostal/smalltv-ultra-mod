@@ -105,12 +105,28 @@ bool showEntry(const PlaylistEntry& e) {
   return smalltv::themeRuntimeSelect(e.id,g_settings->timezone,g_settings->language,error);
 }
 void stopInternal(bool showStatus) {
-  const bool was=g_playing||g_startPending; g_playing=false; g_startPending=false; g_cursor=-1;
+  const bool was = g_playing || g_startPending;
+  g_playing = false;
+  g_startPending = false;
+  g_cursor = -1;
   if (!was) return;
+
   smalltv::themeRuntimeStop();
   smalltv::photos::stop();
-  if (showStatus) appShowNetworkStatus();
+  if (showStatus) {
+    bool restored = false;
+    if (g_settings && g_settings->activeTheme[0]) {
+      std::string error;
+      restored = smalltv::themeRuntimeSelect(
+          g_settings->activeTheme, g_settings->timezone, g_settings->language, error);
+      if (!restored) {
+        Serial.printf("[playback] previous theme could not be restored: %s\\n", error.c_str());
+      }
+    }
+    if (!restored) appShowNetworkStatus();
+  }
 }
+
 bool step(int direction) {
   if(!g_count||!g_playing||!g_settings) return false;
   for(uint8_t attempt=0;attempt<g_count;++attempt) {
@@ -129,9 +145,12 @@ bool startInternal(const char*& error) {
   if(!g_displayReady) { error="Display is not ready"; return false; }
   if(!g_count) { error="Add at least one photo or theme to the playlist"; return false; }
   if(ESP.getFreeHeap()<12UL*1024UL||platformMaxFreeBlock()<2048UL) { error="Not enough free RAM to start playback"; return false; }
-  char oldTheme[sizeof(g_settings->activeTheme)]; memcpy(oldTheme,g_settings->activeTheme,sizeof(oldTheme));
-  if(oldTheme[0]) { g_settings->activeTheme[0]='\0'; if(!saveSettings(*g_settings)) { memcpy(g_settings->activeTheme,oldTheme,sizeof(oldTheme)); error="Could not save playback state"; return false; } }
-  smalltv::themeRuntimeStop(); smalltv::photos::stop(); g_playing=true; g_cursor=-1;
+  // Keep the user's manually selected theme in settings. It is restored when
+  // playback stops and remains the fallback if automatic playlist start is off.
+  smalltv::themeRuntimeStop();
+  smalltv::photos::stop();
+  g_playing = true;
+  g_cursor = -1;
   if(g_shuffle) fillShuffleOrder(0xFF); else fillSequentialOrder();
   if(!step(1)) { error="No playable item found; check the installed photos and themes"; return false; }
   error=""; return true;
