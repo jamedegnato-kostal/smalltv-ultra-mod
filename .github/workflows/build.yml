@@ -29,7 +29,7 @@ jobs:
 
       - name: Ensure support error log is absent
         run: |
-          ! grep -q 'data-t="diagnostics"\|id="diagnostics"\|createDiagnosticLog\|downloadDiagnosticLog' src/webui_clean.h
+          ! grep -q 'data-t="diagnostics"\|id="diagnostics"\|createDiagnosticLog\|downloadDiagnosticLog' src/webui_stable.h
           ! grep -q 'handleCrashClear\|/api/crash/clear' src/WebPortal.cpp
 
       - name: Verify Open-Meteo theme package
