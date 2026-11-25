@@ -129,7 +129,10 @@ static uint32_t displayFingerprint(const Settings& settings) {
   const uint8_t values[] = {
     settings.displayBrightness, settings.displayRotation,
     (uint8_t)settings.displayBgr, (uint8_t)settings.displayInvert,
-    settings.displayRedGain, settings.displayGreenGain, settings.displayBlueGain
+    settings.displayRedGain, settings.displayGreenGain, settings.displayBlueGain,
+    (uint8_t)settings.nightEnabled, settings.nightBrightness,
+    (uint8_t)(settings.nightStartMinute >> 8), (uint8_t)settings.nightStartMinute,
+    (uint8_t)(settings.nightEndMinute >> 8), (uint8_t)settings.nightEndMinute
   };
   for (uint8_t value : values) {
     hash ^= value;
@@ -183,6 +186,7 @@ static void handlePostConfig() {
   const uint32_t oldDisplay = displayFingerprint(*S);
   char oldTimezone[sizeof(S->timezone)];
   memcpy(oldTimezone, S->timezone, sizeof(oldTimezone));
+  const bool oldNightEnabled = S->nightEnabled;
   char oldLanguage[sizeof(S->language)];
   memcpy(oldLanguage, S->language, sizeof(oldLanguage));
   const bool saved = applyAndSaveSettings(
@@ -201,7 +205,8 @@ static void handlePostConfig() {
   }
 
   if (displayFingerprint(*S) != oldDisplay) applyDisplaySettings(*S);
-  if (strcmp(oldTimezone, S->timezone) != 0) applyTimeSettings(*S);
+  if (strcmp(oldTimezone, S->timezone) != 0 || oldNightEnabled != S->nightEnabled)
+    applyTimeSettings(*S);
   if (strcmp(oldLanguage, S->language) != 0) smalltv::themeRuntimeSetLanguage(S->language);
 
   const bool reboot = netFingerprint(*S) != oldNetwork;
