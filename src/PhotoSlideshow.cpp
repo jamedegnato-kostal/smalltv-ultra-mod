@@ -507,6 +507,12 @@ void loop() {
   }
 }
 
+void stop() {
+  g_active = false;
+  g_current = -1;
+  g_photoCount = 0;
+}
+
 bool active() { return g_active; }
 uint8_t count() { return g_photoCount; }
 
