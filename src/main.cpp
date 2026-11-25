@@ -1,4 +1,4 @@
-// SmallTV Ultra Clean: web management, firmware recovery and display status.
+// SmallTV Stable: ESP8266 web management, themes, photos and night mode.
 #include <Arduino.h>
 #include "Platform.h"
 #include "config.h"
