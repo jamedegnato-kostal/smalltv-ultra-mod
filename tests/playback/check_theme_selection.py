@@ -17,6 +17,13 @@ assert 'theme.valid === true ||' in webui
 assert f'theme.error === "{deferred_reason}"' in webui
 assert '(Prüfung beim Start)' in webui
 
+# A valid package can be reported as deferred while another theme is running.
+# The theme card must not call it invalid or prevent the user from disabling it.
+assert 'var deferred = theme.error === "Deactivate active theme to validate this package";' in webui
+assert '(active ? "Wird angezeigt · Paketprüfung zurückgestellt" : "Prüfung beim Aktivieren")' in webui
+assert 'toggle.disabled = !theme.valid && !deferred;' in webui
+assert 'if (!theme.valid && !deferred) validity.className = "error";' in webui
+
 # On playback, the current renderer is released before the package is loaded;
 # ThemeRuntime then performs the real package validation.
 assert 'smalltv::themeRuntimeSelect(e.id' in playback
