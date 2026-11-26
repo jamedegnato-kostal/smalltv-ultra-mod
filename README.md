@@ -137,7 +137,7 @@ backup and upload the themes/photos again.
 
 ## Factory reset
 
-The confirmed **Factory Reset** action formats the complete LittleFS data
+The confirmed **Factory Reset** action reformats the complete LittleFS data
 partition, not just `config.json`. It removes settings and Wi-Fi credentials,
 installed themes, gallery photos, the playlist and temporary/index files. The
 firmware image itself remains installed. After reboot, Wi-Fi must be configured
