@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 extern void appShowNetworkStatus();
 namespace {
 constexpr uint8_t MaxPlaylistEntries=32;
@@ -15,7 +16,7 @@ const char* const PlaylistPath="/playlist.txt";
 const char* const PlaylistTempPath="/playlist.tmp";
 const char* const PlaylistBackupPath="/playlist.bak";
 struct PlaylistEntry { char type; char id[49]; uint16_t seconds; };
-PlaylistEntry g_entries[MaxPlaylistEntries];
+std::vector<PlaylistEntry> g_entries;
 uint8_t g_order[MaxPlaylistEntries], g_count=0;
 int8_t g_cursor=-1;
 bool g_shuffle=false, g_autoStart=false, g_playing=false, g_startPending=false, g_displayReady=false;
@@ -71,6 +72,9 @@ bool duplicateEntry(const PlaylistEntry& e) {
   return false;
 }
 void loadPlaylist() {
+  // Keep only the entries that are actually in the saved playlist. A fixed
+  // 32-entry array used over 1.6 KiB of static RAM even for an empty playlist.
+  std::vector<PlaylistEntry>().swap(g_entries);
   g_count=0; g_cursor=-1; g_shuffle=false; g_autoStart=false;
   File f=LittleFS.open(PlaylistPath,"r"); if(!f) return;
   char line[80];
@@ -82,8 +86,8 @@ void loadPlaylist() {
   while(readLine(f,line,sizeof(line))) {
     if (!line[0]) continue;
     PlaylistEntry e{};
-    if(!parseStoredEntry(line,e)||g_count>=MaxPlaylistEntries||duplicateEntry(e)) { g_count=0; g_shuffle=false; g_autoStart=false; break; }
-    if (entryExists(e)) g_entries[g_count++] = e;
+    if(!parseStoredEntry(line,e)||g_count>=MaxPlaylistEntries||duplicateEntry(e)) { g_count=0; g_shuffle=false; g_autoStart=false; std::vector<PlaylistEntry>().swap(g_entries); break; }
+    if (entryExists(e)) { g_entries.push_back(e); ++g_count; }
     yield();
   }
   f.close();
@@ -182,7 +186,9 @@ void handleSave() {
   const bool header=writeLine(staged,"SMALLTV-PLAYLIST-1")&&writeLine(staged,newShuffle?"shuffle":"sequence")&&writeLine(staged,newAuto?"1":"0");
   if(!header) { staged.close(); LittleFS.remove(PlaylistTempPath); sendReply(500,"Could not write playlist header"); return; }
   const uint8_t oldCount=g_count; const bool oldShuffle=g_shuffle, oldAuto=g_autoStart;
-  g_count=0; g_shuffle=newShuffle; g_autoStart=newAuto; bool valid=true;
+  g_count=0; g_shuffle=newShuffle; g_autoStart=newAuto;
+  std::vector<PlaylistEntry>().swap(g_entries);
+  bool valid=true;
   while(pos<body.length()) {
     if(!readBodyLine(body,pos,line,sizeof(line))) { valid=false; break; }
     if (!line[0]) continue;
@@ -190,7 +196,7 @@ void handleSave() {
     if(g_count>=MaxPlaylistEntries||!parseStoredEntry(line,e)||duplicateEntry(e)||!entryExists(e)) { valid=false; break; }
     char canonical[80]; snprintf(canonical,sizeof(canonical),"%c|%s|%u",e.type,e.id,static_cast<unsigned>(e.seconds));
     if(!writeLine(staged,canonical)) { valid=false; break; }
-    g_entries[g_count++]=e; yield();
+    g_entries.push_back(e); ++g_count; yield();
   }
   staged.flush(); staged.close();
   if(!valid||!publishPlaylistFile()) {
