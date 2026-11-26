@@ -851,13 +851,18 @@ function loadThemes() {
       }
       var validity = document.createElement("small");
       var active = data.selected === theme.id;
-      validity.textContent = theme.valid ? (active ? "Wird auf dem Display angezeigt" : "Paket gültig") : "Paket ungültig";
-      if (!theme.valid) validity.className = "error";
+      var deferred = theme.error === "Deactivate active theme to validate this package";
+      validity.textContent = deferred
+        ? (active ? "Wird angezeigt · Paketprüfung zurückgestellt" : "Prüfung beim Aktivieren")
+        : (theme.valid ? (active ? "Wird auf dem Display angezeigt" : "Paket gültig") : "Paket ungültig");
+      if (!theme.valid && !deferred) validity.className = "error";
       meta.appendChild(validity);
       if (!theme.valid && theme.error) {
         var error = document.createElement("small");
-        error.className = "error";
-        error.textContent = theme.error;
+        error.className = deferred ? "" : "error";
+        error.textContent = deferred
+          ? "Die Prüfung erfolgt, sobald das laufende Theme beendet wird."
+          : theme.error;
         meta.appendChild(error);
       }
       var actions = document.createElement("div");
@@ -865,7 +870,7 @@ function loadThemes() {
       toggle.type = "button";
       toggle.className = "btn sec";
       toggle.textContent = active ? "Deaktivieren" : "Aktivieren";
-      toggle.disabled = !theme.valid;
+      toggle.disabled = !theme.valid && !deferred;
       toggle.addEventListener("click", function(){ selectTheme(active ? "" : theme.id); });
       actions.appendChild(toggle);
       var remove = document.createElement("button");
