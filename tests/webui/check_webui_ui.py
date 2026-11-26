@@ -28,6 +28,15 @@ assert 'ip:"[ausgeblendet]"' in debug_code
 assert "function copyDebugReport()" in source
 assert "window.prompt(" in source
 
+# Keep the original SmallTV green surfaces and brand colours while adding
+# semantic accents for navigation and diagnostic sections.
+assert ":root{--bg:#101611;--card:#19221a;" in source
+assert "body.light{--bg:#f2f7f1;--card:#fff;" in source
+for token in ("--accent-info:", "--accent-cyan:", "--accent-violet:", "--accent-coral:", "--accent-amber:"):
+    assert token in source, f"missing semantic accent token: {token}"
+for selector in ('nav button[data-t="themes"] .nav-icon', '#debugToggle svg', '.debug-panel:nth-child(4)'):
+    assert selector in source, f"missing accent application: {selector}"
+
 # The page is one embedded JS program; ask Node to validate its syntax.
 script = source.split("<script>", 1)[1].split("</script>", 1)[0]
 node = shutil.which("node")
