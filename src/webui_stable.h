@@ -123,9 +123,9 @@ button.btn:disabled{filter:saturate(.35)}
 .stat-card .sub{display:block;margin-top:5px;color:var(--mut);font-size:12px}
 .bar>div{will-change:width}
 @media(max-width:600px){.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.status-pill{white-space:normal;text-align:center}}
-/* UI refresh: unified slate-and-teal palette, icon navigation and clearer diagnostics. */
-:root{--bg:#101a25;--card:#172536;--surface2:#1c2d40;--field:#0e1a27;--fg:#edf4fb;--mut:#a2b3c5;--bd:#304459;--acc:#5bd4b5;--acc2:#78e0c5;--red:#f0787d;--warn:#efc36b;--nav:rgba(14,24,36,.97);--shadow:0 12px 30px rgba(0,0,0,.18);--focus:rgba(91,212,181,.25)}
-body.light{--bg:#f2f6fa;--card:#fff;--surface2:#eaf1f7;--field:#f9fbfd;--fg:#17283a;--mut:#52667b;--bd:#d6e1eb;--acc:#087f69;--acc2:#087f69;--red:#b42336;--warn:#885b11;--nav:rgba(242,246,250,.97);--shadow:0 8px 24px rgba(22,48,72,.07);--focus:rgba(8,127,105,.18)}
+/* UI refinement: preserve the original SmallTV green palette; tune only contrast and surfaces. */
+:root{--bg:#101611;--card:#19221a;--surface2:#1d281f;--field:#0b100c;--fg:#edf4ed;--mut:#9eaa9f;--bd:#2f3d31;--acc:#72c77c;--acc2:#a0d9a5;--red:#ed7373;--warn:#e3b341;--nav:rgba(14,20,15,.97);--shadow:0 12px 30px rgba(0,0,0,.18);--focus:rgba(114,199,124,.25)}
+body.light{--bg:#f2f7f1;--card:#fff;--surface2:#f5f9f4;--field:#f8fbf8;--fg:#1b2b20;--mut:#59695d;--bd:#d6e3d7;--acc:#338b4f;--acc2:#347b50;--red:#bd3f43;--warn:#80560f;--nav:rgba(242,247,241,.97);--shadow:0 8px 24px rgba(28,66,36,.07);--focus:rgba(51,139,79,.18)}
 nav{background:var(--nav);border-bottom-color:var(--bd)}
 nav button{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;min-height:44px}
 nav button.active{background:var(--surface2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--bd)}
@@ -133,22 +133,22 @@ nav button:hover{background:var(--surface2)}
 .nav-icon,.utility-btn svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .utility-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 11px;background:var(--surface2);border:1px solid var(--bd);color:var(--fg);font-weight:600}
 .utility-btn:hover{border-color:var(--acc);color:var(--acc2)}
-header .dot{box-shadow:0 0 0 3px rgba(91,212,181,.12)}header .dot.ok{background:var(--acc)}
+header .dot{box-shadow:0 0 0 3px rgba(114,199,124,.12)}header .dot.ok{background:var(--acc)}
 .stat-card{background:var(--surface2);border-color:var(--bd)}.stat-card .label{letter-spacing:.06em}
-button.btn{background:var(--acc);color:#07221b}
+button.btn{background:var(--acc);color:#04130a}
 button.btn.sec{background:var(--surface2);color:var(--fg);border:1px solid var(--bd)}
 button.btn.sec:hover:not(:disabled){border-color:var(--acc);color:var(--acc2)}
 button.btn.danger{background:var(--red);color:#2a0b10}body.light button.btn.danger{background:var(--red);color:#fff}
 body.light button.btn:not(.sec):not(.danger){color:#fff}
-.page-intro .eyebrow,.welcome .eyebrow{color:var(--acc2)}.chip{background:var(--acc);color:#09271f}.bar>div{background:var(--acc)}
-.status-pill.ok{color:var(--acc2);border-color:rgba(91,212,181,.38);background:rgba(91,212,181,.09)}
-body.light .status-pill.ok{color:#087f69;border-color:rgba(8,127,105,.28);background:rgba(8,127,105,.08)}
-.status-pill.warn{color:var(--warn);border-color:rgba(239,195,107,.38);background:rgba(239,195,107,.08)}
-body.light .status-pill.warn{color:#80560f;border-color:rgba(136,91,17,.25);background:rgba(239,195,107,.17)}
-.status-pill.bad{color:var(--red);border-color:var(--red);background:rgba(240,120,125,.08)}
+.page-intro .eyebrow,.welcome .eyebrow{color:var(--acc2)}.chip{background:var(--acc);color:#102315}.bar>div{background:var(--acc)}
+.status-pill.ok{color:var(--acc2);border-color:rgba(114,199,124,.38);background:rgba(114,199,124,.09)}
+body.light .status-pill.ok{color:#276b3b;border-color:rgba(51,139,79,.28);background:rgba(51,139,79,.08)}
+.status-pill.warn{color:var(--warn);border-color:rgba(227,179,65,.38);background:rgba(227,179,65,.08)}
+body.light .status-pill.warn{color:#80560f;border-color:rgba(128,86,15,.25);background:rgba(227,179,65,.17)}
+.status-pill.bad{color:var(--red);border-color:var(--red);background:rgba(237,115,115,.08)}
 header .spacer{min-width:8px}
 dialog#debugDialog{width:min(760px,calc(100vw - 28px));max-width:760px;max-height:88vh;overflow:auto;padding:22px}
-dialog#debugDialog::backdrop{background:rgba(4,10,17,.64);backdrop-filter:blur(3px)}
+dialog#debugDialog::backdrop{background:rgba(4,10,5,.64);backdrop-filter:blur(3px)}
 .debug-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .debug-head .eyebrow{margin:0 0 5px;color:var(--acc2);font-size:11px;font-weight:700;letter-spacing:.12em}
 .debug-head h2{margin:0;color:var(--fg);font-size:24px;letter-spacing:-.03em;text-transform:none}
