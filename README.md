@@ -187,7 +187,7 @@ python tools/pack_stheme.py examples/open-meteo/theme.json --check examples/open
 
 GitHub Actions runs the regression checks and builds the firmware, display
 check and loader on pushes to `main` and `stable-image`. Version tags named
-`v*` publish the main firmware, loader and demo theme as release assets.
+`v*` publish exactly two binary assets: the main firmware and the first-install loader. The Open-Meteo `.stheme` remains a source example in `examples/` and is not attached to releases.
 
 ## Project notes
 
