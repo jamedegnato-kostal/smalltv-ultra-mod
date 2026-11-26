@@ -1401,7 +1401,7 @@ function stopPlaybackForEdit() {
       playbackState.playing = false;
       playbackState.current = -1;
       playbackBusy = false;
-      renderPlaybackControls();
+      renderPlaylist();
       toast("Wiedergabe wurde für die Bearbeitung automatisch gestoppt.");
       return true;
     })
@@ -1631,7 +1631,7 @@ function renderPlaylist() {
           return;
         }
         item.seconds = value;
-        renderPlaybackControls();
+        renderPlaylist();
       });
     });
     var unit = document.createElement("span");
