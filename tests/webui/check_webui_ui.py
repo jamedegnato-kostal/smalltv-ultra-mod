@@ -48,12 +48,26 @@ for token in (
     'function startPlayback()',
     'if (playlistIsDirty())',
     'savePlaylist().then(function(saved)',
-    'Die Playlist ist während der Wiedergabe gesperrt',
+    'function stopPlaybackForEdit()',
+    'function preparePlaylistEdit()',
+    'return api("/api/playback/stop", {method:"POST"})',
+    'Wiedergabe wurde für die Bearbeitung automatisch gestoppt.',
+    'Bei der nächsten Bearbeitung wird die Wiedergabe automatisch gestoppt.',
+    'return stopPlaybackForEdit().then(function(stopped)',
+    'function savePlaylist()',
+    'return stopped ? savePlaylist() : false;',
     'function movePlaylistItem(from,to)',
     'function clearPlaylist()',
     'aria-label="Nächstes Element"',
 ):
     assert token in source, f"missing playback control improvement: {token}"
+# Editing controls remain usable during playback; the UI stops playback before applying edits.
+assert 'return playbackBusy || playbackLoading || playbackSavedSignature === "";' in source
+assert '$("playlistSaveBtn").disabled = busy || !dirty;' in source
+assert '$("playlistClearBtn").disabled = busy || count === 0;' in source
+assert 'Stoppe sie, um Inhalte zu ändern' not in source
+assert 'Stoppe zuerst die Wiedergabe, bevor du die Playlist speicherst.' not in source
+
 # Mobile reordering remains possible through explicit move buttons, even without drag-and-drop.
 assert 'aria-label",action[2] + ": " + item.id' in source
 assert '@media(max-width:700px)' in source and '.playlist-item-actions' in source
