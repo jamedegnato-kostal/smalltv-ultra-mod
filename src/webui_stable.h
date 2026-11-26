@@ -535,14 +535,14 @@ nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
    <div class="playback-settings-grid">
     <div class="playback-setting">
      <label for="playlistMode">Reihenfolge</label>
-     <select id="playlistMode" onchange="renderPlaybackControls()" disabled>
+     <select id="playlistMode" onchange="preparePlaylistEdit()" disabled>
       <option value="sequence">Eigene Reihenfolge</option>
       <option value="shuffle">Zufällig mischen</option>
      </select>
      <small>Bei Zufall wird jedes Element einmal pro Runde gezeigt. Der letzte Eintrag einer Runde wird nicht direkt wiederholt.</small>
     </div>
     <div class="playback-setting playback-autostart">
-     <div class="chk"><input id="playlistAutoStart" type="checkbox" onchange="renderPlaybackControls()" disabled><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
+     <div class="chk"><input id="playlistAutoStart" type="checkbox" onchange="preparePlaylistEdit()" disabled><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
      <small>Die Wiedergabe beginnt nach dem Hochfahren, sofern die Playlist mindestens ein Element enthält.</small>
     </div>
    </div>
@@ -1389,7 +1389,34 @@ function playlistIsDirty() {
   return playbackSavedSignature !== "" && playlistSignature() !== playbackSavedSignature;
 }
 function playbackIsLocked() {
-  return playbackState.playing || playbackBusy || playbackLoading || playbackSavedSignature === "";
+  return playbackBusy || playbackLoading || playbackSavedSignature === "";
+}
+function stopPlaybackForEdit() {
+  if (!playbackState.playing) return Promise.resolve(!playbackBusy && !playbackLoading);
+  if (playbackBusy || playbackLoading) return Promise.resolve(false);
+  playbackBusy = true;
+  renderPlaybackControls();
+  return api("/api/playback/stop", {method:"POST"})
+    .then(function() {
+      playbackState.playing = false;
+      playbackState.current = -1;
+      playbackBusy = false;
+      renderPlaybackControls();
+      toast("Wiedergabe wurde für die Bearbeitung automatisch gestoppt.");
+      return true;
+    })
+    .catch(function(error) {
+      playbackBusy = false;
+      renderPlaybackControls();
+      toast("Wiedergabe konnte nicht automatisch gestoppt werden: " + error.message);
+      return false;
+    });
+}
+function preparePlaylistEdit() {
+  return stopPlaybackForEdit().then(function(stopped) {
+    if (stopped) renderPlaybackControls();
+    return stopped;
+  });
 }
 function refreshPlayback() {
   if (playlistIsDirty() && !confirm("Nicht gespeicherte Änderungen verwerfen und die gespeicherte Playlist neu laden?")) return;
@@ -1482,7 +1509,7 @@ function renderPlaybackControls() {
   $("playbackAutoValue").textContent = $("playlistAutoStart").checked ? "Ein" : "Aus";
 
   $("playlistStatus").textContent = locked
-    ? "Die Anzeige läuft. Zum Bearbeiten zuerst stoppen."
+    ? "Die Anzeige läuft. Bei einer Bearbeitung wird automatisch gestoppt."
     : (dirty ? "Es gibt nicht gespeicherte Änderungen." : (count ? "Alle Änderungen sind gespeichert." : "Die Playlist ist leer."));
   $("playlistSavedLabel").textContent = playbackBusy ? "Wird gespeichert …" : (dirty ? "Nicht gespeicherte Änderungen" : (ready ? "Alles gespeichert" : "Lade gespeicherte Playlist …"));
   $("playlistCountBadge").textContent = count + " / 32";
@@ -1492,20 +1519,20 @@ function renderPlaybackControls() {
   $("playbackStopBtn").disabled = busy || !locked;
   $("playbackPreviousBtn").disabled = busy || !locked;
   $("playbackNextBtn").disabled = busy || !locked;
-  $("playlistSaveBtn").disabled = busy || locked || !dirty;
+  $("playlistSaveBtn").disabled = busy || !dirty;
   $("playlistSaveBtn").textContent = dirty ? "Änderungen speichern" : "Gespeichert";
-  $("playlistClearBtn").disabled = busy || locked || count === 0;
+  $("playlistClearBtn").disabled = busy || count === 0;
   $("playlistRefreshBtn").disabled = busy;
 
-  $("playlistMode").disabled = busy || locked;
-  $("playlistAutoStart").disabled = busy || locked;
-  $("playlistPhotoSelect").disabled = busy || locked || $("playlistPhotoSelect").options.length <= 1;
-  $("playlistThemeSelect").disabled = busy || locked || $("playlistThemeSelect").options.length <= 1;
-  $("playlistAddPhotoBtn").disabled = busy || locked || !$("playlistPhotoSelect").value || count >= 32;
-  $("playlistAddThemeBtn").disabled = busy || locked || !$("playlistThemeSelect").value || count >= 32;
+  $("playlistMode").disabled = busy;
+  $("playlistAutoStart").disabled = busy;
+  $("playlistPhotoSelect").disabled = busy || $("playlistPhotoSelect").options.length <= 1;
+  $("playlistThemeSelect").disabled = busy || $("playlistThemeSelect").options.length <= 1;
+  $("playlistAddPhotoBtn").disabled = busy || !$("playlistPhotoSelect").value || count >= 32;
+  $("playlistAddThemeBtn").disabled = busy || !$("playlistThemeSelect").value || count >= 32;
 
   $("playlistEditHint").textContent = locked
-    ? "Die Playlist ist während der Wiedergabe gesperrt. Stoppe sie, um Inhalte zu ändern."
+    ? "Bei der nächsten Bearbeitung wird die Wiedergabe automatisch gestoppt."
     : (dirty ? "Deine Änderungen sind noch nicht gespeichert. Du kannst sie speichern oder direkt mit „Speichern & starten“ übernehmen." : "Pfeile oder Drag-and-drop ändern die Reihenfolge. Die Dauer gilt nur für den jeweiligen Eintrag.");
 }
 
@@ -1526,7 +1553,7 @@ function renderPlaylist() {
     return;
   }
 
-  var locked = playbackState.playing || playbackBusy || playbackLoading;
+  var locked = playbackBusy || playbackLoading;
   var dirty = playlistIsDirty();
   playlistDraft.forEach(function(item, index) {
     var row = document.createElement("div");
@@ -1598,8 +1625,14 @@ function renderPlaylist() {
         durationInput.value = String(item.seconds);
         return;
       }
-      item.seconds = value;
-      renderPlaybackControls();
+      stopPlaybackForEdit().then(function(stopped) {
+        if (!stopped) {
+          durationInput.value = String(item.seconds);
+          return;
+        }
+        item.seconds = value;
+        renderPlaybackControls();
+      });
     });
     var unit = document.createElement("span");
     unit.textContent = "Sek.";
@@ -1640,43 +1673,60 @@ function renderPlaylist() {
 }
 
 function movePlaylistItem(from,to) {
-  if (playbackIsLocked() || from < 0 || from >= playlistDraft.length || to < 0 || to >= playlistDraft.length || from === to) return;
-  var moved = playlistDraft.splice(from,1)[0];
-  playlistDraft.splice(to,0,moved);
-  renderPlaylist();
+  if (playbackIsLocked() || from < 0 || from >= playlistDraft.length || to < 0 || to >= playlistDraft.length || from === to) return Promise.resolve(false);
+  return stopPlaybackForEdit().then(function(stopped) {
+    if (!stopped) return false;
+    var moved = playlistDraft.splice(from,1)[0];
+    playlistDraft.splice(to,0,moved);
+    renderPlaylist();
+    return true;
+  });
 }
 function removePlaylistItem(index) {
-  if (playbackIsLocked() || index < 0 || index >= playlistDraft.length) return;
-  playlistDraft.splice(index,1);
-  renderPlaylist();
+  if (playbackIsLocked() || index < 0 || index >= playlistDraft.length) return Promise.resolve(false);
+  return stopPlaybackForEdit().then(function(stopped) {
+    if (!stopped) return false;
+    playlistDraft.splice(index,1);
+    renderPlaylist();
+    return true;
+  });
 }
 function clearPlaylist() {
-  if (playbackIsLocked() || !playlistDraft.length) return;
-  if (!confirm("Alle " + playlistDraft.length + " Einträge aus der Playlist entfernen? Die Änderung wird erst nach dem Speichern übernommen.")) return;
-  playlistDraft = [];
-  renderPlaylist();
+  if (playbackIsLocked() || !playlistDraft.length) return Promise.resolve(false);
+  if (!confirm("Alle " + playlistDraft.length + " Einträge aus der Playlist entfernen? Die Änderung wird erst nach dem Speichern übernommen.")) return Promise.resolve(false);
+  return stopPlaybackForEdit().then(function(stopped) {
+    if (!stopped) return false;
+    playlistDraft = [];
+    renderPlaylist();
+    return true;
+  });
 }
 function addPlaylistItem(type) {
-  if (playbackIsLocked()) return;
+  if (playbackIsLocked()) return Promise.resolve(false);
   var select = type === "photo" ? $("playlistPhotoSelect") : $("playlistThemeSelect");
   var id = select.value;
   if (!id) {
     toast(type === "photo" ? "Bitte zuerst ein Foto auswählen." : "Bitte zuerst ein Theme auswählen.");
-    return;
+    return Promise.resolve(false);
   }
-  if (playlistDraft.length >= 32) { toast("Die Playlist kann maximal 32 Elemente enthalten."); return; }
+  if (playlistDraft.length >= 32) { toast("Die Playlist kann maximal 32 Elemente enthalten."); return Promise.resolve(false); }
   if (playlistDraft.some(function(item) { return item.type === type && item.id === id; })) {
     toast("Dieses Element ist bereits in der Playlist.");
-    return;
+    return Promise.resolve(false);
   }
-  playlistDraft.push({type:type,id:id,seconds:type === "photo" ? 15 : 60});
-  select.value = "";
-  renderPlaylist();
+  return stopPlaybackForEdit().then(function(stopped) {
+    if (!stopped) return false;
+    playlistDraft.push({type:type,id:id,seconds:type === "photo" ? 15 : 60});
+    select.value = "";
+    renderPlaylist();
+    return true;
+  });
 }
 function savePlaylist() {
   if (playbackState.playing) {
-    toast("Stoppe zuerst die Wiedergabe, bevor du die Playlist speicherst.");
-    return Promise.resolve(false);
+    return stopPlaybackForEdit().then(function(stopped) {
+      return stopped ? savePlaylist() : false;
+    });
   }
   if (playbackBusy || playbackLoading) return Promise.resolve(false);
   var mode = $("playlistMode").value === "shuffle" ? "shuffle" : "sequence";
