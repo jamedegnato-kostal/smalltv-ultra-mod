@@ -139,6 +139,7 @@ button.btn{background:var(--acc);color:#07221b}
 button.btn.sec{background:var(--surface2);color:var(--fg);border:1px solid var(--bd)}
 button.btn.sec:hover:not(:disabled){border-color:var(--acc);color:var(--acc2)}
 button.btn.danger{background:var(--red);color:#2a0b10}body.light button.btn.danger{background:var(--red);color:#fff}
+body.light button.btn:not(.sec):not(.danger){color:#fff}
 .page-intro .eyebrow,.welcome .eyebrow{color:var(--acc2)}.chip{background:var(--acc);color:#09271f}.bar>div{background:var(--acc)}
 .status-pill.ok{color:var(--acc2);border-color:rgba(91,212,181,.38);background:rgba(91,212,181,.09)}
 body.light .status-pill.ok{color:#087f69;border-color:rgba(8,127,105,.28);background:rgba(8,127,105,.08)}
@@ -146,7 +147,7 @@ body.light .status-pill.ok{color:#087f69;border-color:rgba(8,127,105,.28);backgr
 body.light .status-pill.warn{color:#80560f;border-color:rgba(136,91,17,.25);background:rgba(239,195,107,.17)}
 .status-pill.bad{color:var(--red);border-color:var(--red);background:rgba(240,120,125,.08)}
 header .spacer{min-width:8px}
-dialog#debugDialog{max-width:760px;padding:22px}
+dialog#debugDialog{width:min(760px,calc(100vw - 28px));max-width:760px;max-height:88vh;overflow:auto;padding:22px}
 dialog#debugDialog::backdrop{background:rgba(4,10,17,.64);backdrop-filter:blur(3px)}
 .debug-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .debug-head .eyebrow{margin:0 0 5px;color:var(--acc2);font-size:11px;font-weight:700;letter-spacing:.12em}
