@@ -222,6 +222,105 @@ nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
 .debug-panel:nth-child(4){--panel-accent:var(--accent-amber)}
 .debug-panel h3{color:var(--panel-accent,var(--fg))}
 
+
+/* Playback controls: compact overview, clear run state and touch-friendly queue editing. */
+.playback-hero{
+ display:grid;gap:18px;padding:20px;margin:0 0 16px;border:1px solid var(--bd);
+ border-radius:16px;background:linear-gradient(145deg,var(--card),var(--surface2));box-shadow:var(--shadow)
+}
+.playback-hero[data-state="playing"]{border-color:var(--acc);box-shadow:0 0 0 1px rgba(114,199,124,.12),var(--shadow)}
+.playback-hero[data-state="dirty"]{border-color:var(--warn)}
+.playback-hero[data-state="error"]{border-color:var(--red)}
+.playback-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.playback-save-state{color:var(--mut);font-size:12px}
+.playback-now p{margin:0 0 5px;color:var(--acc2);font-size:10px;font-weight:750;letter-spacing:.13em}
+.playback-now h3{margin:0;color:var(--fg);font-size:clamp(20px,3vw,26px);line-height:1.25;overflow-wrap:anywhere}
+.playback-now>span{display:block;margin-top:5px;color:var(--mut);font-size:13px}
+.playback-summary{display:flex;gap:0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:10px 0}
+.playback-summary>div{display:flex;flex:1;flex-direction:column;gap:2px;padding:0 14px;border-right:1px solid var(--bd)}
+.playback-summary>div:first-child{padding-left:0}
+.playback-summary>div:last-child{border:0}
+.playback-summary strong{font-size:17px;color:var(--fg)}
+.playback-summary span{font-size:11px;color:var(--mut)}
+.playback-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.playback-actions .btn{min-height:44px}
+.playback-action-divider{height:26px;width:1px;background:var(--bd);margin:0 3px}
+.playback-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.playback-setting{min-width:0}
+.playback-setting>small{display:block;margin-top:7px;color:var(--mut);font-size:12px;line-height:1.5}
+.playback-autostart{padding:12px 14px;border:1px solid var(--bd);border-radius:12px;background:var(--surface2)}
+.playback-autostart .chk{margin:0;min-height:42px;align-items:center}
+.playback-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.playback-card-heading h2{margin:0 0 3px}
+.playback-card-heading p{margin:0;color:var(--mut);font-size:12px}
+.playback-limit{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:3px 10px;border:1px solid var(--bd);border-radius:999px;color:var(--mut);font-size:11px;font-weight:650;white-space:nowrap}
+.playlist-add-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.playlist-add-panel{min-width:0;padding:14px;border:1px solid var(--bd);border-radius:13px;background:var(--surface2)}
+.playlist-add-type{display:inline-block;margin-bottom:3px;font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--accent-cyan)}
+.playlist-add-panel.theme .playlist-add-type{color:var(--accent-violet)}
+.playlist-add-panel.photo .playlist-add-type{color:var(--accent-coral)}
+.playlist-add-panel label{margin-top:5px}
+.playlist-add-panel .btn{width:100%;margin-top:9px;min-height:42px}
+.playlist-heading{align-items:center}
+.playlist-heading-actions{display:flex;align-items:center;gap:7px}
+.playlist-heading-actions .btn{min-height:36px;padding:7px 10px;font-size:12px}
+.playlist-entries{display:grid;gap:8px}
+.playlist-empty{padding:26px 16px;text-align:center;border:1px dashed var(--bd);border-radius:13px;background:var(--surface2)}
+.playlist-empty strong{display:block;color:var(--fg);font-size:14px}
+.playlist-empty p{margin:5px 0 0;color:var(--mut);font-size:12px}
+.playlist-item{
+ display:grid;grid-template-columns:38px minmax(0,1fr) minmax(100px,128px) auto;
+ align-items:center;gap:12px;padding:12px;border:1px solid var(--bd);border-radius:13px;
+ background:var(--surface2);transition:border-color .15s,background .15s,opacity .15s
+}
+.playlist-item[draggable="true"]{cursor:grab}
+.playlist-item[draggable="true"]:active{cursor:grabbing}
+.playlist-item.dragging{opacity:.45}
+.playlist-item.is-current{border-color:var(--acc);box-shadow:inset 3px 0 var(--acc)}
+.playlist-order{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--card);color:var(--mut);font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
+.playlist-item.is-current .playlist-order{background:var(--acc);color:#102315}
+.playlist-meta{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere}
+.playlist-kind{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--accent-coral)}
+.playlist-kind.theme{color:var(--accent-violet)}
+.playlist-meta strong{max-width:100%;color:var(--fg);font-size:13px;overflow-wrap:anywhere}
+.playlist-meta small{color:var(--mut);font-size:11px}
+.playlist-duration{width:auto;min-width:0;flex:0 0 auto}
+.playlist-duration label{margin:0 0 4px;font-size:10px;white-space:nowrap}
+.playlist-duration-field{display:flex;align-items:center;gap:6px}
+.playlist-duration-field input{width:76px;min-width:0;min-height:40px;padding:7px 8px;font-size:14px;font-variant-numeric:tabular-nums}
+.playlist-duration-field span{color:var(--mut);font-size:11px}
+.playlist-item-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}
+.playlist-item-actions .btn{min-width:42px;min-height:42px;padding:7px 9px;font-size:13px}
+.playlist-item-actions .playlist-remove{min-width:82px;font-size:11px}
+.playlist-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)}
+.playlist-saved-label{color:var(--mut);font-size:12px}
+.playlist-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.playlist-footer-actions .btn{min-height:42px}
+.playback-hero button:disabled,.playlist-footer button:disabled,.playlist-item button:disabled{cursor:not-allowed}
+@media(max-width:700px){
+ .playback-settings-grid{grid-template-columns:1fr;gap:12px}
+ .playback-hero{padding:16px;gap:15px}
+ .playlist-item{grid-template-columns:34px minmax(0,1fr) auto;gap:9px}
+ .playlist-duration{grid-column:2;grid-row:2}
+ .playlist-item-actions{grid-column:3;grid-row:1 / span 2;flex-direction:column;align-items:stretch}
+ .playlist-item-actions .btn{min-height:40px}
+ .playlist-item-actions .playlist-remove{min-width:42px;font-size:0}
+ .playlist-item-actions .playlist-remove::after{content:"×";font-size:19px}
+ .playlist-duration-field input{width:82px}
+}
+@media(max-width:480px){
+ .playback-summary>div{padding:0 9px}
+ .playback-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .playback-actions .btn{width:100%}
+ .playback-action-divider{display:none}
+ .playlist-add-grid{grid-template-columns:1fr}
+ .playlist-heading{align-items:flex-start}
+ .playlist-heading-actions{flex-wrap:wrap;justify-content:flex-end}
+ .playlist-footer{align-items:flex-start}
+ .playlist-footer-actions{width:100%}
+ .playlist-footer-actions .btn{flex:1}
+}
+
 </style>
 </head>
 <body>
@@ -405,35 +504,86 @@ nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
  </section>
 
  <section id="playback" class="tab">
-  <div class="page-intro"><p class="eyebrow">AUTOMATISCHE ANZEIGE</p><h2>Playlist</h2><p>Fotos und Themes in einer gemeinsamen Liste kombinieren, sortieren und zeitgesteuert anzeigen.</p></div>
-  <div class="card">
-   <h2>Abspielmodus</h2>
-   <label for="playlistMode">Reihenfolge</label>
-   <select id="playlistMode"><option value="sequence">Eigene Reihenfolge</option><option value="shuffle">Zufällig mischen</option></select>
-   <div class="chk"><input id="playlistAutoStart" type="checkbox"><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
-   <small class="hint">Shuffle mischt Fotos und Themes gemeinsam. Jedes Element kommt einmal pro Runde; zwischen zwei Runden wird eine direkte Wiederholung vermieden.</small>
-  </div>
-  <div class="card">
-   <h2>Elemente hinzufügen</h2>
-   <div class="row">
-    <div><label for="playlistPhotoSelect">Gespeichertes Foto</label><select id="playlistPhotoSelect"><option value="">Fotos werden geladen …</option></select><button class="btn sec" type="button" style="margin-top:8px;width:100%" onclick="addPlaylistItem('photo')">Foto hinzufügen</button></div>
-    <div><label for="playlistThemeSelect">Installiertes Theme</label><select id="playlistThemeSelect"><option value="">Themes werden geladen …</option></select><button class="btn sec" type="button" style="margin-top:8px;width:100%" onclick="addPlaylistItem('theme')">Theme hinzufügen</button></div>
+  <div class="page-intro"><p class="eyebrow">AUTOMATISCHE ANZEIGE</p><h2>Wiedergabe</h2><p>Fotos und Themes mischen, die Reihenfolge festlegen und die Anzeige direkt steuern.</p></div>
+
+  <div class="playback-hero" id="playbackHero" data-state="stopped">
+   <div class="playback-hero-top">
+    <span id="playbackStateBadge" class="status-pill">Status wird geladen</span>
+    <span id="playlistStatus" class="playback-save-state" role="status" aria-live="polite">Playlist wird geladen …</span>
+   </div>
+   <div class="playback-now">
+    <p>JETZT AUF DEM DISPLAY</p>
+    <h3 id="playbackNowTitle">Wird geladen …</h3>
+    <span id="playbackNowMeta">Verbindungsstatus wird abgerufen.</span>
+   </div>
+   <div class="playback-summary">
+    <div><strong id="playbackCount">—</strong><span>Elemente</span></div>
+    <div><strong id="playbackModeValue">—</strong><span>Reihenfolge</span></div>
+    <div><strong id="playbackAutoValue">—</strong><span>Autostart</span></div>
+   </div>
+   <div class="playback-actions">
+    <button class="btn" id="playbackStartBtn" type="button" onclick="startPlayback()" disabled>Starten</button>
+    <button class="btn danger" id="playbackStopBtn" type="button" onclick="playbackAction('stop')" disabled>Stoppen</button>
+    <span class="playback-action-divider" aria-hidden="true"></span>
+    <button class="btn sec" id="playbackPreviousBtn" type="button" onclick="playbackAction('previous')" aria-label="Vorheriges Element" disabled>Zurück</button>
+    <button class="btn sec" id="playbackNextBtn" type="button" onclick="playbackAction('next')" aria-label="Nächstes Element" disabled>Weiter</button>
    </div>
   </div>
+
   <div class="card">
-   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Deine Playlist</h2><button class="btn sec" type="button" onclick="loadPlayback()">Aktualisieren</button></div>
-   <div id="playlistStatus" class="muted" role="status">Wiedergabeliste wird geladen …</div>
-   <div id="playlistEntries" aria-live="polite" style="margin-top:10px"></div>
-   <div class="row" style="margin-top:14px;flex-wrap:wrap">
-    <button class="btn" type="button" onclick="savePlaylist()">Playlist speichern</button>
-    <button class="btn sec" type="button" onclick="playbackAction('start')">Start</button>
-    <button class="btn sec" type="button" onclick="playbackAction('stop')">Stop</button>
+   <h2>Ablauf einstellen</h2>
+   <div class="playback-settings-grid">
+    <div class="playback-setting">
+     <label for="playlistMode">Reihenfolge</label>
+     <select id="playlistMode" onchange="renderPlaybackControls()" disabled>
+      <option value="sequence">Eigene Reihenfolge</option>
+      <option value="shuffle">Zufällig mischen</option>
+     </select>
+     <small>Bei Zufall wird jedes Element einmal pro Runde gezeigt. Der letzte Eintrag einer Runde wird nicht direkt wiederholt.</small>
+    </div>
+    <div class="playback-setting playback-autostart">
+     <div class="chk"><input id="playlistAutoStart" type="checkbox" onchange="renderPlaybackControls()" disabled><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
+     <small>Die Wiedergabe beginnt nach dem Hochfahren, sofern die Playlist mindestens ein Element enthält.</small>
+    </div>
    </div>
-   <div class="row" style="margin-top:9px;flex-wrap:wrap">
-    <button class="btn sec" type="button" onclick="playbackAction('previous')">Zurück</button>
-    <button class="btn sec" type="button" onclick="playbackAction('next')">Weiter</button>
+  </div>
+
+  <div class="card">
+   <div class="playback-card-heading"><div><h2>Inhalte hinzufügen</h2><p>Gespeicherte Fotos und installierte Themes auswählen.</p></div><span class="playback-limit">Max. 32</span></div>
+   <div class="playlist-add-grid">
+    <div class="playlist-add-panel photo">
+     <span class="playlist-add-type">FOTO</span>
+     <label for="playlistPhotoSelect">Gespeichertes Foto</label>
+     <select id="playlistPhotoSelect" onchange="renderPlaybackControls()" disabled><option value="">Fotos werden geladen …</option></select>
+     <button class="btn sec" id="playlistAddPhotoBtn" type="button" onclick="addPlaylistItem('photo')" disabled>+ Foto hinzufügen</button>
+    </div>
+    <div class="playlist-add-panel theme">
+     <span class="playlist-add-type">THEME</span>
+     <label for="playlistThemeSelect">Installiertes Theme</label>
+     <select id="playlistThemeSelect" onchange="renderPlaybackControls()" disabled><option value="">Themes werden geladen …</option></select>
+     <button class="btn sec" id="playlistAddThemeBtn" type="button" onclick="addPlaylistItem('theme')" disabled>+ Theme hinzufügen</button>
+    </div>
    </div>
-   <small class="hint">Die Dauer kann für jedes Foto und jedes Theme einzeln von 5 Sekunden bis 60 Minuten eingestellt werden. Mit den Pfeiltasten oder per Drag-and-drop sortieren. Maximal 32 Einträge (16 Fotos und 16 Themes).</small>
+   <small class="hint">Ein Eintrag kann nur einmal vorkommen. Themes mit zurückgestellter Prüfung werden beim Start vollständig geprüft.</small>
+  </div>
+
+  <div class="card">
+   <div class="playback-card-heading playlist-heading">
+    <div><h2>Deine Playlist</h2><p id="playlistEditHint">Lege die Reihenfolge und Anzeigedauer deiner Inhalte fest.</p></div>
+    <div class="playlist-heading-actions">
+     <span id="playlistCountBadge" class="playback-limit">0 / 32</span>
+     <button class="btn sec" id="playlistRefreshBtn" type="button" onclick="refreshPlayback()">Neu laden</button>
+    </div>
+   </div>
+   <div id="playlistEntries" class="playlist-entries" aria-label="Playlist-Einträge"></div>
+   <div class="playlist-footer">
+    <span id="playlistSavedLabel" class="playlist-saved-label">Änderungen werden geprüft …</span>
+    <div class="playlist-footer-actions">
+     <button class="btn danger" id="playlistClearBtn" type="button" onclick="clearPlaylist()" disabled>Leeren</button>
+     <button class="btn" id="playlistSaveBtn" type="button" onclick="savePlaylist()" disabled>Änderungen speichern</button>
+    </div>
+   </div>
+   <small class="hint">Die Anzeigedauer lässt sich pro Eintrag zwischen 5 Sekunden und 60 Minuten einstellen. Zum Sortieren die Pfeile verwenden oder Einträge am Desktop per Drag-and-drop verschieben. Während der Wiedergabe ist die Bearbeitung gesperrt.</small>
   </div>
  </section>
 
@@ -1220,15 +1370,43 @@ function loadPhotos() {
 }
 var playlistDraft = [];
 var playbackDragIndex = -1;
+var playbackSavedSignature = "";
+var playbackLoading = false;
+var playbackBusy = false;
+var playbackState = {playing:false,current:-1,mode:"sequence",autoStart:false,entries:[]};
 
-function loadPlayback() {
-  Promise.all([api("/api/playback"), api("/api/photos"), api("/api/themes")]).then(function(results) {
+function playlistSignature() {
+  var values = [
+    $("playlistMode").value === "shuffle" ? "shuffle" : "sequence",
+    $("playlistAutoStart").checked ? "1" : "0"
+  ];
+  playlistDraft.forEach(function(item) {
+    values.push(item.type + "|" + item.id + "|" + Number(item.seconds));
+  });
+  return values.join("\n");
+}
+function playlistIsDirty() {
+  return playbackSavedSignature !== "" && playlistSignature() !== playbackSavedSignature;
+}
+function playbackIsLocked() {
+  return playbackState.playing || playbackBusy || playbackLoading || playbackSavedSignature === "";
+}
+function refreshPlayback() {
+  if (playlistIsDirty() && !confirm("Nicht gespeicherte Änderungen verwerfen und die gespeicherte Playlist neu laden?")) return;
+  loadPlayback(true);
+}
+function loadPlayback(force) {
+  if (playbackLoading || playbackBusy) return Promise.resolve(false);
+  var keepDraft = playlistIsDirty() && !force;
+  playbackLoading = true;
+  renderPlaybackControls();
+  $("playlistStatus").textContent = "Playlist und Inhalte werden geladen …";
+  return Promise.all([api("/api/playback"), api("/api/photos"), api("/api/themes")]).then(function(results) {
     var state = results[0];
     var photos = Array.isArray(results[1].photos) ? results[1].photos : [];
-    var themes = Array.isArray(results[2].themes) ? results[2].themes.filter(function(theme){
-      // An active theme prevents expensive validation of packages absent from
-      // the metadata index. Keep those packages selectable: playback stops the
-      // current renderer before ThemeRuntime performs the full validation.
+    var themes = Array.isArray(results[2].themes) ? results[2].themes.filter(function(theme) {
+      // A running theme defers package validation. It remains selectable and is
+      // validated after playback releases the current renderer.
       return theme.valid === true ||
         theme.error === "Deactivate active theme to validate this package";
     }) : [];
@@ -1236,137 +1414,271 @@ function loadPlayback() {
     var themeSelect = $("playlistThemeSelect");
     photoSelect.textContent = "";
     themeSelect.textContent = "";
-    photoSelect.appendChild(new Option(photos.length ? "Foto auswählen …" : "Keine Fotos vorhanden", ""));
-    themeSelect.appendChild(new Option(themes.length ? "Theme auswählen …" : "Keine gültigen Themes vorhanden", ""));
-    photos.forEach(function(photo){ photoSelect.appendChild(new Option(photo.name, photo.name)); });
-    themes.forEach(function(theme){
+    photoSelect.appendChild(new Option(photos.length ? "Foto auswählen …" : "Keine Fotos gespeichert", ""));
+    themeSelect.appendChild(new Option(themes.length ? "Theme auswählen …" : "Keine Themes installiert", ""));
+    photos.forEach(function(photo) {
+      photoSelect.appendChild(new Option(photo.name, photo.name));
+    });
+    themes.forEach(function(theme) {
       var label = theme.name || theme.id;
       if (!theme.valid) label += " (Prüfung beim Start)";
       themeSelect.appendChild(new Option(label, theme.id));
     });
-    $("playlistMode").value = state.mode || "sequence";
-    $("playlistAutoStart").checked = !!state.autoStart;
-    playlistDraft = (state.entries || []).map(function(item) {
-      return {type:item.type, id:item.id, seconds:Number(item.seconds)|| (item.type === "photo" ? 15 : 60)};
-    });
+
+    playbackState = {
+      playing:!!state.playing,
+      current:Number(state.current),
+      mode:state.mode === "shuffle" ? "shuffle" : "sequence",
+      autoStart:!!state.autoStart,
+      entries:(state.entries || []).map(function(item) {
+        return {type:item.type,id:item.id,seconds:Number(item.seconds)|| (item.type === "photo" ? 15 : 60)};
+      })
+    };
+    if (!keepDraft) {
+      $("playlistMode").value = playbackState.mode;
+      $("playlistAutoStart").checked = playbackState.autoStart;
+      playlistDraft = playbackState.entries.map(function(item) {
+        return {type:item.type,id:item.id,seconds:item.seconds};
+      });
+      playbackSavedSignature = playlistSignature();
+    }
     renderPlaylist();
-    var current = Number(state.current);
-    var currentEntry = current >= 0 ? playlistDraft[current] : null;
-    $("playlistStatus").textContent = state.playing
-      ? "Wiedergabe aktiv · " + (currentEntry ? currentEntry.id : "Element wird geladen") + " · " + playlistDraft.length + " Elemente"
-      : "Wiedergabe gestoppt · " + playlistDraft.length + " Elemente gespeichert";
+    return true;
   }).catch(function(error) {
     $("playlistStatus").textContent = "Playlist konnte nicht geladen werden: " + error.message;
+    $("playlistStateBadge").textContent = "Verbindung fehlgeschlagen";
+    $("playbackHero").setAttribute("data-state","error");
+    toast("Wiedergabedaten konnten nicht geladen werden.");
+    return false;
+  }).then(function(ok) {
+    playbackLoading = false;
+    renderPlaybackControls();
+    return ok;
   });
+}
+
+function renderPlaybackControls() {
+  var ready = playbackSavedSignature !== "";
+  var dirty = playlistIsDirty();
+  var locked = playbackState.playing;
+  var busy = playbackBusy || playbackLoading || !ready;
+  var count = playlistDraft.length;
+  var current = playbackState.current >= 0 ? playbackState.entries[playbackState.current] : null;
+  var badge = $("playbackStateBadge");
+  var hero = $("playbackHero");
+
+  hero.setAttribute("data-state", playbackState.playing ? "playing" : (dirty ? "dirty" : "stopped"));
+  badge.className = "status-pill" + (playbackState.playing ? " ok" : (dirty ? " warn" : ""));
+  badge.textContent = playbackBusy ? "Aktion läuft …" : (playbackLoading || !ready ? "Wird geladen …" : (locked ? "Wiedergabe läuft" : (dirty ? "Änderungen offen" : "Wiedergabe gestoppt")));
+
+  $("playbackNowTitle").textContent = playbackState.playing
+    ? (current ? current.id : "Element wird geladen …")
+    : (count ? "Bereit zum Start" : "Noch keine Inhalte");
+  $("playbackNowMeta").textContent = playbackState.playing
+    ? (current ? (current.type === "photo" ? "Foto" : "Theme") + " · Element " + (playbackState.current + 1) + " von " + playbackState.entries.length : "Das nächste Element wird vorbereitet.")
+    : (count ? "Die Playlist ist gespeichert und kann gestartet werden." : "Füge mindestens ein Foto oder Theme hinzu.");
+  $("playbackCount").textContent = String(count);
+  $("playbackModeValue").textContent = $("playlistMode").value === "shuffle" ? "Zufällig" : "Reihenfolge";
+  $("playbackAutoValue").textContent = $("playlistAutoStart").checked ? "Ein" : "Aus";
+
+  $("playlistStatus").textContent = locked
+    ? "Die Anzeige läuft. Zum Bearbeiten zuerst stoppen."
+    : (dirty ? "Es gibt nicht gespeicherte Änderungen." : (count ? "Alle Änderungen sind gespeichert." : "Die Playlist ist leer."));
+  $("playlistSavedLabel").textContent = playbackBusy ? "Wird gespeichert …" : (dirty ? "Nicht gespeicherte Änderungen" : (ready ? "Alles gespeichert" : "Lade gespeicherte Playlist …"));
+  $("playlistCountBadge").textContent = count + " / 32";
+
+  $("playbackStartBtn").textContent = dirty ? "Speichern & starten" : "Starten";
+  $("playbackStartBtn").disabled = busy || locked || count === 0;
+  $("playbackStopBtn").disabled = busy || !locked;
+  $("playbackPreviousBtn").disabled = busy || !locked;
+  $("playbackNextBtn").disabled = busy || !locked;
+  $("playlistSaveBtn").disabled = busy || locked || !dirty;
+  $("playlistSaveBtn").textContent = dirty ? "Änderungen speichern" : "Gespeichert";
+  $("playlistClearBtn").disabled = busy || locked || count === 0;
+  $("playlistRefreshBtn").disabled = busy;
+
+  $("playlistMode").disabled = busy || locked;
+  $("playlistAutoStart").disabled = busy || locked;
+  $("playlistPhotoSelect").disabled = busy || locked || $("playlistPhotoSelect").options.length <= 1;
+  $("playlistThemeSelect").disabled = busy || locked || $("playlistThemeSelect").options.length <= 1;
+  $("playlistAddPhotoBtn").disabled = busy || locked || !$("playlistPhotoSelect").value || count >= 32;
+  $("playlistAddThemeBtn").disabled = busy || locked || !$("playlistThemeSelect").value || count >= 32;
+
+  $("playlistEditHint").textContent = locked
+    ? "Die Playlist ist während der Wiedergabe gesperrt. Stoppe sie, um Inhalte zu ändern."
+    : (dirty ? "Deine Änderungen sind noch nicht gespeichert. Du kannst sie speichern oder direkt mit „Speichern & starten“ übernehmen." : "Pfeile oder Drag-and-drop ändern die Reihenfolge. Die Dauer gilt nur für den jeweiligen Eintrag.");
 }
 
 function renderPlaylist() {
   var list = $("playlistEntries");
   list.textContent = "";
   if (!playlistDraft.length) {
-    list.textContent = "Die Playlist ist noch leer. Füge oben Fotos und Themes hinzu.";
+    var empty = document.createElement("div");
+    empty.className = "playlist-empty";
+    var title = document.createElement("strong");
+    title.textContent = "Deine Playlist ist noch leer";
+    var note = document.createElement("p");
+    note.textContent = "Wähle oben ein gespeichertes Foto oder ein installiertes Theme aus.";
+    empty.appendChild(title);
+    empty.appendChild(note);
+    list.appendChild(empty);
+    renderPlaybackControls();
     return;
   }
+
+  var locked = playbackState.playing || playbackBusy || playbackLoading;
+  var dirty = playlistIsDirty();
   playlistDraft.forEach(function(item, index) {
     var row = document.createElement("div");
     row.className = "theme-item playlist-item";
-    row.draggable = true;
-    row.addEventListener("dragstart", function(event) {
-      playbackDragIndex = index;
-      row.classList.add("dragging");
-      if (event.dataTransfer) event.dataTransfer.setData("text/plain", String(index));
-    });
-    row.addEventListener("dragend", function(){ row.classList.remove("dragging"); });
-    row.addEventListener("dragover", function(event){ event.preventDefault(); });
-    row.addEventListener("drop", function(event) {
-      event.preventDefault();
-      var from = playbackDragIndex;
-      if (event.dataTransfer) {
-        var parsed = Number(event.dataTransfer.getData("text/plain"));
-        if (Number.isInteger(parsed)) from = parsed;
-      }
-      if (from < 0 || from >= playlistDraft.length || from === index) return;
-      var moved = playlistDraft.splice(from, 1)[0];
-      playlistDraft.splice(index, 0, moved);
-      playbackDragIndex = -1;
-      renderPlaylist();
-    });
+    var isCurrent = !dirty && playbackState.playing && playbackState.current === index;
+    if (isCurrent) row.classList.add("is-current");
+    row.draggable = !locked;
+    row.setAttribute("aria-label",(item.type === "photo" ? "Foto " : "Theme ") + item.id + ", Element " + (index + 1));
+    if (!locked) {
+      row.addEventListener("dragstart", function(event) {
+        playbackDragIndex = index;
+        row.classList.add("dragging");
+        if (event.dataTransfer) event.dataTransfer.setData("text/plain", String(index));
+      });
+      row.addEventListener("dragend", function() {
+        row.classList.remove("dragging");
+        playbackDragIndex = -1;
+      });
+      row.addEventListener("dragover", function(event) { event.preventDefault(); });
+      row.addEventListener("drop", function(event) {
+        event.preventDefault();
+        var from = playbackDragIndex;
+        if (event.dataTransfer) {
+          var parsed = Number(event.dataTransfer.getData("text/plain"));
+          if (Number.isInteger(parsed)) from = parsed;
+        }
+        movePlaylistItem(from,index);
+      });
+    }
+
+    var order = document.createElement("span");
+    order.className = "playlist-order";
+    order.textContent = String(index + 1).padStart(2,"0");
+
     var meta = document.createElement("div");
-    meta.className = "meta";
+    meta.className = "meta playlist-meta";
+    var kind = document.createElement("span");
+    kind.className = "playlist-kind " + (item.type === "photo" ? "photo" : "theme");
+    kind.textContent = item.type === "photo" ? "FOTO" : "THEME";
     var title = document.createElement("strong");
-    title.textContent = (item.type === "photo" ? "Foto · " : "Theme · ") + item.id;
+    title.textContent = item.id;
     var subtitle = document.createElement("small");
-    subtitle.textContent = "Element " + (index + 1) + " von " + playlistDraft.length;
+    subtitle.textContent = isCurrent ? "Wird gerade angezeigt" : (index + 1) + ". Position";
+    meta.appendChild(kind);
     meta.appendChild(title);
     meta.appendChild(subtitle);
+
     var duration = document.createElement("div");
-    duration.className = "duration";
+    duration.className = "duration playlist-duration";
     var durationLabel = document.createElement("label");
-    durationLabel.textContent = "Sekunden";
-    durationLabel.style.margin = "0 0 3px";
+    durationLabel.textContent = "Anzeigedauer";
+    durationLabel.htmlFor = "playlistDuration" + index;
+    var durationField = document.createElement("div");
+    durationField.className = "playlist-duration-field";
     var durationInput = document.createElement("input");
+    durationInput.id = "playlistDuration" + index;
     durationInput.type = "number";
     durationInput.min = "5";
     durationInput.max = "3600";
     durationInput.step = "1";
+    durationInput.inputMode = "numeric";
     durationInput.value = String(item.seconds);
-    durationInput.setAttribute("aria-label", "Anzeigedauer für " + item.id);
+    durationInput.disabled = locked;
+    durationInput.setAttribute("aria-label", "Anzeigedauer für " + item.id + " in Sekunden");
     durationInput.addEventListener("change", function() {
       var value = Number(durationInput.value);
       if (!Number.isInteger(value) || value < 5 || value > 3600) {
-        toast("Anzeigedauer muss zwischen 5 und 3600 Sekunden liegen.");
+        toast("Die Dauer muss zwischen 5 und 3600 Sekunden liegen.");
         durationInput.value = String(item.seconds);
         return;
       }
       item.seconds = value;
+      renderPlaybackControls();
     });
+    var unit = document.createElement("span");
+    unit.textContent = "Sek.";
+    durationField.appendChild(durationInput);
+    durationField.appendChild(unit);
     duration.appendChild(durationLabel);
-    duration.appendChild(durationInput);
+    duration.appendChild(durationField);
+
     var actions = document.createElement("div");
-    actions.className = "actions";
-    [["↑",-1,"Nach oben"],["↓",1,"Nach unten"]].forEach(function(action) {
+    actions.className = "actions playlist-item-actions";
+    [[ "↑",-1,"Nach oben" ],[ "↓",1,"Nach unten" ]].forEach(function(action) {
       var button = document.createElement("button");
       button.type = "button";
       button.className = "btn sec";
       button.textContent = action[0];
       button.title = action[2];
-      button.disabled = index + action[1] < 0 || index + action[1] >= playlistDraft.length;
-      button.addEventListener("click", function() {
-        var next = index + action[1];
-        var swap = playlistDraft[index];
-        playlistDraft[index] = playlistDraft[next];
-        playlistDraft[next] = swap;
-        renderPlaylist();
-      });
+      button.setAttribute("aria-label",action[2] + ": " + item.id);
+      button.disabled = locked || index + action[1] < 0 || index + action[1] >= playlistDraft.length;
+      button.addEventListener("click", function() { movePlaylistItem(index,index + action[1]); });
       actions.appendChild(button);
     });
     var remove = document.createElement("button");
     remove.type = "button";
-    remove.className = "btn danger";
-    remove.textContent = "×";
-    remove.title = "Aus Playlist entfernen";
-    remove.addEventListener("click", function(){ playlistDraft.splice(index, 1); renderPlaylist(); });
+    remove.className = "btn danger playlist-remove";
+    remove.textContent = "Entfernen";
+    remove.setAttribute("aria-label","Aus Playlist entfernen: " + item.id);
+    remove.disabled = locked;
+    remove.addEventListener("click", function() { removePlaylistItem(index); });
     actions.appendChild(remove);
+
+    row.appendChild(order);
     row.appendChild(meta);
     row.appendChild(duration);
     row.appendChild(actions);
     list.appendChild(row);
   });
+  renderPlaybackControls();
 }
 
+function movePlaylistItem(from,to) {
+  if (playbackIsLocked() || from < 0 || from >= playlistDraft.length || to < 0 || to >= playlistDraft.length || from === to) return;
+  var moved = playlistDraft.splice(from,1)[0];
+  playlistDraft.splice(to,0,moved);
+  renderPlaylist();
+}
+function removePlaylistItem(index) {
+  if (playbackIsLocked() || index < 0 || index >= playlistDraft.length) return;
+  playlistDraft.splice(index,1);
+  renderPlaylist();
+}
+function clearPlaylist() {
+  if (playbackIsLocked() || !playlistDraft.length) return;
+  if (!confirm("Alle " + playlistDraft.length + " Einträge aus der Playlist entfernen? Die Änderung wird erst nach dem Speichern übernommen.")) return;
+  playlistDraft = [];
+  renderPlaylist();
+}
 function addPlaylistItem(type) {
-  var id = type === "photo" ? $("playlistPhotoSelect").value : $("playlistThemeSelect").value;
-  if (!id) { toast(type === "photo" ? "Bitte ein Foto auswählen." : "Bitte ein Theme auswählen."); return; }
+  if (playbackIsLocked()) return;
+  var select = type === "photo" ? $("playlistPhotoSelect") : $("playlistThemeSelect");
+  var id = select.value;
+  if (!id) {
+    toast(type === "photo" ? "Bitte zuerst ein Foto auswählen." : "Bitte zuerst ein Theme auswählen.");
+    return;
+  }
   if (playlistDraft.length >= 32) { toast("Die Playlist kann maximal 32 Elemente enthalten."); return; }
-  if (playlistDraft.some(function(item){ return item.type === type && item.id === id; })) {
+  if (playlistDraft.some(function(item) { return item.type === type && item.id === id; })) {
     toast("Dieses Element ist bereits in der Playlist.");
     return;
   }
-  playlistDraft.push({type:type, id:id, seconds:type === "photo" ? 15 : 60});
+  playlistDraft.push({type:type,id:id,seconds:type === "photo" ? 15 : 60});
+  select.value = "";
   renderPlaylist();
 }
-
 function savePlaylist() {
+  if (playbackState.playing) {
+    toast("Stoppe zuerst die Wiedergabe, bevor du die Playlist speicherst.");
+    return Promise.resolve(false);
+  }
+  if (playbackBusy || playbackLoading) return Promise.resolve(false);
   var mode = $("playlistMode").value === "shuffle" ? "shuffle" : "sequence";
   var body = mode + "\n" + ($("playlistAutoStart").checked ? "1" : "0") + "\n";
   for (var i = 0; i < playlistDraft.length; i++) {
@@ -1374,20 +1686,71 @@ function savePlaylist() {
     var seconds = Number(item.seconds);
     if (!Number.isInteger(seconds) || seconds < 5 || seconds > 3600) {
       toast("Jede Anzeigedauer muss zwischen 5 und 3600 Sekunden liegen.");
-      return;
+      return Promise.resolve(false);
     }
     body += (item.type === "photo" ? "P" : "T") + "|" + item.id + "|" + seconds + "\n";
   }
-  api("/api/playback/save", {method:"POST", headers:{"Content-Type":"text/plain"}, body:body})
-    .then(function(){ toast("Playlist gespeichert."); loadPlayback(); })
-    .catch(function(error){ toast("Playlist konnte nicht gespeichert werden: " + error.message); });
+  playbackBusy = true;
+  renderPlaybackControls();
+  return api("/api/playback/save", {method:"POST",headers:{"Content-Type":"text/plain"},body:body})
+    .then(function() {
+      playbackSavedSignature = playlistSignature();
+      toast("Playlist gespeichert.");
+      return true;
+    })
+    .catch(function(error) {
+      toast("Playlist konnte nicht gespeichert werden: " + error.message);
+      return false;
+    })
+    .then(function(saved) {
+      playbackBusy = false;
+      renderPlaybackControls();
+      return saved;
+    });
+}
+function startPlayback() {
+  if (playbackBusy || playbackLoading || playbackState.playing) return;
+  if (!playlistDraft.length) {
+    toast("Füge zuerst mindestens ein Foto oder Theme hinzu.");
+    return;
+  }
+  var start = function() { playbackAction("start"); };
+  if (playlistIsDirty()) {
+    savePlaylist().then(function(saved) {
+      if (saved) start();
+    });
+  } else {
+    start();
+  }
+}
+function playbackAction(action) {
+  if (playbackBusy || playbackLoading) return Promise.resolve(false);
+  if (action === "start") {
+    startPlayback();
+    return Promise.resolve(true);
+  }
+  if ((action === "previous" || action === "next") && !playbackState.playing) return Promise.resolve(false);
+  if (action === "stop" && !playbackState.playing) return Promise.resolve(false);
+  playbackBusy = true;
+  renderPlaybackControls();
+  return api("/api/playback/" + action, {method:"POST"})
+    .then(function() {
+      var messages = {
+        stop:"Wiedergabe gestoppt.",
+        previous:"Vorheriger Eintrag wird angezeigt.",
+        next:"Nächster Eintrag wird angezeigt."
+      };
+      toast(messages[action] || "Wiedergabe aktualisiert.");
+      playbackBusy = false;
+      return loadPlayback(true);
+    })
+    .catch(function(error) {
+      toast("Wiedergabe fehlgeschlagen: " + error.message);
+      playbackBusy = false;
+      return loadPlayback(true);
+    });
 }
 
-function playbackAction(action) {
-  api("/api/playback/" + action, {method:"POST"})
-    .then(function(data){ toast(data.message || "Wiedergabe aktualisiert."); loadPlayback(); })
-    .catch(function(error){ toast("Wiedergabe fehlgeschlagen: " + error.message); loadPlayback(); });
-}
 
 function makeSmallJpeg(file) {
   return new Promise(function(resolve, reject) {
