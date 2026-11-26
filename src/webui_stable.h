@@ -123,6 +123,55 @@ button.btn:disabled{filter:saturate(.35)}
 .stat-card .sub{display:block;margin-top:5px;color:var(--mut);font-size:12px}
 .bar>div{will-change:width}
 @media(max-width:600px){.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.status-pill{white-space:normal;text-align:center}}
+/* UI refresh: unified slate-and-teal palette, icon navigation and clearer diagnostics. */
+:root{--bg:#101a25;--card:#172536;--surface2:#1c2d40;--field:#0e1a27;--fg:#edf4fb;--mut:#a2b3c5;--bd:#304459;--acc:#5bd4b5;--acc2:#78e0c5;--red:#f0787d;--warn:#efc36b;--nav:rgba(14,24,36,.97);--shadow:0 12px 30px rgba(0,0,0,.18);--focus:rgba(91,212,181,.25)}
+body.light{--bg:#f2f6fa;--card:#fff;--surface2:#eaf1f7;--field:#f9fbfd;--fg:#17283a;--mut:#52667b;--bd:#d6e1eb;--acc:#087f69;--acc2:#087f69;--red:#b42336;--warn:#885b11;--nav:rgba(242,246,250,.97);--shadow:0 8px 24px rgba(22,48,72,.07);--focus:rgba(8,127,105,.18)}
+nav{background:var(--nav);border-bottom-color:var(--bd)}
+nav button{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;min-height:44px}
+nav button.active{background:var(--surface2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--bd)}
+nav button:hover{background:var(--surface2)}
+.nav-icon,.utility-btn svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.utility-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 11px;background:var(--surface2);border:1px solid var(--bd);color:var(--fg);font-weight:600}
+.utility-btn:hover{border-color:var(--acc);color:var(--acc2)}
+header .dot{box-shadow:0 0 0 3px rgba(91,212,181,.12)}header .dot.ok{background:var(--acc)}
+.stat-card{background:var(--surface2);border-color:var(--bd)}.stat-card .label{letter-spacing:.06em}
+button.btn{background:var(--acc);color:#07221b}
+button.btn.sec{background:var(--surface2);color:var(--fg);border:1px solid var(--bd)}
+button.btn.sec:hover:not(:disabled){border-color:var(--acc);color:var(--acc2)}
+button.btn.danger{background:var(--red);color:#2a0b10}body.light button.btn.danger{background:var(--red);color:#fff}
+.page-intro .eyebrow,.welcome .eyebrow{color:var(--acc2)}.chip{background:var(--acc);color:#09271f}.bar>div{background:var(--acc)}
+.status-pill.ok{color:var(--acc2);border-color:rgba(91,212,181,.38);background:rgba(91,212,181,.09)}
+body.light .status-pill.ok{color:#087f69;border-color:rgba(8,127,105,.28);background:rgba(8,127,105,.08)}
+.status-pill.warn{color:var(--warn);border-color:rgba(239,195,107,.38);background:rgba(239,195,107,.08)}
+body.light .status-pill.warn{color:#80560f;border-color:rgba(136,91,17,.25);background:rgba(239,195,107,.17)}
+.status-pill.bad{color:var(--red);border-color:var(--red);background:rgba(240,120,125,.08)}
+header .spacer{min-width:8px}
+dialog#debugDialog{max-width:760px;padding:22px}
+dialog#debugDialog::backdrop{background:rgba(4,10,17,.64);backdrop-filter:blur(3px)}
+.debug-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.debug-head .eyebrow{margin:0 0 5px;color:var(--acc2);font-size:11px;font-weight:700;letter-spacing:.12em}
+.debug-head h2{margin:0;color:var(--fg);font-size:24px;letter-spacing:-.03em;text-transform:none}
+.debug-head p:last-child{margin:7px 0 0;color:var(--mut);font-size:13px}
+.debug-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0}
+.debug-toolbar>div{display:flex;gap:8px;flex-wrap:wrap}
+.debug-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.debug-tile{min-width:0;padding:13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface2)}
+.debug-tile span{display:block;color:var(--mut);font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.06em}
+.debug-tile strong{display:block;margin-top:6px;font-size:15px;overflow-wrap:anywhere}
+.debug-tile small{display:block;margin-top:3px;color:var(--mut);font-size:11px}
+.debug-tile.ok strong{color:var(--acc2)}.debug-tile.warn strong{color:var(--warn)}.debug-tile.bad strong{color:var(--red)}
+.debug-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.debug-panel{min-width:0;padding:14px;border:1px solid var(--bd);border-radius:12px;background:var(--card)}
+.debug-panel h3{margin:0 0 10px;font-size:13px;color:var(--fg)}
+.debug-kv .kv{gap:12px;font-size:12px;align-items:flex-start}
+.debug-kv .kv b{color:var(--mut);font-weight:500}
+.debug-kv .kv span{text-align:right;overflow-wrap:anywhere;max-width:62%}
+.debug-raw{margin-top:14px;border-top:1px solid var(--bd);padding-top:12px}
+.debug-raw summary{cursor:pointer;color:var(--mut);font-size:13px}
+.debug-raw pre{max-height:240px;overflow:auto;padding:12px;border:1px solid var(--bd);border-radius:9px;background:var(--field);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.debug-privacy{margin:14px 0 0;color:var(--mut);font-size:11px;line-height:1.5}
+@media(max-width:760px){header{padding:12px 14px;gap:8px;flex-wrap:wrap}header h1{font-size:16px}header .spacer{flex:1}.utility-btn{min-height:38px;padding:7px 9px}nav{padding:8px 12px}nav button{padding:9px 11px}main{padding:22px 14px 36px}.debug-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.utility-btn span{display:none}.utility-btn{width:40px;height:40px;padding:9px}.utility-btn svg{width:19px;height:19px}.debug-head{align-items:flex-start}.debug-head h2{font-size:21px}.debug-toolbar{align-items:flex-start;flex-direction:column}.debug-columns{grid-template-columns:1fr}dialog#debugDialog{padding:16px}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -130,33 +179,34 @@ button.btn:disabled{filter:saturate(.35)}
  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="13" width="50" height="38" rx="6"/><polyline points="15,38 23,30 30,34 37,22 44,28 50,20"/><path d="M24 51v6M40 51v6M20 57h8M36 57h8"/></g></svg>
  <span id="dot" class="dot"></span><h1>SmallTV Stable</h1>
  <span id="chip" class="chip" style="display:none"></span><span id="hi" class="muted"></span><span class="spacer"></span>
- <button id="themeMode" class="help-toggle" type="button">Helles Design</button>
- <button id="helpToggle" class="help-toggle" type="button" aria-expanded="false">Tipps</button>
+ <button id="themeMode" class="help-toggle utility-btn" type="button" aria-label="Farbschema wechseln"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg><span>Helles Design</span></button>
+ <button id="debugToggle" class="help-toggle utility-btn" type="button" aria-haspopup="dialog" aria-controls="debugDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 3 3 1v6l-3 1-1 3H9l-1-3-3-1V7l3-1 1-3Z"/><circle cx="12" cy="10" r="2.5"/><path d="M8 17.5 6.5 21M16 17.5l1.5 3.5"/></svg><span>Debug</span></button>
+ <button id="helpToggle" class="help-toggle utility-btn" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.5 2.5 0 1 1 4.4 1.6c-1 1.1-2 1.2-2 3M12 17.5h.01"/></svg><span>Tipps</span></button>
 </header>
 <nav aria-label="Hauptnavigation">
- <button data-t="status" class="active" aria-current="page" type="button">Übersicht</button>
- <button data-t="wifi" type="button">Netzwerk</button>
- <button data-t="display" type="button">Display</button>
- <button data-t="update" type="button">System</button>
- <button data-t="themes" type="button">Themes</button>
- <button data-t="photos" type="button">Fotos</button>
- <button data-t="playback" type="button">Wiedergabe</button>
+ <button data-t="status" class="active" aria-current="page" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Übersicht</button>
+ <button data-t="wifi" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10.5 10.5 0 0 1 14 0M8.5 15.5a5.3 5.3 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg>WLAN</button>
+ <button data-t="display" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>Display</button>
+ <button data-t="themes" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>Themes</button>
+ <button data-t="photos" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/></svg>Fotos</button>
+ <button data-t="playback" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7-11-7Z" fill="currentColor" stroke="none"/><path d="M3 4v16"/></svg>Playlist</button>
+ <button data-t="update" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-3.4V21a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.2.1-1.7-2.9.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H5v-3.4h.3a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.2 1.7-2.9.2.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h3.4v.3a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.2-.1 1.7 2.9-.1.2a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.3v3.4h-.3a1.7 1.7 0 0 0-1.5 1Z"/></svg>System</button>
 </nav>
 <main>
  <section id="status" class="tab active">
   <div class="welcome">
-   <div><p class="eyebrow">SMALLTV · GERÄTEÜBERSICHT</p><h2>Gerätestatus</h2><p>Verbindung und Firmware auf einen Blick.</p></div>
+   <div><p class="eyebrow">SMALLTV · GERÄTEÜBERSICHT</p><h2>Dein Gerät</h2><p>Verbindung, Speicher und Display auf einen Blick.</p></div>
    <span id="statusPill" class="status-pill">Status wird geprüft</span>
   </div>
   <div class="quick-grid">
    <div class="stat-card"><span class="label">WLAN</span><strong id="statusNetwork">Wird geladen …</strong></div>
    <div class="stat-card"><span class="label">Geräteadresse</span><a id="statusAddress" href="#">Adresse öffnen</a></div>
-   <div class="stat-card"><span class="label">Laufzeit</span><strong id="statusUptime">—</strong></div><div class="stat-card"><span class="label">Freier RAM</span><strong id="statusHeap">—</strong><span id="statusHeapSub" class="sub">Größter Block: —</span></div>
+   <div class="stat-card"><span class="label">Laufzeit</span><strong id="statusUptime">—</strong></div><div class="stat-card"><span class="label">Freier RAM</span><strong id="statusHeap">—</strong><span id="statusHeapSub" class="sub">Größter Block: —</span></div><div class="stat-card"><span class="label">Anzeige</span><strong id="statusDisplay">Wird geladen …</strong><span class="sub">Aktueller Betriebsmodus</span></div>
   </div>
   <div class="home-actions">
    <button class="btn sec" type="button" data-go="wifi">WLAN einrichten</button>
-   <button class="btn sec" type="button" data-go="update">System &amp; Firmware</button>
-   <button class="btn sec" type="button" data-go="themes">Theme-Pakete</button>
+   <button class="btn sec" type="button" data-go="themes">Themes verwalten</button>
+   <button class="btn sec" type="button" data-go="playback">Playlist bearbeiten</button>
    <button class="btn sec" type="button" onclick="loadStatus()">Status aktualisieren</button>
   </div>
   <details class="details"><summary>Technische Details</summary><div class="card"><div id="statusBox" class="muted">Wird geladen …</div></div></details>
@@ -257,7 +307,7 @@ button.btn:disabled{filter:saturate(.35)}
  </section>
 
  <section id="themes" class="tab">
-  <div class="page-intro"><p class="eyebrow">PAKETVERWALTUNG</p><h2>.stheme Themes</h2><p>Gültige Pakete aktivieren und direkt auf dem Display anzeigen. Der Renderer gibt RGB565-Zeilen aus und benötigt keinen permanenten Vollbildpuffer.</p></div>
+  <div class="page-intro"><p class="eyebrow">INHALTE</p><h2>Themes verwalten</h2><p>Theme-Pakete installieren, prüfen, aktivieren und entfernen.</p></div>
   <div class="card">
    <h2>Theme installieren</h2>
    <input id="themeFile" type="file" accept=".stheme,application/octet-stream">
@@ -305,9 +355,9 @@ button.btn:disabled{filter:saturate(.35)}
  </section>
 
  <section id="playback" class="tab">
-  <div class="page-intro"><p class="eyebrow">GEMEINSAME PLAYLIST</p><h2>Wiedergabe</h2><p>Fotos und .stheme-Themes lassen sich in einer Liste beliebig mischen. Die Wiedergabe nutzt die vorhandenen Renderer ohne zusätzlichen Bildpuffer.</p></div>
+  <div class="page-intro"><p class="eyebrow">AUTOMATISCHE ANZEIGE</p><h2>Playlist</h2><p>Fotos und Themes in einer gemeinsamen Liste kombinieren, sortieren und zeitgesteuert anzeigen.</p></div>
   <div class="card">
-   <h2>Wiedergabemodus</h2>
+   <h2>Abspielmodus</h2>
    <label for="playlistMode">Reihenfolge</label>
    <select id="playlistMode"><option value="sequence">Eigene Reihenfolge</option><option value="shuffle">Zufällig mischen</option></select>
    <div class="chk"><input id="playlistAutoStart" type="checkbox"><label for="playlistAutoStart">Nach einem Neustart automatisch starten</label></div>
@@ -321,7 +371,7 @@ button.btn:disabled{filter:saturate(.35)}
    </div>
   </div>
   <div class="card">
-   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Meine Wiedergabeliste</h2><button class="btn sec" type="button" onclick="loadPlayback()">Aktualisieren</button></div>
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2>Deine Playlist</h2><button class="btn sec" type="button" onclick="loadPlayback()">Aktualisieren</button></div>
    <div id="playlistStatus" class="muted" role="status">Wiedergabeliste wird geladen …</div>
    <div id="playlistEntries" aria-live="polite" style="margin-top:10px"></div>
    <div class="row" style="margin-top:14px;flex-wrap:wrap">
@@ -338,7 +388,7 @@ button.btn:disabled{filter:saturate(.35)}
  </section>
 
 <section id="update" class="tab">
-  <div class="page-intro"><p class="eyebrow">Geräteverwaltung</p><h2>System</h2><p>Firmware aktualisieren, Einstellungen sichern und das Gerät warten.</p></div>
+  <div class="page-intro"><p class="eyebrow">GERÄTEVERWALTUNG</p><h2>System &amp; Wartung</h2><p>Firmware aktualisieren, Konfiguration sichern und das Gerät warten.</p></div>
   <div class="card">
    <h2>Online-Update</h2>
    <div class="muted">Installiert: <b id="fwVer">wird geladen …</b></div>
@@ -374,6 +424,25 @@ button.btn:disabled{filter:saturate(.35)}
  </section>
 </main>
 
+<dialog id="debugDialog" aria-labelledby="debugTitle">
+ <div class="debug-head">
+  <div><p class="eyebrow">SUPPORT · LOKALE DIAGNOSE</p><h2 id="debugTitle">Gerätediagnose</h2><p>Live-Status und technische Werte. Es werden keine Einstellungen geändert.</p></div>
+  <button class="btn sec" type="button" id="debugClose" aria-label="Diagnose schließen">Schließen</button>
+ </div>
+ <div class="debug-toolbar">
+  <span id="debugHealth" class="status-pill">Diagnose wird geladen …</span>
+  <div><button class="btn sec" type="button" id="debugRefresh">Aktualisieren</button> <button class="btn" type="button" id="debugCopy">Bericht kopieren</button></div>
+ </div>
+ <div id="debugOverview" class="debug-grid"><div class="debug-tile"><span>Verbindung</span><strong>Wird geladen …</strong></div></div>
+ <div class="debug-columns">
+  <section class="debug-panel"><h3>Gerät und Speicher</h3><div id="debugDevice" class="debug-kv muted">Wird geladen …</div></section>
+  <section class="debug-panel"><h3>Theme und Datenquellen</h3><div id="debugTheme" class="debug-kv muted">Wird geladen …</div></section>
+  <section class="debug-panel"><h3>Fotos und Playlist</h3><div id="debugMedia" class="debug-kv muted">Wird geladen …</div></section>
+  <section class="debug-panel"><h3>Fehler und Hinweise</h3><div id="debugIssues" class="debug-kv muted">Wird geladen …</div></section>
+ </div>
+ <details class="debug-raw"><summary>Bereinigten Diagnosebericht anzeigen</summary><pre id="debugRaw">Noch keine Daten.</pre></details>
+ <p class="debug-privacy">WLAN-Passwörter und gespeicherte Zugangsdaten werden nicht abgefragt. Die IP-Adresse wird beim Kopieren ausgeblendet.</p>
+</dialog>
 <div class="savebar">
  <div class="savebar-inner">
   <span id="saveStatus" class="save-status" role="status" aria-live="polite">Änderungen werden erst beim Speichern übernommen.</span>
@@ -456,18 +525,25 @@ document.querySelectorAll("[data-go]").forEach(function(button){
 $("helpToggle").addEventListener("click", function(){
   var enabled = document.body.classList.toggle("show-help");
   $("helpToggle").setAttribute("aria-expanded", String(enabled));
-  $("helpToggle").textContent = enabled ? "Tipps ausblenden" : "Tipps";
+  $("helpToggle").querySelector("span").textContent = enabled ? "Tipps ausblenden" : "Tipps";
+});
+$("debugToggle").addEventListener("click", openDebug);
+$("debugClose").addEventListener("click", function(){ $("debugDialog").close(); });
+$("debugRefresh").addEventListener("click", loadDebug);
+$("debugCopy").addEventListener("click", copyDebugReport);
+$("debugDialog").addEventListener("click", function(event){
+  if(event.target === $("debugDialog")) $("debugDialog").close();
 });
 $("themeMode").addEventListener("click", function(){
   var light = !document.body.classList.contains("light");
   document.body.classList.toggle("light", light);
-  $("themeMode").textContent = light ? "Dunkles Design" : "Helles Design";
+  $("themeMode").querySelector("span").textContent = light ? "Dunkles Design" : "Helles Design";
   try { localStorage.setItem("smalltv-ui-light", light ? "1" : "0"); } catch (_) {}
 });
 try {
   var savedLight = localStorage.getItem("smalltv-ui-light") === "1";
   document.body.classList.toggle("light", savedLight);
-  $("themeMode").textContent = savedLight ? "Dunkles Design" : "Helles Design";
+  $("themeMode").querySelector("span").textContent = savedLight ? "Dunkles Design" : "Helles Design";
 } catch (_) {}
 
 function addWifiRow(network) {
@@ -675,6 +751,84 @@ function formatUptime(seconds) {
 function kv(key, value) {
   return '<div class="kv"><b>' + escapeHtml(key) + '</b><span>' + escapeHtml(value) + '</span></div>';
 }
+function debugTile(label, value, detail, tone) {
+  return '<div class="debug-tile ' + (tone || '') + '"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong>' + (detail ? '<small>' + escapeHtml(detail) + '</small>' : '') + '</div>';
+}
+function debugBytes(value) {
+  return (Number(value)||0).toLocaleString("de-DE") + " Byte";
+}
+function loadDebug() {
+  $("debugHealth").textContent = "Diagnose wird aktualisiert …";
+  $("debugOverview").innerHTML = '<div class="debug-tile"><span>Status</span><strong>Wird geladen …</strong></div>';
+  $("debugDevice").textContent = $("debugTheme").textContent = $("debugMedia").textContent = $("debugIssues").textContent = "Wird geladen …";
+  function read(path) { return api(path).catch(function(error){ return {_requestError:error.message}; }); }
+  Promise.all([read("/api/status"),read("/api/photos"),read("/api/playback")]).then(function(results) {
+    var s=results[0], p=results[1], w=results[2], issues=[];
+    results.forEach(function(item,index){ if(item._requestError) issues.push(["Status","Fotos","Playlist"][index] + ": " + item._requestError); });
+    if(!s._requestError) {
+      if(s.storageReady===false) issues.push("LittleFS ist nicht verfügbar.");
+      if(!s.connected && s.mode!=="ap") issues.push("Keine WLAN-Verbindung.");
+      if(s.themeError) issues.push("Theme: " + s.themeError);
+      if(Number(s.dataFailures)>0) issues.push("Mindestens eine Theme-Datenquelle meldet Fehler.");
+      if(Number(s.dataStale)>0) issues.push("Theme-Daten enthalten veraltete Werte.");
+    }
+    var online=!s._requestError && !!s.connected, memory=Number(s.heap)||0, freeStorage=Number(p.freeBytes)||0;
+    $("debugHealth").textContent=issues.length ? issues.length + " Hinweis(e)" : "Keine Auffälligkeiten";
+    $("debugHealth").className="status-pill " + (issues.length ? "warn" : "ok");
+    $("debugOverview").innerHTML =
+      debugTile("Verbindung",s._requestError?"Nicht lesbar":(s.mode==="ap"?"Einrichtungsmodus":(online?"Verbunden":"Offline")),s.ip||"Lokale Adresse nicht verfügbar",online?"ok":(s.mode==="ap"?"warn":"bad"))+
+      debugTile("Freier RAM",s._requestError?"—":debugBytes(memory),"Größter Block: "+debugBytes(s.maxBlock),memory<6144?"warn":"ok")+
+      debugTile("Dateispeicher",p._requestError?"Nicht lesbar":debugBytes(freeStorage),(Number(p.count)||0)+" Fotos gespeichert",s.storageReady===false?"bad":"ok")+
+      debugTile("Anzeige",s._requestError?"—":(s.playback?"Playlist":(s.themeLoaded?"Theme aktiv":(s.photoSlideshow?"Slideshow":"Bereit"))),s.version?"Firmware "+s.version:"",s.themeError?"warn":"ok");
+    $("debugDevice").innerHTML =
+      kv("Firmware",(s.fw||"SmallTV")+" "+(s.version||""))+kv("Variante",s.variant||"ESP8266")+
+      kv("WLAN-Modus",s.mode||"—")+kv("WLAN-Signal",s.connected?(s.rssi+" dBm"):"—")+kv("IP-Adresse",s.ip||"—")+
+      kv("Freier Heap",debugBytes(s.heap))+kv("Größter Block",debugBytes(s.maxBlock))+kv("Theme-RAM",debugBytes(s.themeHeap))+
+      kv("Dateispeicher frei",p._requestError?"Nicht lesbar":debugBytes(freeStorage))+kv("LittleFS",s.storageReady?"Bereit":"Nicht verfügbar")+
+      kv("Betriebszeit",formatUptime(s.uptime))+kv("Letzter Neustart",s.reset||"—");
+    $("debugTheme").innerHTML =
+      kv("Theme",s.themeLoaded?(s.theme||"Aktiv"):"Kein Theme aktiv")+
+      kv("Datenquellen",(Number(s.dataReady)||0)+"/"+(Number(s.dataSources)||0)+" aktuell")+
+      kv("Veraltet",String(Number(s.dataStale)||0))+kv("Fehlversuche",String(Number(s.dataFailures)||0))+
+      kv("Zeitsynchronisation",s.timeSynced?"Synchronisiert":"Nicht synchronisiert")+kv("Lokale Uhrzeit",s.localTime||"—")+
+      (s.themeError?kv("Theme-Fehler",s.themeError):"")+(s.dataError?kv("Datenfehler",s.dataError):"");
+    $("debugMedia").innerHTML =
+      kv("Fotos gespeichert",p._requestError?"Nicht lesbar":String(Number(p.count)||0))+
+      kv("Foto-Slideshow",p.active?"Aktiv":"Gestoppt")+
+      kv("Playlist",w._requestError?"Nicht lesbar":(w.playing?"Aktiv":"Gestoppt"))+
+      kv("Playlist-Einträge",w._requestError?"—":String(Number(w.count)||0))+
+      kv("Playlist-Modus",w.mode==="shuffle"?"Zufällig":"Reihenfolge")+kv("Autostart",w.autoStart?"Aktiv":"Aus");
+    $("debugIssues").innerHTML=issues.length
+      ? issues.map(function(issue){return '<div class="kv"><b>Hinweis</b><span>'+escapeHtml(issue)+'</span></div>';}).join("")
+      : '<div class="kv"><b>Status</b><span>Keine bekannten Fehler oder Warnungen.</span></div>';
+    var report={
+      generatedAt:new Date().toISOString(),
+      firmware:{name:s.fw||"",version:s.version||"",variant:s.variant||""},
+      connection:{mode:s.mode||"",connected:!!s.connected,ip:"[ausgeblendet]",rssiDbm:s.rssi==null?null:s.rssi},
+      memory:{freeBytes:Number(s.heap)||0,maxBlockBytes:Number(s.maxBlock)||0,themeHeapBytes:Number(s.themeHeap)||0},
+      storage:{ready:s.storageReady!==false,freeBytes:freeStorage,photoCount:Number(p.count)||0},
+      runtime:{themeActive:!!s.themeLoaded,theme:s.theme||"",photoSlideshow:!!s.photoSlideshow,playback:!!s.playback,timeSynced:!!s.timeSynced,localTime:s.localTime||""},
+      themeData:{sources:Number(s.dataSources)||0,ready:Number(s.dataReady)||0,stale:Number(s.dataStale)||0,failures:Number(s.dataFailures)||0},
+      errors:{theme:s.themeError||"",data:s.dataError||"",requests:results.map(function(item){return item._requestError||"";}).filter(Boolean)},
+      system:{uptimeSeconds:Number(s.uptime)||0,reset:s.reset||""},
+      playlist:{playing:!!w.playing,count:Number(w.count)||0,mode:w.mode||"",autoStart:!!w.autoStart}
+    };
+    $("debugRaw").textContent=JSON.stringify(report,null,2);
+  }).catch(function(error){
+    $("debugHealth").textContent="Diagnose fehlgeschlagen";$("debugHealth").className="status-pill bad";$("debugIssues").textContent=error.message;
+  });
+}
+function openDebug() {
+  var dialog=$("debugDialog");if(!dialog.open) dialog.showModal();loadDebug();
+}
+function copyDebugReport() {
+  var report=$("debugRaw").textContent;
+  if(!report || report==="Noch keine Daten.") {toast("Bitte zuerst die Diagnose aktualisieren.");return;}
+  if(navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(report).then(function(){toast("Bereinigter Diagnosebericht kopiert.");})
+      .catch(function(){window.prompt("Diagnosebericht markieren und kopieren:",report);});
+  } else window.prompt("Diagnosebericht markieren und kopieren:",report);
+}
 function showStatus(s) {
   var connected = !!s.connected;
   $("dot").className = "dot" + (connected ? " ok" : "");
@@ -689,6 +843,7 @@ function showStatus(s) {
   $("statusUptime").textContent = formatUptime(s.uptime);
   $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
   $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
+  $("statusDisplay").textContent = s.playback ? "Playlist läuft" : (s.themeLoaded ? "Theme aktiv" : (s.photoSlideshow ? "Slideshow läuft" : "Bereit"));
   $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
   $("storageRecoveryHint").style.display = s.storageReady === false ? "block" : "none";
   var rows = kv("Firmware", (s.fw || "SmallTV") + " " + (s.version || "")) +
