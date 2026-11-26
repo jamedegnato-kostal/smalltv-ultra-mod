@@ -1015,7 +1015,13 @@ function loadPlayback() {
   Promise.all([api("/api/playback"), api("/api/photos"), api("/api/themes")]).then(function(results) {
     var state = results[0];
     var photos = Array.isArray(results[1].photos) ? results[1].photos : [];
-    var themes = Array.isArray(results[2].themes) ? results[2].themes.filter(function(theme){ return theme.valid; }) : [];
+    var themes = Array.isArray(results[2].themes) ? results[2].themes.filter(function(theme){
+      // An active theme prevents expensive validation of packages absent from
+      // the metadata index. Keep those packages selectable: playback stops the
+      // current renderer before ThemeRuntime performs the full validation.
+      return theme.valid === true ||
+        theme.error === "Deactivate active theme to validate this package";
+    }) : [];
     var photoSelect = $("playlistPhotoSelect");
     var themeSelect = $("playlistThemeSelect");
     photoSelect.textContent = "";
@@ -1023,7 +1029,11 @@ function loadPlayback() {
     photoSelect.appendChild(new Option(photos.length ? "Foto auswählen …" : "Keine Fotos vorhanden", ""));
     themeSelect.appendChild(new Option(themes.length ? "Theme auswählen …" : "Keine gültigen Themes vorhanden", ""));
     photos.forEach(function(photo){ photoSelect.appendChild(new Option(photo.name, photo.name)); });
-    themes.forEach(function(theme){ themeSelect.appendChild(new Option(theme.name || theme.id, theme.id)); });
+    themes.forEach(function(theme){
+      var label = theme.name || theme.id;
+      if (!theme.valid) label += " (Prüfung beim Start)";
+      themeSelect.appendChild(new Option(label, theme.id));
+    });
     $("playlistMode").value = state.mode || "sequence";
     $("playlistAutoStart").checked = !!state.autoStart;
     playlistDraft = (state.entries || []).map(function(item) {

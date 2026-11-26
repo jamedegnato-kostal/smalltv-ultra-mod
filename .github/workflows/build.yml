@@ -43,6 +43,9 @@ jobs:
           g++ -std=c++11 -Wall -Wextra -Werror tests/playback/test_playback_order.cpp -o /tmp/playback-order-tests
           /tmp/playback-order-tests
 
+      - name: Verify playlist theme selection while validation is deferred
+        run: python tests/playback/check_theme_selection.py
+
       - name: Test night schedule boundaries
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -Isrc tests/night_schedule/test_night_schedule.cpp -o /tmp/night-schedule-tests
