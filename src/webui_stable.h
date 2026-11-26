@@ -173,6 +173,55 @@ dialog#debugDialog::backdrop{background:rgba(4,10,5,.64);backdrop-filter:blur(3p
 .debug-privacy{margin:14px 0 0;color:var(--mut);font-size:11px;line-height:1.5}
 @media(max-width:760px){header{padding:12px 14px;gap:8px;flex-wrap:wrap}header h1{font-size:16px}header .spacer{flex:1}.utility-btn{min-height:38px;padding:7px 9px}nav{padding:8px 12px}nav button{padding:9px 11px}main{padding:22px 14px 36px}.debug-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.utility-btn span{display:none}.utility-btn{width:40px;height:40px;padding:9px}.utility-btn svg{width:19px;height:19px}.debug-head{align-items:flex-start}.debug-head h2{font-size:21px}.debug-toolbar{align-items:flex-start;flex-direction:column}.debug-columns{grid-template-columns:1fr}dialog#debugDialog{padding:16px}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Additional semantic accents: retain the original SmallTV green palette. */
+:root{
+ --accent-info:#8bbce8;
+ --accent-cyan:#7ccbd2;
+ --accent-violet:#baa2e8;
+ --accent-coral:#e9a18a;
+ --accent-amber:#e4bf69;
+}
+body.light{
+ --accent-info:#286fa8;
+ --accent-cyan:#247b85;
+ --accent-violet:#7152a4;
+ --accent-coral:#a34f36;
+ --accent-amber:#815d12;
+}
+/* Small, consistent colour cues help distinguish navigation areas. */
+nav button[data-t="wifi"] .nav-icon{color:var(--accent-info)}
+nav button[data-t="display"] .nav-icon{color:var(--accent-cyan)}
+nav button[data-t="themes"] .nav-icon{color:var(--accent-violet)}
+nav button[data-t="photos"] .nav-icon{color:var(--accent-coral)}
+nav button[data-t="playback"] .nav-icon{color:var(--accent-amber)}
+nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
+#themeMode svg{color:var(--accent-amber)}
+#debugToggle svg{color:var(--accent-violet)}
+#helpToggle svg{color:var(--accent-info)}
+/* The green stays the primary action and brand colour; cards get a thin category marker. */
+.stat-card{position:relative;overflow:hidden}
+.stat-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--stat-accent,var(--acc));opacity:.9}
+.stat-card .label{color:var(--stat-accent,var(--mut))}
+.quick-grid .stat-card:nth-child(1){--stat-accent:var(--acc2)}
+.quick-grid .stat-card:nth-child(2){--stat-accent:var(--accent-info)}
+.quick-grid .stat-card:nth-child(3){--stat-accent:var(--accent-violet)}
+.quick-grid .stat-card:nth-child(4){--stat-accent:var(--accent-amber)}
+.quick-grid .stat-card:nth-child(5){--stat-accent:var(--accent-cyan)}
+/* Match section eyebrow and diagnostic-panel accents to their navigation icon. */
+#wifi .page-intro .eyebrow{color:var(--accent-info)}
+#display .page-intro .eyebrow{color:var(--accent-cyan)}
+#themes .page-intro .eyebrow{color:var(--accent-violet)}
+#photos .page-intro .eyebrow{color:var(--accent-coral)}
+#playback .page-intro .eyebrow{color:var(--accent-amber)}
+#update .page-intro .eyebrow{color:var(--accent-info)}
+.debug-panel{border-top:2px solid var(--panel-accent,var(--bd))}
+.debug-panel:nth-child(1){--panel-accent:var(--acc)}
+.debug-panel:nth-child(2){--panel-accent:var(--accent-violet)}
+.debug-panel:nth-child(3){--panel-accent:var(--accent-cyan)}
+.debug-panel:nth-child(4){--panel-accent:var(--accent-amber)}
+.debug-panel h3{color:var(--panel-accent,var(--fg))}
+
 </style>
 </head>
 <body>
