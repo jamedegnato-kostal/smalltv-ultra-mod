@@ -78,13 +78,14 @@ jobs:
           mkdir -p dist
           cp .pio/build/smalltv_stable/firmware.bin dist/smalltv-stable-firmware.bin
           cp .pio/build/smalltv_loader/firmware.bin dist/smalltv-stable-loader.bin
-          cp examples/open-meteo/open-meteo.stheme dist/open-meteo.stheme
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: smalltv-stable-firmware
-          path: dist/*
+          path: |
+            dist/smalltv-stable-firmware.bin
+            dist/smalltv-stable-loader.bin
           if-no-files-found: error
 
   release:
@@ -101,5 +102,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/smalltv-stable-firmware.bin
+            dist/smalltv-stable-loader.bin
           generate_release_notes: true
