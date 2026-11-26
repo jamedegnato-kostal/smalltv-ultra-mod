@@ -37,6 +37,27 @@ for token in ("--accent-info:", "--accent-cyan:", "--accent-violet:", "--accent-
 for selector in ('nav button[data-t="themes"] .nav-icon', '#debugToggle svg', '.debug-panel:nth-child(4)'):
     assert selector in source, f"missing accent application: {selector}"
 
+# Playback UI state: never start stale server data when the editor has unsaved changes.
+for token in (
+    'id="playbackHero"',
+    'id="playbackStateBadge"',
+    'onclick="startPlayback()"',
+    'onclick="refreshPlayback()"',
+    'function playlistSignature()',
+    'function playlistIsDirty()',
+    'function startPlayback()',
+    'if (playlistIsDirty())',
+    'savePlaylist().then(function(saved)',
+    'Die Playlist ist während der Wiedergabe gesperrt',
+    'function movePlaylistItem(from,to)',
+    'function clearPlaylist()',
+    'aria-label="Nächstes Element"',
+):
+    assert token in source, f"missing playback control improvement: {token}"
+# Mobile reordering remains possible through explicit move buttons, even without drag-and-drop.
+assert 'aria-label",action[2] + ": " + item.id' in source
+assert '@media(max-width:700px)' in source and '.playlist-item-actions' in source
+
 # The page is one embedded JS program; ask Node to validate its syntax.
 script = source.split("<script>", 1)[1].split("</script>", 1)[0]
 node = shutil.which("node")
