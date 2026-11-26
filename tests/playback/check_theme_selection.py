@@ -22,4 +22,11 @@ assert '(Prüfung beim Start)' in webui
 assert 'smalltv::themeRuntimeSelect(e.id' in playback
 assert 'smalltv::photos::stop();' in playback
 
+# Do not reserve all 32 playlist records in static RAM when the saved playlist
+# contains only one or two items; this memory is needed by the ESP8266 theme runtime.
+assert "std::vector<PlaylistEntry> g_entries;" in playback
+assert "PlaylistEntry g_entries[MaxPlaylistEntries]" not in playback
+assert "g_entries.push_back(e);" in playback
+assert "std::vector<PlaylistEntry>().swap(g_entries);" in playback
+
 print("Playlist theme-selection regression check passed.")
