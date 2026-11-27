@@ -52,6 +52,11 @@ void setError(const char* message) {
   g_lastError[sizeof(g_lastError) - 1] = '\0';
 }
 
+void markCachedValuesStale() {
+  for (uint8_t i = 0; i < g_sourceCount; ++i)
+    if (g_state[i].hasValue) g_state[i].stale = true;
+}
+
 bool parseAuthority(const std::string& url, char* host, size_t capacity,
                     uint16_t& port, bool& secure) {
   const size_t scheme = url.find("://");
@@ -240,11 +245,19 @@ bool requestSource(ClientType& socket, const smalltv::ThemeDataSource& source,
   return true;
 }
 
-uint16_t chooseTlsBuffer(const char* host, uint16_t port) {
+uint16_t chooseTlsBuffer(const char* host, uint16_t port, char* error, size_t errorSize) {
   if (BearSSL::WiFiClientSecure::probeMaxFragmentLength(host, port, 512)) return 512;
   if (BearSSL::WiFiClientSecure::probeMaxFragmentLength(host, port, 1024)) return 1024;
-  // Large TLS records are a fallback only with generous heap headroom.
-  if (ESP.getFreeHeap() >= 19000UL && platformMaxFreeBlock() >= 4096UL) return 4096;
+
+  // Without MFLN, BearSSL needs a larger receive buffer. Do not guess a smaller
+  // buffer: servers may send a TLS record larger than the ESP8266 can hold.
+  const uint32_t freeHeap = ESP.getFreeHeap();
+  const uint32_t maxBlock = platformMaxFreeBlock();
+  if (freeHeap >= 19000UL && maxBlock >= 4096UL) return 4096;
+
+  snprintf(error, errorSize,
+      "TLS probe failed; 4 KiB fallback needs 19000 B heap / 4096 B block (have %lu / %lu)",
+      static_cast<unsigned long>(freeHeap), static_cast<unsigned long>(maxBlock));
   return 0;
 }
 
@@ -270,7 +283,7 @@ bool fetchSource(const smalltv::ThemeDataSource& source, SourceState& state,
     return false;
   }
   if (!state.tlsChecked) {
-    state.tlsBuffer = chooseTlsBuffer(host, port);
+    state.tlsBuffer = chooseTlsBuffer(host, port, error, errorSize);
     state.tlsChecked = state.tlsBuffer != 0;
   }
   if (!state.tlsBuffer) {
@@ -313,9 +326,24 @@ void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
   if (!g_enabled || theme.data.empty()) return;
   tickAges(now);
   publishAges(theme, engine);
-  if (!netConnected()) return;
+  if (!netConnected()) {
+    markCachedValuesStale();
+    setError("waiting for an active Wi-Fi connection");
+    return;
+  }
   if (!due(now, g_lastRequestAt + MinRequestSpacingMs)) return;
-  if (ESP.getFreeHeap() < 10000UL || platformMaxFreeBlock() < 1800UL) return;
+
+  const uint32_t freeHeap = ESP.getFreeHeap();
+  const uint32_t maxBlock = platformMaxFreeBlock();
+  if (freeHeap < 10000UL || maxBlock < 1800UL) {
+    char message[96];
+    snprintf(message, sizeof(message),
+        "data fetch deferred: need 10000 B heap / 1800 B block (have %lu / %lu)",
+        static_cast<unsigned long>(freeHeap), static_cast<unsigned long>(maxBlock));
+    markCachedValuesStale();
+    setError(message);
+    return;
+  }
 
   for (uint8_t offset = 0; offset < g_sourceCount; ++offset) {
     const uint8_t index = static_cast<uint8_t>((g_nextSource + offset) % g_sourceCount);
