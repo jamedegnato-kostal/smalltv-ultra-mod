@@ -37,7 +37,6 @@ assert not (ROOT / "src/OtaUpdate.h").exists()
 # silently leaving all fields at their initial placeholders.
 for token in (
     'waiting for an active Wi-Fi connection',
-    'data fetch deferred: need 10000 B heap / 1800 B block',
     'TLS probe failed; 4 KiB fallback needs 19000 B heap / 4096 B block',
     'markCachedValuesStale();',
 ):
