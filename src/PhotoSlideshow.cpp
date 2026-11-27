@@ -14,7 +14,7 @@ extern void appShowNetworkStatus();
 namespace {
 using smalltv::display::DisplayPanel;
 
-constexpr uint8_t MaxPhotos = 16;
+constexpr uint8_t MaxPhotos = 64;
 constexpr size_t MaxPhotoBytes = 256UL * 1024UL;
 constexpr size_t StorageReserve = 32UL * 1024UL;
 constexpr uint16_t MaxPhotoDimension = 1920;
@@ -271,7 +271,7 @@ void receivePhotoUpload() {
     if (smalltv::playback::active()) g_uploadError = "Stop shared playback before adding photos";
     else if (g_active) g_uploadError = "Stop the slideshow before adding photos";
     else if (smalltv::themeRuntimeActive()) g_uploadError = "Deactivate the active .stheme before adding photos";
-    else if (installedPhotoCount() >= MaxPhotos) g_uploadError = "Photo limit reached (16 images)";
+    else if (installedPhotoCount() >= MaxPhotos) g_uploadError = "Photo limit reached (64 images)";
     else if (!makePhotoName(incoming.filename, g_uploadDestination)) g_uploadError = "Use a JPEG file (.jpg or .jpeg)";
 
     File settings = LittleFS.open("/config.json", "r");
