@@ -74,7 +74,7 @@ The actual web interface is served locally by the firmware and is embedded in
 - Wi-Fi client, setup access point, captive-portal redirect and mDNS.
 - Local status and memory information.
 - Configuration export/import, restart and full LittleFS factory reset.
-- Manual firmware upload and GitHub release check/OTA update.
+- Manual firmware upload using a locally downloaded BIN file. There is no online updater; download the firmware BIN separately and install it in System.
 
 ## Getting started
 
@@ -94,7 +94,7 @@ The loader is only needed on units whose stock updater cannot accept the full
 firmware image. Flash `smalltv-stable-loader.bin`, connect to the
 `SmallTV-Loader` access point, open `http://192.168.4.1/update` and upload
 `smalltv-stable-firmware.bin`. The loader is a temporary installation helper,
-not a normal firmware update. Subsequent updates use the regular device web UI.
+not a normal firmware update. Subsequent updates are installed manually by uploading the matching firmware BIN in the device web UI.
 
 ## Mixed playlist
 
