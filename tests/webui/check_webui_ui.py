@@ -7,6 +7,9 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 source = (ROOT / "src/webui_stable.h").read_text(encoding="utf-8")
+portal = (ROOT / "src/WebPortal.cpp").read_text(encoding="utf-8")
+main = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
+platformio = (ROOT / "platformio.ini").read_text(encoding="utf-8")
 
 # Navigation labels must keep matching sections and the top utility actions.
 for tab in ("status", "wifi", "display", "themes", "photos", "playback", "update"):
@@ -15,6 +18,19 @@ for tab in ("status", "wifi", "display", "themes", "photos", "playback", "update
 assert source.count('class="nav-icon"') == 7
 assert 'id="debugToggle"' in source and 'id="debugDialog"' in source
 assert 'id="helpToggle"' in source and 'id="themeMode"' in source
+
+# The GitHub online updater is deliberately removed because its HTTPS download
+# path exceeds the ESP8266's available heap. Manual local BIN upload remains.
+assert "Online-Update" not in source
+for token in ("checkUpdate", "selfUpdate", "/api/checkupdate", "/api/selfupdate", "ghMsg", "ghUpBtn"):
+    assert token not in source, f"online updater UI unexpectedly present: {token}"
+assert 'request.open("POST", "/update")' in source
+assert 'server.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);' in portal
+for token in ("OtaUpdate.h", "otaCheckLatest", "otaBootRequested", "otaRequestBootUpdate", "handleCheckUpdate", "handleSelfUpdate", "/api/checkupdate", "/api/selfupdate"):
+    assert token not in portal and token not in main, f"online updater firmware code unexpectedly present: {token}"
+assert "OtaUpdate.cpp" not in platformio
+assert not (ROOT / "src/OtaUpdate.cpp").exists()
+assert not (ROOT / "src/OtaUpdate.h").exists()
 
 # The Debug action uses only read-only status endpoints and never requests
 # /api/config, which contains saved network credentials.
@@ -85,4 +101,4 @@ try:
 finally:
     Path(script_path).unlink(missing_ok=True)
 
-print("SmallTV web UI navigation and diagnostics checks passed.")
+print("SmallTV UI, manual firmware upload, and online-updater removal checks passed.")
