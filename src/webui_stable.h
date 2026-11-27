@@ -588,24 +588,14 @@ nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
  </section>
 
 <section id="update" class="tab">
-  <div class="page-intro"><p class="eyebrow">GERÄTEVERWALTUNG</p><h2>System &amp; Wartung</h2><p>Firmware aktualisieren, Konfiguration sichern und das Gerät warten.</p></div>
+  <div class="page-intro"><p class="eyebrow">GERÄTEVERWALTUNG</p><h2>System &amp; Wartung</h2><p>Firmware manuell installieren, Konfiguration sichern und das Gerät warten.</p></div>
   <div class="card">
-   <h2>Online-Update</h2>
-   <div class="muted">Installiert: <b id="fwVer">wird geladen …</b></div>
-   <div style="margin-top:10px">
-    <button class="btn sec" type="button" onclick="checkUpdate()" id="chkBtn">Nach Update suchen</button>
-    <button class="btn" style="margin-left:8px" type="button" onclick="selfUpdate()" id="ghUpBtn" disabled>Jetzt aktualisieren</button>
-   </div>
-   <div id="ghMsg" class="muted" style="margin-top:8px" role="status"></div>
-   <small class="hint">Sucht nach einer neueren ESP8266-Firmware. Das Online-Update wird zunächst vorgemerkt und beim Neustart ausgeführt. Bei Problemen kann eine passende BIN-Datei manuell installiert werden. Gerät während eines Updates nicht ausschalten.</small>
-  </div>
-  <div class="card">
-   <h2>Manuelles Firmware-Update (OTA)</h2>
+   <h2>Firmware manuell installieren</h2>
    <input id="fw" type="file" accept=".bin,application/octet-stream">
    <div style="margin-top:12px"><button class="btn" type="button" onclick="upload()" id="upBtn">Firmware installieren</button></div>
    <div class="bar"><div id="upBar"></div></div>
    <div id="upMsg" class="muted" style="margin-top:8px" role="status"></div>
-   <small class="hint">Wähle eine passende ESP8266-Firmware-Datei mit der Endung <code>.bin</code>. Nach erfolgreichem Upload startet das Gerät neu.</small>
+   <small class="hint">Wähle eine passende Firmware-Datei mit der Endung <code>.bin</code>. Nach erfolgreichem Upload startet das Gerät neu.</small>
   </div>
   <div class="card">
    <h2>Einstellungen sichern</h2>
@@ -654,13 +644,11 @@ nav button[data-t="update"] .nav-icon{color:var(--accent-info)}
 <script>
 var $ = function(id){ return document.getElementById(id); };
 var config = {};
-var latestUpdate = false;
 var dirty = false;
 var editRevision = 0;
 var toastTimer = 0;
 var statusTimer = 0;
 var statusLoading = false;
-var updateInProgress = false;
 
 function api(path, options) {
   return fetch(path, options || {}).then(function(response) {
@@ -1044,7 +1032,6 @@ function showStatus(s) {
   $("statusHeap").textContent = (Number(s.heap)||0).toLocaleString("de-DE") + " B";
   $("statusHeapSub").textContent = "Größter Block: " + (Number(s.maxBlock)||0).toLocaleString("de-DE") + " B";
   $("statusDisplay").textContent = s.playback ? "Playlist läuft" : (s.themeLoaded ? "Theme aktiv" : (s.photoSlideshow ? "Slideshow läuft" : "Bereit"));
-  $("fwVer").textContent = (s.fw || "SmallTV") + " " + (s.version || "");
   $("storageRecoveryHint").style.display = s.storageReady === false ? "block" : "none";
   var rows = kv("Firmware", (s.fw || "SmallTV") + " " + (s.version || "")) +
     kv("LittleFS", s.storageReady ? "Bereit" : "Nicht verfügbar") +
@@ -1065,10 +1052,8 @@ function showStatus(s) {
     kv("Theme-Datenquellen", (Number(s.dataReady)||0) + "/" + (Number(s.dataSources)||0) + " aktuell" + (Number(s.dataStale) ? " · " + s.dataStale + " veraltet" : "")) +
     (s.dataError ? kv("Letzter Datenfehler", s.dataError) : "") +
     (s.themeError ? kv("Theme-Fehler", s.themeError) : "") +
-    kv("Heap für Theme-Runtime", (Number(s.themeHeap)||0) + " Byte") +
-    (s.updateMsg ? kv("Update-Status", s.updateMsg) : "");
+    kv("Heap für Theme-Runtime", (Number(s.themeHeap)||0) + " Byte");
   $("statusBox").innerHTML = rows;
-  if (s.updateMsg && !$("ghMsg").textContent) $("ghMsg").textContent = s.updateMsg;
 }
 function loadStatus() {
   if (statusLoading || document.visibilityState === "hidden") return;
@@ -1079,45 +1064,6 @@ function loadStatus() {
     $("dot").className = "dot";
     $("statusBox").textContent = "Status nicht verfügbar: " + error.message;
   }).then(function(){ statusLoading = false; });
-}
-function checkUpdate() {
-  $("ghMsg").textContent = "Suche nach Updates …";
-  $("chkBtn").disabled = true;
-  api("/api/checkupdate").then(function(update){
-    $("chkBtn").disabled = false;
-    latestUpdate = !!(update.ok && update.newer);
-    if (!update.ok) {
-      latestUpdate = false; $("ghUpBtn").disabled = true;
-      $("ghMsg").textContent = "Suche fehlgeschlagen: " + (update.error || "Unbekannter Fehler");
-      return;
-    }
-    if (update.newer) {
-      $("ghMsg").textContent = "Version " + update.latest + " ist verfügbar (installiert: " + update.current + ").";
-      $("ghUpBtn").disabled = false;
-    } else {
-      $("ghMsg").textContent = "Firmware ist aktuell (" + update.current + ").";
-      $("ghUpBtn").disabled = true;
-    }
-  }).catch(function(error){
-    latestUpdate = false; $("ghUpBtn").disabled = true;
-    $("chkBtn").disabled = false;
-    $("ghMsg").textContent = "Update-Prüfung fehlgeschlagen: " + error.message;
-  });
-}
-function selfUpdate() {
-  if (!latestUpdate || updateInProgress) return;
-  if (!confirm("Neueste Firmware herunterladen und installieren? Das Gerät startet bei Erfolg neu.")) return;
-  updateInProgress = true;
-  $("ghUpBtn").disabled = true;
-  $("chkBtn").disabled = true;
-  $("ghMsg").textContent = "Update wird vorgemerkt. Das Gerät startet gleich neu. Bitte nicht ausschalten.";
-  api("/api/selfupdate", {method:"POST"}).then(function(){
-    $("ghMsg").textContent = "Update vorgemerkt. Das Gerät startet nach dem Download neu.";
-  }).catch(function(error){
-    updateInProgress = false;
-    $("ghMsg").textContent = "Update konnte nicht vorgemerkt werden: " + error.message;
-    $("chkBtn").disabled = false;
-  });
 }
 function upload() {
   var file = $("fw").files[0];
