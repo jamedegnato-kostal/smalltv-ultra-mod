@@ -21,7 +21,7 @@ application does not allocate a persistent full-screen framebuffer.
 | **Board** | ESP8266 / ESP-12E-compatible SmallTV Ultra |
 | **Display** | 240×240 ST7789 |
 | **Flash layout** | 4 MB flash · 2 MB LittleFS · OTA-capable firmware slot |
-| **Photos** | Up to 16 JPEGs, 240×240, up to 256 KiB each |
+| **Photos** | Up to 64 JPEGs, 240×240, up to 256 KiB each |
 | **Themes** | Up to 16 validated `.stheme` packages |
 | **Mixed playlist** | Up to 32 entries, photos and themes together |
 | **Control** | Local web interface, no cloud account required |
@@ -61,7 +61,7 @@ The actual web interface is served locally by the firmware and is embedded in
 ### Photos and mixed playback
 
 - Browser-side conversion to 240×240 JPEG before upload.
-- Up to 16 photos in LittleFS; maximum converted file size 256 KiB.
+- Up to 64 photos in LittleFS; maximum converted file size 256 KiB.
 - Standalone photo slideshow with 5–3,600 second interval.
 - Shared playlist containing any combination of photos and themes.
 - Manual ordering with drag-and-drop or arrow controls.
