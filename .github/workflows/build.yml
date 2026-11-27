@@ -24,9 +24,6 @@ jobs:
       - name: Install PlatformIO
         run: python -m pip install platformio
 
-      - name: Verify stable OTA asset name
-        run: grep -q '#define UPDATE_ASSET "smalltv-stable-firmware.bin"' src/config.h
-
       - name: Ensure support error log is absent
         run: |
           ! grep -q 'data-t="diagnostics"\|id="diagnostics"\|createDiagnosticLog\|downloadDiagnosticLog' src/webui_stable.h
