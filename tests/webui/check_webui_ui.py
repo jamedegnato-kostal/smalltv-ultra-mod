@@ -10,6 +10,7 @@ source = (ROOT / "src/webui_stable.h").read_text(encoding="utf-8")
 portal = (ROOT / "src/WebPortal.cpp").read_text(encoding="utf-8")
 main = (ROOT / "src/main.cpp").read_text(encoding="utf-8")
 platformio = (ROOT / "platformio.ini").read_text(encoding="utf-8")
+data_fetcher = (ROOT / "src/theme/ThemeDataFetcher.cpp").read_text(encoding="utf-8")
 
 # Navigation labels must keep matching sections and the top utility actions.
 for tab in ("status", "wifi", "display", "themes", "photos", "playback", "update"):
@@ -31,6 +32,17 @@ for token in ("OtaUpdate.h", "otaCheckLatest", "otaBootRequested", "otaRequestBo
 assert "OtaUpdate.cpp" not in platformio
 assert not (ROOT / "src/OtaUpdate.cpp").exists()
 assert not (ROOT / "src/OtaUpdate.h").exists()
+
+# Data-source scheduling must report why a fetch is deferred instead of
+# silently leaving all fields at their initial placeholders.
+for token in (
+    'waiting for an active Wi-Fi connection',
+    'data fetch deferred: need 10000 B heap / 1800 B block',
+    'TLS probe failed; 4 KiB fallback needs 19000 B heap / 4096 B block',
+    'markCachedValuesStale();',
+):
+    assert token in data_fetcher, f"missing data-source diagnostic: {token}"
+assert 'if(s.dataError) issues.push("Theme-Datenquelle: " + s.dataError);' in source
 
 # The Debug action uses only read-only status endpoints and never requests
 # /api/config, which contains saved network credentials.
@@ -101,4 +113,4 @@ try:
 finally:
     Path(script_path).unlink(missing_ok=True)
 
-print("SmallTV UI, manual firmware upload, and online-updater removal checks passed.")
+print("SmallTV UI, manual firmware upload, online-updater removal, and data-source diagnostics checks passed.")
