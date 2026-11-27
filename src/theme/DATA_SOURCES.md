@@ -31,9 +31,11 @@ Text layers and bindings refer to values as `{sample.label}`,
 - JSON nesting is limited to 8; the filter/document allocator has a 2,048-byte
   combined budget. Only selected fields are retained; text values are at most
   31 bytes.
-- Fetching is skipped under low free-heap or fragmented-heap conditions. TLS
-  uses 512/1,024-byte MFLN buffers when the server supports them. A 4 KiB TLS
-  buffer is used only when there is substantially more heap headroom.
+- Fetching is deferred under low free-heap or fragmented-heap conditions.
+  The active reason is exposed as the theme data error in the device status
+  and Debug panel. TLS uses 512/1,024-byte MFLN buffers when the server
+  supports them. Without MFLN, a 4 KiB TLS buffer is used only when at least
+  19 KiB free heap and a 4 KiB contiguous block are available.
 - Request/reply timeouts are bounded; failed sources use exponential retry
   backoff. The last good field values remain available as stale data after a
   failed refresh.
