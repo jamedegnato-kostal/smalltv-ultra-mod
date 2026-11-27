@@ -43,6 +43,13 @@ for token in (
     assert token in data_fetcher, f"missing data-source diagnostic: {token}"
 assert 'if(s.dataError) issues.push("Theme-Datenquelle: " + s.dataError);' in source
 
+# Test-only low-heap experiment: the outer fetch and JSON parser preflight
+# gates are bypassed, but bounded parsing safeguards must remain active.
+assert "constexpr size_t JsonHeapBudget = 4096;" in data_fetcher
+assert "if (ESP.getFreeHeap() < 7000UL || platformMaxFreeBlock() < 1400UL)" not in data_fetcher
+assert "if (ESP.getFreeHeap() < 5200UL)" in data_fetcher
+assert "constexpr size_t MaxResponseBytes = 2048;" in data_fetcher
+
 # The Debug action uses only read-only status endpoints and never requests
 # /api/config, which contains saved network credentials.
 debug_start = source.index("function loadDebug()")
