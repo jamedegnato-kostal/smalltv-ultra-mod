@@ -335,18 +335,9 @@ void themeDataFetcherLoop(const Theme& theme, Engine& engine, uint32_t now) {
   }
   if (!due(now, g_lastRequestAt + MinRequestSpacingMs)) return;
 
-  const uint32_t freeHeap = ESP.getFreeHeap();
-  const uint32_t maxBlock = platformMaxFreeBlock();
-  if (freeHeap < 10000UL || maxBlock < 1800UL) {
-    char message[96];
-    snprintf(message, sizeof(message),
-        "data fetch deferred: need 10000 B heap / 1800 B block (have %lu / %lu)",
-        static_cast<unsigned long>(freeHeap), static_cast<unsigned long>(maxBlock));
-    markCachedValuesStale();
-    setError(message);
-    return;
-  }
-
+  // TEST ONLY: bypass the 10 KiB / 1.8 KiB preflight gate to observe the
+  // actual TLS/HTTP/parser failure at lower heap levels. Internal safeguards
+  // (TLS buffer selection, parser heap checks, response cap and timeouts) remain.
   for (uint8_t offset = 0; offset < g_sourceCount; ++offset) {
     const uint8_t index = static_cast<uint8_t>((g_nextSource + offset) % g_sourceCount);
     SourceState& state = g_state[index];
