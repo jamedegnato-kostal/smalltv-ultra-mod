@@ -957,7 +957,8 @@ function loadDebug() {
       if(s.storageReady===false) issues.push("LittleFS ist nicht verfügbar.");
       if(!s.connected && s.mode!=="ap") issues.push("Keine WLAN-Verbindung.");
       if(s.themeError) issues.push("Theme: " + s.themeError);
-      if(Number(s.dataFailures)>0) issues.push("Mindestens eine Theme-Datenquelle meldet Fehler.");
+      if(s.dataError) issues.push("Theme-Datenquelle: " + s.dataError);
+      else if(Number(s.dataFailures)>0) issues.push("Mindestens eine Theme-Datenquelle meldet Fehler.");
       if(Number(s.dataStale)>0) issues.push("Theme-Daten enthalten veraltete Werte.");
     }
     var online=!s._requestError && !!s.connected, memory=Number(s.heap)||0, freeStorage=Number(p.freeBytes)||0;
