@@ -1722,17 +1722,14 @@ function startPlayback() {
 }
 function playbackAction(action) {
   if (playbackBusy || playbackLoading) return Promise.resolve(false);
-  if (action === "start") {
-    startPlayback();
-    return Promise.resolve(true);
-  }
-  if ((action === "previous" || action === "next") && !playbackState.playing) return Promise.resolve(false);
-  if (action === "stop" && !playbackState.playing) return Promise.resolve(false);
+  if (action === "start" && playbackState.playing) return Promise.resolve(false);
+  if ((action === "previous" || action === "next" || action === "stop") && !playbackState.playing) return Promise.resolve(false);
   playbackBusy = true;
   renderPlaybackControls();
   return api("/api/playback/" + action, {method:"POST"})
     .then(function() {
       var messages = {
+        start:"Wiedergabe gestartet.",
         stop:"Wiedergabe gestoppt.",
         previous:"Vorheriger Eintrag wird angezeigt.",
         next:"Nächster Eintrag wird angezeigt."
