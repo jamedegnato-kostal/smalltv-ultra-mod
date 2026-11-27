@@ -1275,7 +1275,7 @@ function loadPhotos() {
   list.textContent = "Fotoliste wird geladen …";
   api("/api/photos").then(function(data) {
     var photos = Array.isArray(data.photos) ? data.photos : [];
-    $("photoStorage").textContent = "Freier Dateispeicher: " + (Number(data.freeBytes)||0).toLocaleString("de-DE") + " Byte · " + (Number(data.count)||0) + "/16 Fotos";
+    $("photoStorage").textContent = "Freier Dateispeicher: " + (Number(data.freeBytes)||0).toLocaleString("de-DE") + " Byte · " + (Number(data.count)||0) + "/64 Fotos";
     $("photoStatus").textContent = data.active
       ? "Slideshow aktiv · " + (data.current || "Bild wird geladen") + " · Wechsel alle " + data.interval + " Sekunden"
       : "Slideshow gestoppt. " + photos.length + " Foto(s) gespeichert.";
@@ -1283,7 +1283,7 @@ function loadPhotos() {
     $("photoStopBtn").disabled = !data.active;
     $("photoNextBtn").disabled = !data.active || !photos.length;
     $("photoPreviousBtn").disabled = !data.active || !photos.length;
-    $("photoUploadBtn").disabled = !!data.active || photos.length >= 16;
+    $("photoUploadBtn").disabled = !!data.active || photos.length >= 64;
     list.textContent = "";
     if (!photos.length) {
       list.textContent = "Noch keine Fotos gespeichert. Wähle oben Bilder aus.";
