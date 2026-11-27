@@ -5,11 +5,6 @@
 #define FW_NAME "smalltv-stable"
 #define FW_VERSION "1.0.0"
 #define FW_VARIANT "esp8266-stable"
-#define REPO_URL "https://github.com/jamedegnato-kostal/smalltv-ultra-mod"
-#define REPO_OWNER "jamedegnato-kostal"
-#define REPO_NAME "smalltv-ultra-mod"
-#define UPDATE_ASSET "smalltv-stable-firmware.bin"
-#define GH_API_HOST "api.github.com"
 
 #define MAX_WIFI_NETS 4
 #define DEFAULT_AP_SSID "SmallTV-Setup"
