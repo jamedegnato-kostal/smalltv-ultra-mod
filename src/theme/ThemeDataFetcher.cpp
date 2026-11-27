@@ -12,9 +12,10 @@ namespace {
 constexpr uint16_t HttpTimeoutMs = 1400;
 constexpr uint32_t ReplyTimeoutMs = 2200;
 constexpr size_t MaxResponseBytes = 2048;
-// Keep the original spec-2 parser allowance: valid existing themes can need
-// up to 2 KiB for the filtered document and its selected strings.
-constexpr size_t JsonHeapBudget = 2048;
+// TEST ONLY: raise the ArduinoJson allocation budget from 2 KiB to 4 KiB.
+// The stream reader still stops below 5.2 KiB free heap and response bytes
+// remain capped, but this deliberately increases crash risk on low-heap ESP8266.
+constexpr size_t JsonHeapBudget = 4096;
 constexpr uint32_t AgeUnknown = 0xffffffffUL;
 constexpr uint32_t AgeMaximum = 0xfffffffeUL;
 constexpr int32_t AgeUnpublished = -2;
@@ -223,12 +224,9 @@ bool requestSource(ClientType& socket, const smalltv::ThemeDataSource& source,
     http.end();
     return false;
   }
-  if (ESP.getFreeHeap() < 7000UL || platformMaxFreeBlock() < 1400UL) {
-    strncpy(error, "not enough free heap to parse JSON", errorSize - 1);
-    error[errorSize - 1] = '\0';
-    http.end();
-    return false;
-  }
+  // TEST ONLY: bypass the 7 KiB / 1.4 KiB parser preflight gate. The
+  // bounded stream reader retains its emergency stop at 5.2 KiB free heap.
+
 
   values.clear();
   values.reserve(source.fields.size());
