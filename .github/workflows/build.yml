@@ -2,7 +2,7 @@ name: SmallTV Stable firmware
 
 on:
   push:
-    branches: [main, stable-image]
+    branches: [main, stable-image, test-unbounded-data-fetch]
     tags: ['v*']
   pull_request:
     branches: [main]
