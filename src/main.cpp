@@ -5,7 +5,6 @@
 #include "Settings.h"
 #include "Net.h"
 #include "WebPortal.h"
-#include "OtaUpdate.h"
 #include "display/DisplayBoard.h"
 #include "display/DisplayPanel.h"
 #include "display/DisplayStatus.h"
@@ -136,13 +135,6 @@ void setup() {
   // Night mode is an independent NTP consumer; it remains active when a theme
   // releases its own clock request. SNTP starts once Wi-Fi is connected.
   smalltv::clockSetNightModeEnabled(g_settings.nightEnabled, g_settings.timezone);
-
-  if (otaBootRequested()) {
-    Serial.println("[boot] applying queued OTA update");
-    if (g_displayReady) smalltv::display::showUpdating(g_display, "please wait");
-    otaBootUpdate(g_settings);
-    if (g_displayReady) smalltv::display::showUpdating(g_display, "update failed");
-  }
 
   Serial.println("[boot] web server");
   smalltv::themeRuntimeBegin(g_display);
