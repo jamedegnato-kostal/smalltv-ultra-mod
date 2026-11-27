@@ -1,10 +1,9 @@
-// Minimal HTTP configuration portal and OTA service. No login, display or UI modes.
+// Minimal HTTP configuration portal and manual firmware upload. No login, display or UI modes.
 #include "WebPortal.h"
 #include "Platform.h"
 #include "Settings.h"
 #include "SettingsTransaction.h"
 #include "Net.h"
-#include "OtaUpdate.h"
 #include "theme/ThemeWeb.h"
 #include "PhotoSlideshow.h"
 #include "Playback.h"
@@ -25,8 +24,6 @@ static WebServerClass server(80);
 static Settings* S = nullptr;
 static bool g_reboot = false;
 static uint32_t g_rebootAt = 0;
-static bool g_selfUpdate = false;
-static String g_updateMsg;
 static uint32_t g_uploadMax = 0;
 static uint32_t g_uploadBytes = 0;
 static bool g_uploadStarted = false;
@@ -98,7 +95,6 @@ static void handleStatus() {
   doc["localTime"] = localTime;
   doc["timezone"] = S->timezone;
   doc["language"] = S->language;
-  doc["updateMsg"] = g_updateMsg;
   sendJson(doc);
 }
 
@@ -293,23 +289,6 @@ static void handleImport() {
   scheduleReboot(800);
 }
 
-static void handleCheckUpdate() {
-  OtaLatest latest = otaCheckLatest(*S);
-  JsonDocument doc;
-  doc["current"] = FW_VERSION;
-  doc["ok"] = latest.ok;
-  doc["latest"] = latest.tag;
-  doc["newer"] = latest.newer;
-  if (!latest.ok) doc["error"] = latest.error;
-  sendJson(doc);
-}
-
-static void handleSelfUpdate() {
-  g_selfUpdate = true;
-  g_updateMsg = "starting...";
-  server.send(200, "application/json", "{\"ok\":true}");
-}
-
 static void abortFirmwareUpload(const char* reason) {
   g_uploadComplete = false;
   g_uploadError = reason;
@@ -422,7 +401,6 @@ void webPortalBegin(Settings& settings) {
   themeWebBegin(server, settings);
   smalltv::photos::webBegin(server);
   smalltv::playback::webBegin(server);
-  g_updateMsg = otaTakeBootResult();
 
   server.on("/", HTTP_GET, handleRoot);
   server.on("/api/config", HTTP_GET, handleGetConfig);
@@ -433,8 +411,6 @@ void webPortalBegin(Settings& settings) {
   server.on("/api/factory", HTTP_POST, handleFactory);
   server.on("/api/export", HTTP_GET, handleExport);
   server.on("/api/import", HTTP_POST, handleImport);
-  server.on("/api/checkupdate", HTTP_GET, handleCheckUpdate);
-  server.on("/api/selfupdate", HTTP_POST, handleSelfUpdate);
   server.on("/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
   server.on("/generate_204", HTTP_GET, handleNotFound);
   server.on("/gen_204", HTTP_GET, handleNotFound);
@@ -446,20 +422,6 @@ void webPortalBegin(Settings& settings) {
 
 void webPortalLoop() {
   server.handleClient();
-  if (!g_selfUpdate) return;
-  g_selfUpdate = false;
-
-  OtaLatest latest = otaCheckLatest(*S);
-  if (!latest.ok) {
-    g_updateMsg = "check failed: " + latest.error;
-  } else if (!latest.newer) {
-    g_updateMsg = "already up to date (" FW_VERSION ")";
-  } else if (otaRequestBootUpdate(latest.tag.c_str())) {
-    g_updateMsg = "updating...";
-    scheduleReboot(400);
-  } else {
-    g_updateMsg = "could not queue update (storage error)";
-  }
 }
 
 bool webPortalRebootDue() {
